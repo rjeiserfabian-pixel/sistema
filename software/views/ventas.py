@@ -394,6 +394,12 @@ def ventas(request):
             print(f"Error cargando proforma: {e}")
             pass
 
+    # Optimización: Obtener lista de vendedores según el rol
+    if id2 == 6:  # Analista
+        vendedores_qs = Usuario.objects.filter(estado=1, idtipousuario=2).only('idusuario', 'nombrecompleto')
+    else:
+        vendedores_qs = Usuario.objects.filter(estado=1).only('idusuario', 'nombrecompleto')
+
     # Contexto para el template
     data = {
         'ventas_registros': ventas_registros,
@@ -406,6 +412,7 @@ def ventas(request):
         'productos_stock': productos_stock_json,
         'repuestos_stock': repuestos_stock_json,
         'idusuario': idusuario,
+        'idtipousuario': id2,
         'permisos': permisos,
         'es_admin': es_admin,
         'tipos_entidad': TipoEntidad.objects.filter(estado=1),
@@ -415,7 +422,7 @@ def ventas(request):
         'regiones': Region.objects.all(),
         'fecha_inicio': fecha_inicio_str,
         'fecha_fin': fecha_fin_str,
-        'vendedores': Usuario.objects.filter(estado=1),
+        'vendedores': vendedores_qs,
     }
 
     return render(request, 'ventas/ventas.html', data)

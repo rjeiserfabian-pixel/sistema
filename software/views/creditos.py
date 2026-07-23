@@ -2195,7 +2195,7 @@ def imprimir_recibo_pago(request, idpagocuota):
             
             elements.append(Paragraph(f"<b>DETALLE:</b> {obs_texto}", style_small_left))
 
-        cajero = pago.idusuario.nombrecompleto.split()[0].upper()
+        cajero = pago.idusuario.nombrecompleto.upper()
         elements.append(Paragraph(f"<b>CAJERO(A): {cajero}</b>", style_small_left))
         
         # Mostrar la caja del pago
@@ -3007,7 +3007,7 @@ def imprimir_recibo_pago_multiple(request, pago_ids):
             if obs_texto:
                 elements.append(Paragraph(f"<b>DETALLE:</b> {obs_texto}", style_small_left))
 
-        cajero = primer_pago.idusuario.nombrecompleto.split()[0].upper()
+        cajero = primer_pago.idusuario.nombrecompleto.upper()
         elements.append(Paragraph(f"<b>CAJERO(A): {cajero}</b>", style_small_left))
         
         # Mostrar la caja del pago
@@ -3639,7 +3639,7 @@ def imprimir_recibo_pago_total(request, idmovimiento):
             if obs_texto:
                 elements.append(Paragraph(f"<b>DETALLE:</b> {obs_texto}", style_small_left))
 
-        cajero = primer_pago.idusuario.nombrecompleto.split()[0].upper()
+        cajero = primer_pago.idusuario.nombrecompleto.upper()
         elements.append(Paragraph(f"<b>CAJERO(A): {cajero}</b>", style_small_left))
         
         # Mostrar la caja del pago

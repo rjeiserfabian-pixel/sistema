@@ -3491,7 +3491,17 @@
     });
 
     let form = $("#formNuevaVenta");
+    
+    // TEMPORAL: Habilitar campos bloqueados para que viajen en el FormData
+    let formaPagoDisabled = $('#forma_pago').prop('disabled');
+    let idusuarioDisabled = $('#idusuario').prop('disabled');
+    $('#forma_pago, #idusuario').prop('disabled', false);
+
     let formData = new FormData(form[0]);
+
+    // Restaurar estado de los campos
+    $('#forma_pago').prop('disabled', formaPagoDisabled);
+    $('#idusuario').prop('disabled', idusuarioDisabled);
 
     $.ajax({
       type: "POST",
@@ -4664,6 +4674,9 @@
     }
   }
 
+  // Constante del backend para identificar rol
+  const TIPO_USUARIO_ACTUAL = parseInt("{{ idtipousuario|default:'0' }}");
+
   // ========================================
   // ⭐ FUNCIÓN RESETEAR FORMULARIO DE VENTA
   // ========================================
@@ -4676,9 +4689,24 @@
     $('.cuota-hidden').remove();
     $('#tiene_cuotas').val('0');
     formaPagoActual = '';
-    $('#forma_pago').css({ 'pointer-events': 'auto', 'background-color': '' }).removeAttr('tabindex');
     window.nroComprobanteAAplicar = null;
     window.serieAAplicar = null;
+
+    // Resetear el campo de forma de pago
+    $('#forma_pago').css({ 'pointer-events': 'auto', 'background-color': '' }).removeAttr('tabindex').prop('disabled', false);
+    
+    // Resetear el campo de vendedor
+    $('#idusuario').css({ 'pointer-events': 'auto', 'background-color': '' }).removeAttr('tabindex').prop('disabled', false);
+
+    // LÓGICA DE TIPO DE USUARIO: Vendedor (2) vs Analista (6)
+    if (TIPO_USUARIO_ACTUAL === 2) {
+      // Vendedor: Contado obligatorio y el mismo vendedor obligatorio
+      $('#forma_pago').val("1").css({ 'pointer-events': 'none', 'background-color': '#e9ecef' }).attr('tabindex', '-1');
+      $('#idusuario').css({ 'pointer-events': 'none', 'background-color': '#e9ecef' }).attr('tabindex', '-1');
+    } else if (TIPO_USUARIO_ACTUAL === 6) {
+      // Analista: Crédito obligatorio, puede elegir vendedor
+      $('#forma_pago').val("2").css({ 'pointer-events': 'none', 'background-color': '#e9ecef' }).attr('tabindex', '-1');
+    }
 
     // Forzar limpieza extra de campos residuales
     $('#cliente_search').val('');
@@ -4710,10 +4738,21 @@
     if (tipoComprobanteActual) {
       $('#tipo_comprobante').trigger('change');
     }
-
+    
     // Resetear columnas a estado inicial (mostrar descuento)
     $('.columna-descuento').removeClass('d-none');
     $('.columna-credito').addClass('d-none');
+
+    // Si se forzó el cambio de forma_pago por rol, ejecutar sus eventos relacionados visuales
+    if (TIPO_USUARIO_ACTUAL === 2 || TIPO_USUARIO_ACTUAL === 6) {
+        const formaPagoElement = document.getElementById('forma_pago');
+        if (formaPagoElement) {
+            // Utilizamos setTimeout para asegurar que se ejecute después de cualquier render inicial
+            setTimeout(() => {
+                formaPagoElement.dispatchEvent(new Event('change'));
+            }, 50);
+        }
+    }
   }
 
 
