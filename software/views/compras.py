@@ -2372,7 +2372,7 @@ def api_obtener_detalle_compra(request, id):
                 item['tipo'] = 'repuesto'
                 item['nombre'] = d.id_repuesto_comprado.id_repuesto.nombre if d.id_repuesto_comprado.id_repuesto else ''
                 item['codigo'] = d.id_repuesto_comprado.id_repuesto.codigo_barras or ''
-                item['modelo'] = d.id_repuesto_comprado.id_repuesto.idmodelo.nombremodelo if d.id_repuesto_comprado.id_repuesto.idmodelo else ''
+                item['modelo'] = d.id_repuesto_comprado.id_repuesto.modelo_referencia or ''
                 item['ubicacion'] = d.id_repuesto_comprado.ubicacion or ''
             
             detalles_list.append(item)

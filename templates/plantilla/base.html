@@ -1154,6 +1154,11 @@
                 return;
             }
 
+            // Ignorar elementos marcados explícitamente para saltar la validación
+            if (target.classList.contains('no-auth') || target.closest('.no-auth')) {
+                return;
+            }
+
             // Detectar si es una acción de ELIMINACIÓN
             let isDelete = target.classList.contains('eliminar') || 
                            (target.getAttribute('onclick') && target.getAttribute('onclick').toLowerCase().includes('eliminar')) ||

@@ -1983,7 +1983,7 @@
       </td>
       <td id="fila_subtotal_${itemIndex}" class="text-end fw-bold">${subtotal.toFixed(2)}</td>
       <td>
-        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarDetalle(${itemIndex})"><i class="fa-solid fa-trash"></i></button>
+        <button type="button" class="btn btn-danger btn-sm no-auth" title="Quitar" onclick="eliminarDetalle(${itemIndex})"><i class="fa-solid fa-trash"></i></button>
       </td>
       <td style="display:none">
         <input type="hidden" name="idcompradetalle_${itemIndex}" value="">
@@ -2955,7 +2955,7 @@
               </td>
               <td id="fila_subtotal_${itemIndex}" class="text-end fw-bold">${subtotal.toFixed(2)}</td>
               <td>
-                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarDetalle(${itemIndex})"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="btn btn-danger btn-sm no-auth" title="Quitar" onclick="eliminarDetalle(${itemIndex})"><i class="fa-solid fa-trash"></i></button>
               </td>
               <td style="display:none">
                 <input type="hidden" name="idcompradetalle_${itemIndex}" value="${d.idcompradetalle || ''}">
@@ -3825,8 +3825,8 @@ function agregarFilaPagoCompra(tpId='', monto='', operacion='') {
           <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-pago-compra"
                  step="0.01" min="0.01" placeholder="0.00" value="${monto}" required
                  oninput="calcularTotalPagadoCompra()">
-          <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-compra"
-                  title="Eliminar" onclick="eliminarFilaPagoCompra(this)">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-compra no-auth"
+                  title="Quitar" onclick="eliminarFilaPagoCompra(this)">
             <i class="fa-solid fa-minus"></i>
           </button>
         </div>

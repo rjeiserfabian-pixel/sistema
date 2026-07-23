@@ -1792,7 +1792,7 @@
       <td class="text-info text-end fw-bold" id="ganancia_${itemCounter}">S/ ${parseFloat(precio).toFixed(2)}</td>
       <!-- 11. Acción -->
       <td class="text-center">
-        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarItem(${itemCounter})">
+        <button type="button" class="btn btn-sm btn-outline-danger no-auth" title="Quitar" onclick="eliminarItem(${itemCounter})">
           <i class="fa-solid fa-trash"></i>
         </button>
       </td>
@@ -1910,7 +1910,7 @@
       <td id="subtotal_${itemCounter}" class="fw-bold text-success text-end">S/ 0.00</td>
       <td id="ganancia_${itemCounter}" class="fw-bold text-info text-end">S/ 0.00</td>
       <td class="text-center">
-        <button type="button" class="btn btn-sm btn-danger" onclick="eliminarItem(${itemCounter})">
+        <button type="button" class="btn btn-sm btn-danger no-auth" title="Quitar" onclick="eliminarItem(${itemCounter})">
           <i class="fa-solid fa-trash"></i>
         </button>
       </td>
@@ -4229,7 +4229,7 @@
                 <td id="subtotal_${itemCounter}" class="fw-bold text-success text-end">S/ ${subtotal}</td>
                 <td id="ganancia_${itemCounter}" class="fw-bold text-info text-end">S/ ${ganancia}</td>
                 <td class="text-center">
-                  <button type="button" class="btn btn-sm btn-danger" onclick="eliminarItem(${itemCounter})">
+                  <button type="button" class="btn btn-sm btn-danger no-auth" title="Quitar" onclick="eliminarItem(${itemCounter})">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </td>
@@ -4569,7 +4569,7 @@
         <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-pago-contado-input"
                step="0.01" min="0.01" placeholder="0.00" value="${monto}" required
                oninput="calcularTotalContado()">
-        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-contado" title="Eliminar" onclick="eliminarFilaPagoContado(this)">
+        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-contado no-auth" title="Quitar" onclick="eliminarFilaPagoContado(this)">
           <i class="fa-solid fa-minus"></i>
         </button>
       </div>
