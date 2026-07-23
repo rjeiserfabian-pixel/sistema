@@ -1,0 +1,186 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<style>
+    /* Estilos móviles específicos para Cuentas por Cobrar */
+    .client-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+        border-left: 5px solid #0d6efd;
+    }
+    .client-card.mora {
+        border-left: 5px solid #dc3545;
+    }
+    .card-body-custom {
+        padding: 15px;
+    }
+    .client-name {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .client-debt {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #dc3545;
+    }
+    .whatsapp-btn {
+        background-color: #25D366;
+        color: #ffffff !important;
+        border: none;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    .whatsapp-btn i {
+        color: #ffffff !important;
+    }
+    .whatsapp-btn:hover {
+        color: #ffffff !important;
+        background-color: #128C7E;
+    }
+    .cobrar-btn {
+        width: 100%;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 1.1rem;
+        padding: 10px;
+    }
+</style>
+
+<main id="main" class="main">
+    <!-- Encabezado -->
+    <div class="pagetitle d-flex justify-content-between align-items-center mb-3">
+        <h1 class="fw-bold text-primary">
+            <i class="fas fa-hand-holding-dollar me-2"></i>Cuentas por Cobrar
+        </h1>
+    </div>
+
+    <!-- Buscador Sticky -->
+    <div class="position-sticky top-0 z-3 bg-light pt-2 pb-3 mb-3" style="top: 60px;">
+        <div class="input-group input-group-lg shadow-sm">
+            <span class="input-group-text bg-white text-primary"><i class="fas fa-search"></i></span>
+            <input type="text" id="searchInput" class="form-control" placeholder="Buscar cliente por nombre o DNI..." autofocus>
+        </div>
+    </div>
+
+    <!-- Contenedor de Tarjetas -->
+    <div id="clients-container">
+        <!-- Las tarjetas se cargarán aquí vía AJAX -->
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="text-center my-4 d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2 text-muted">Buscando clientes...</p>
+    </div>
+
+    <!-- No results msg -->
+    <div id="no-results" class="alert alert-info text-center d-none">
+        No se encontraron clientes con deuda activa que coincidan con la búsqueda.
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let debounceTimer;
+    
+    function loadClients(searchQuery = '') {
+        const container = $('#clients-container');
+        const loading = $('#loading');
+        const noResults = $('#no-results');
+        
+        container.empty();
+        loading.removeClass('d-none');
+        noResults.addClass('d-none');
+        
+        $.ajax({
+            url: "{% url 'api_listar_clientes_cobrar' %}",
+            type: 'GET',
+            data: {
+                start: 0,
+                length: 15, // Carga inicial más liviana para respuesta rápida
+                search: searchQuery
+            },
+            success: function(response) {
+                loading.addClass('d-none');
+                
+                if(response.data.length === 0) {
+                    noResults.removeClass('d-none');
+                    return;
+                }
+                
+                response.data.forEach(function(client) {
+                    // Validar si tiene moras para pintar borde rojo
+                    let cardClass = client.cuotas_vencidas > 0 ? 'card client-card mora' : 'card client-card';
+                    let alertaMora = client.cuotas_vencidas > 0 ? `<span class="badge bg-danger rounded-pill"><i class="fas fa-exclamation-circle"></i> ${client.cuotas_vencidas} Vencida(s)</span>` : '';
+                    
+                    let mensajeWA = `Hola *${client.razonsocial}*, le escribimos para informarle que mantiene un saldo pendiente de *S/ ${parseFloat(client.saldo_total).toFixed(2)}*. Por favor comuníquese con nosotros.`;
+                    let encodedMsj = encodeURIComponent(mensajeWA);
+                    
+                    let whatsappBtn = client.telefono ? 
+                        `<a href="https://wa.me/51${client.telefono.replace(/\\s+/g, '')}?text=${encodedMsj}" target="_blank" class="whatsapp-btn" title="Enviar mensaje por WhatsApp"><i class="fab fa-whatsapp"></i></a>` : '';
+                        
+                    let card = `
+                        <div class="${cardClass}">
+                            <div class="card-body-custom">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="pe-2">
+                                        <div class="client-name mb-1">${client.razonsocial}</div>
+                                        <div class="text-muted small mb-2"><i class="fas fa-id-card"></i> ${client.numdoc}</div>
+                                        ${alertaMora}
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-muted small">Saldo Total</div>
+                                        <div class="client-debt">S/ ${parseFloat(client.saldo_total).toFixed(2)}</div>
+                                    </div>
+                                </div>
+                                <hr class="my-2 text-muted">
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <div class="text-muted small pe-3"><i class="fas fa-map-marker-alt"></i> ${client.direccion || 'Sin dirección'}</div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        ${whatsappBtn}
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <a href="/cuentas-por-cobrar/cliente/${client.idcliente}/" class="btn btn-primary cobrar-btn shadow-sm">
+                                        <i class="fas fa-hand-holding-dollar me-2"></i> COBRAR
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(card);
+                });
+            },
+            error: function(err) {
+                loading.addClass('d-none');
+                console.error("Error al cargar clientes", err);
+                Swal.fire('Error', 'Hubo un problema al cargar los datos.', 'error');
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        // Cargar todos inicialmente
+        loadClients('');
+
+        // Búsqueda en tiempo real (con debounce)
+        $('#searchInput').on('input', function() {
+            const query = $(this).val().trim();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                loadClients(query);
+            }, 500); // 500ms de retraso para no saturar el servidor
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,349 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle">
+    <h1>Reglas de Bonificacion</h1>
+  </div>
+
+  <section class="section">
+    <div class="row">
+      <!-- Formulario nueva regla -->
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Nueva Regla</h5>
+            <form id="formRegla" action="{% url 'guardar_regla_bonificacion' %}" method="POST" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label>Nombre</label>
+                <input type="text" name="nombre" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label>Tipo de Producto</label>
+                <select name="tipo_producto" id="tipo_producto" class="form-select" onchange="toggleForm()">
+                  <option value="Vehiculo">Vehiculo</option>
+                  <option value="Repuesto">Repuesto</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label>Tipo de Comisin</label>
+                <select name="tipo_comision" id="tipo_comision" class="form-select">
+                  <option value="Porcentaje">Porcentaje Directo (Vehiculos)</option>
+                  <option value="Escala">Escala por Volumen (Repuestos)</option>
+                </select>
+              </div>
+              
+              <!-- Seccin Vehiculo -->
+              <div class="mb-3" id="div_porcentaje">
+                <label>Porcentaje (%) para Vehiculos</label>
+                <input type="number" step="0.01" name="porcentaje" class="form-control" placeholder="Ej: 1.50">
+              </div>
+
+              <!-- Seccin Repuesto Escalas -->
+              <div class="mb-3 d-none" id="div_escalas">
+                <label>Rangos (Ej: 0 a 2000 = 1%)</label>
+                <div id="escalas_container">
+                  <div class="row g-2 mb-2">
+                    <div class="col"><input type="number" step="0.01" name="monto_minimo[]" class="form-control" placeholder="Min"></div>
+                    <div class="col"><input type="number" step="0.01" name="monto_maximo[]" class="form-control" placeholder="Max"></div>
+                    <div class="col"><input type="number" step="0.01" name="rango_porcentaje[]" class="form-control" placeholder="%"></div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addEscala()">+ Agregar Escala</button>
+              </div>
+
+              <div class="mb-3">
+                <label>Fecha Inicio</label>
+                <input type="date" name="fecha_inicio" class="form-control" required>
+              </div>
+              <div class="row g-2 mt-3">
+                <div class="col-6">
+                  <button type="button" class="btn btn-secondary w-100" onclick="limpiarFormulario()">Limpiar</button>
+                </div>
+                <div class="col-6">
+                  <button type="submit" class="btn btn-primary w-100">Guardar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de reglas -->
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Reglas Activas</h5>
+            <table class="table table-striped datatable">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th>Porcentaje / Escala</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in reglas %}
+                <tr>
+                  <td>{{ r.nombre }}</td>
+                  <td><span class="badge bg-secondary">{{ r.tipo_producto }}</span></td>
+                  <td>{{ r.tipo_comision }}</td>
+                  <td>
+                    {% if r.tipo_producto == 'Vehiculo' %}
+                      <span class="text-success fw-bold">{{ r.porcentaje }}%</span>
+                    {% else %}
+                      <ul class="mb-0 ps-3">
+                      {% for rango in r.rangos.all %}
+                        <li>S/ {{ rango.monto_minimo }} - {% if rango.monto_maximo %}S/ {{ rango.monto_maximo }}{% else %}Ms{% endif %} = <strong>{{ rango.porcentaje }}%</strong></li>
+                      {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if r.estado %}
+                      <span class="badge bg-success">Activo</span>
+                    {% else %}
+                      <span class="badge bg-danger">Inactivo</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-primary" title="Editar"
+                            data-id="{{ r.id_regla }}"
+                            data-nombre="{{ r.nombre }}"
+                            data-tipo="{{ r.tipo_producto }}"
+                            data-porcentaje="{{ r.porcentaje|default:'' }}"
+                            data-rangos='[ {% for rango in r.rangos.all %}{"min": "{{ rango.monto_minimo|stringformat:"s" }}", "max": "{{ rango.monto_maximo|stringformat:"s"|default:"" }}", "pct": "{{ rango.porcentaje|stringformat:"s" }}"}{% if not forloop.last %},{% endif %}{% endfor %} ]'
+                            onclick="abrirModalEditar(this)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{% url 'eliminar_regla_bonificacion' r.id_regla %}')" title="Eliminar">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal Editar Regla -->
+<div class="modal fade" id="modalEditarRegla" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background-color: #1a202c; color: white;">
+      <div class="modal-header" style="background-color: #0d6efd; border-bottom: none;">
+        <h5 class="modal-title text-white">Editar Regla</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarRegla" action="{% url 'editar_regla_bonificacion' %}" method="POST" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="id_regla_edit" id="id_regla_edit">
+          <div class="mb-3">
+            <label>Nombre *</label>
+            <input type="text" name="nombre_edit" id="nombre_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          </div>
+          <div class="mb-3">
+            <label>Tipo de Producto</label>
+            <input type="text" id="tipo_producto_edit" class="form-control" style="background-color: #0f172a; color: #94a3b8; border: 1px solid #334155;" readonly disabled>
+          </div>
+          <!-- Sección Vehículo -->
+          <div class="mb-3 d-none" id="div_porcentaje_edit">
+            <label>Porcentaje (%) para Vehículos *</label>
+            <input type="number" step="0.01" name="porcentaje_edit" id="porcentaje_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          </div>
+
+          <!-- Sección Repuesto Escalas -->
+          <div class="mb-3 d-none" id="div_escalas_edit">
+            <label>Rangos *</label>
+            <div id="escalas_container_edit">
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-info mt-2" onclick="addEscalaEdit()">+ Agregar Escala</button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #334155;">
+        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info rounded-pill" onclick="submitEditForm()">Guardar Regla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleForm() {
+    var tipo = document.getElementById('tipo_producto').value;
+    if(tipo === 'Vehiculo') {
+        document.getElementById('div_porcentaje').classList.remove('d-none');
+        document.getElementById('div_escalas').classList.add('d-none');
+        document.getElementById('tipo_comision').value = 'Porcentaje';
+    } else {
+        document.getElementById('div_porcentaje').classList.add('d-none');
+        document.getElementById('div_escalas').classList.remove('d-none');
+        document.getElementById('tipo_comision').value = 'Escala';
+    }
+}
+
+function addEscala() {
+    var html = '<div class="row g-2 mb-2"><div class="col"><input type="number" step="0.01" name="monto_minimo[]" class="form-control" placeholder="Min"></div><div class="col"><input type="number" step="0.01" name="monto_maximo[]" class="form-control" placeholder="Max"></div><div class="col"><input type="number" step="0.01" name="rango_porcentaje[]" class="form-control" placeholder="%"></div></div>';
+    document.getElementById('escalas_container').insertAdjacentHTML('beforeend', html);
+}
+
+function limpiarFormulario() {
+    document.getElementById('formRegla').reset();
+    document.getElementById('escalas_container').innerHTML = '';
+    addEscala(); // Agregar una fila vacía por defecto
+    toggleForm(); // Restaurar visibilidad según el select
+}
+
+document.getElementById('formRegla').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var tipo = document.getElementById('tipo_producto').value;
+    var nombre = document.getElementsByName('nombre')[0].value;
+    
+    if(!nombre.trim()) {
+        Swal.fire('Error', 'El nombre de la regla es obligatorio', 'warning');
+        return;
+    }
+    
+    if(tipo === 'Vehiculo') {
+        var pct = document.getElementsByName('porcentaje')[0].value;
+        if(!pct) {
+            Swal.fire('Error', 'Debe ingresar el porcentaje para los vehículos', 'warning');
+            return;
+        }
+    } else {
+        var min = document.getElementsByName('monto_minimo[]')[0].value;
+        var pct_r = document.getElementsByName('rango_porcentaje[]')[0].value;
+        if(!min || !pct_r) {
+            Swal.fire('Error', 'Debe ingresar al menos un rango de montos y su porcentaje para repuestos', 'warning');
+            return;
+        }
+    }
+    
+    Swal.fire({
+        title: '¿Guardar Regla?',
+        text: "Se activará esta configuración para los cálculos de comisiones",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#00d0c4',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, guardar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            this.submit();
+        }
+    });
+});
+
+// Lógica de Edición
+function addEscalaEdit(min='', max='', pct='') {
+    var html = '<div class="row g-2 mb-2"><div class="col"><input type="number" step="0.01" name="monto_minimo_edit[]" class="form-control" placeholder="Min" style="background-color: #0f172a; color: white; border: 1px solid #334155;" value="'+min+'"></div><div class="col"><input type="number" step="0.01" name="monto_maximo_edit[]" class="form-control" placeholder="Max" style="background-color: #0f172a; color: white; border: 1px solid #334155;" value="'+max+'"></div><div class="col"><input type="number" step="0.01" name="rango_porcentaje_edit[]" class="form-control" placeholder="%" style="background-color: #0f172a; color: white; border: 1px solid #334155;" value="'+pct+'"></div></div>';
+    document.getElementById('escalas_container_edit').insertAdjacentHTML('beforeend', html);
+}
+
+function abrirModalEditar(btn) {
+    var id = btn.getAttribute('data-id');
+    var nombre = btn.getAttribute('data-nombre');
+    var tipo = btn.getAttribute('data-tipo');
+    // Reemplazar coma por punto por si Django está localizando los decimales (ej. 1,50 -> 1.50)
+    var porcentaje = btn.getAttribute('data-porcentaje').replace(',', '.');
+    var rangos = JSON.parse(btn.getAttribute('data-rangos'));
+
+    document.getElementById('id_regla_edit').value = id;
+    document.getElementById('nombre_edit').value = nombre;
+    document.getElementById('tipo_producto_edit').value = tipo;
+
+    if(tipo === 'Vehiculo') {
+        document.getElementById('div_porcentaje_edit').classList.remove('d-none');
+        document.getElementById('div_escalas_edit').classList.add('d-none');
+        document.getElementById('porcentaje_edit').value = porcentaje;
+    } else {
+        document.getElementById('div_porcentaje_edit').classList.add('d-none');
+        document.getElementById('div_escalas_edit').classList.remove('d-none');
+        var container = document.getElementById('escalas_container_edit');
+        container.innerHTML = '';
+        rangos.forEach(function(r) {
+            var min = r.min ? r.min.replace(',', '.') : '';
+            var max = r.max ? r.max.replace(',', '.') : '';
+            var pct = r.pct ? r.pct.replace(',', '.') : '';
+            addEscalaEdit(min, max, pct);
+        });
+        if(rangos.length === 0) addEscalaEdit();
+    }
+
+    var modal = new bootstrap.Modal(document.getElementById('modalEditarRegla'));
+    modal.show();
+}
+
+function submitEditForm() {
+    var tipo = document.getElementById('tipo_producto_edit').value;
+    var nombre = document.getElementById('nombre_edit').value;
+    
+    if(!nombre.trim()) {
+        Swal.fire('Error', 'El nombre de la regla es obligatorio', 'warning');
+        return;
+    }
+    
+    if(tipo === 'Vehiculo') {
+        var pct = document.getElementById('porcentaje_edit').value;
+        if(!pct) {
+            Swal.fire('Error', 'Debe ingresar el porcentaje para los vehículos', 'warning');
+            return;
+        }
+    } else {
+        var minElements = document.getElementsByName('monto_minimo_edit[]');
+        var pctElements = document.getElementsByName('rango_porcentaje_edit[]');
+        var valid = true;
+        if(minElements.length === 0) valid = false;
+        else if(!minElements[0].value || !pctElements[0].value) valid = false;
+        
+        if(!valid) {
+            Swal.fire('Error', 'Debe ingresar al menos un rango válido para repuestos', 'warning');
+            return;
+        }
+    }
+
+    Swal.fire({
+        title: '¿Guardar Cambios?',
+        text: "Se actualizará la regla con los nuevos valores ingresados.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#00d0c4',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, actualizar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('formEditarRegla').submit();
+        }
+    });
+}
+
+function confirmDelete(url) {
+    Swal.fire({
+        title: '¿Eliminar Regla?',
+        text: "Esta regla será borrada permanentemente.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = url;
+        }
+    });
+}
+</script>
+{% endblock %}

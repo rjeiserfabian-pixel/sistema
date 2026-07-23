@@ -39,6 +39,62 @@ class Empresa(models.Model):
         help_text='Nombre comercial de la empresa'
     )
     
+    # Datos del Representante Legal
+    gerente_general = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name='Gerente General',
+        help_text='Nombre completo del representante legal'
+    )
+    
+    dni_gerente = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        verbose_name='DNI Gerente',
+        help_text='DNI del representante legal'
+    )
+
+    celular_gerente = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        verbose_name='Celular Gerente',
+        help_text='Número de celular del representante legal'
+    )
+
+    direccion_gerente = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        verbose_name="Dirección Gerente"
+    )
+    id_region_gerente = models.ForeignKey(
+        'Region', 
+        on_delete=models.SET_NULL, 
+        db_column='id_region_gerente', 
+        blank=True, 
+        null=True, 
+        verbose_name="Departamento Gerente"
+    )
+    id_provincia_gerente = models.ForeignKey(
+        'Provincia', 
+        on_delete=models.SET_NULL, 
+        db_column='id_provincia_gerente', 
+        blank=True, 
+        null=True, 
+        verbose_name="Provincia Gerente"
+    )
+    id_distrito_gerente = models.ForeignKey(
+        'Distrito', 
+        on_delete=models.SET_NULL, 
+        db_column='id_distrito_gerente', 
+        blank=True, 
+        null=True, 
+        verbose_name="Distrito Gerente"
+    )
+    
     # Ubicación
     direccion = models.CharField(
         max_length=255,
@@ -56,20 +112,45 @@ class Empresa(models.Model):
     
     # Información de Contacto
     telefono = models.CharField(
-        max_length=25,
+        max_length=40,
         null=True,
         blank=True,
         verbose_name='Teléfono',
         help_text='Teléfono de contacto'
     )
     
-    # Logo
-    logo = models.CharField(
+    gmail_1 = models.EmailField(
         max_length=255,
         null=True,
         blank=True,
+        verbose_name='Gmail 1',
+        help_text='Primer correo electrónico de la empresa'
+    )
+    
+    gmail_2 = models.EmailField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name='Gmail 2',
+        help_text='Segundo correo electrónico de la empresa'
+    )
+    
+    # Logo
+    logo = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
         verbose_name='Logo',
-        help_text='Ruta del archivo de logo de la empresa'
+        help_text='URL del logo en Cloudinary'
+    )
+    
+    # Logo Ticket
+    logo_ticket = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        verbose_name='Logo Ticket',
+        help_text='URL del logo para tickets en Cloudinary'
     )
     
     # Credenciales SUNAT
@@ -87,6 +168,23 @@ class Empresa(models.Model):
         blank=True,
         verbose_name='Clave SUNAT',
         help_text='Clave de seguridad para servicios SUNAT'
+    )
+
+    # Configuración UltraMsg (WhatsApp)
+    ultramsg_instance = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name='UltraMsg Instance ID',
+        help_text='ID de instancia de UltraMsg (ej: instance175698)'
+    )
+    
+    ultramsg_token = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name='UltraMsg Token',
+        help_text='Token de autenticación de UltraMsg'
     )
     
     # Configuración del Sistema
@@ -124,6 +222,13 @@ class Empresa(models.Model):
         verbose_name='Publicidad',
         help_text='Descripción de actividades o mensaje publicitario'
     )
+
+    agradecimiento = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='Agradecimiento',
+        help_text='Mensaje de agradecimiento para los clientes'
+    )
     
     # Parámetros Tributarios
     igv = models.DecimalField(
@@ -156,6 +261,21 @@ class Empresa(models.Model):
         help_text='Código de afectación tributaria general'
     )
     
+    # Parámetros de Créditos
+    interes_mora_base = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=5.00,
+        verbose_name='Interés Mora Base (%)',
+        help_text='Tasa de interés que se aplica a partir del día configurado'
+    )
+
+    dias_mora_inicio = models.IntegerField(
+        default=4,
+        verbose_name='Día Inicio Mora',
+        help_text='Día en el que empieza a cobrarse el interés (ej: 4)'
+    )
+    
     # Campos de auditoría
     fecha_creacion = models.DateTimeField(
         auto_now_add=True,
@@ -179,6 +299,7 @@ class Empresa(models.Model):
     
     
     class Meta:
+        managed = True
         db_table = 'empresa'
         verbose_name = 'Empresa'
         verbose_name_plural = 'Empresas'

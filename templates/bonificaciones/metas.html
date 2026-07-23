@@ -1,0 +1,480 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle">
+    <h1>Metas por Vendedor</h1>
+  </div>
+
+  <section class="section">
+    <div class="row">
+      <!-- Asignar Meta -->
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Asignar Meta Mensual</h5>
+            <form id="formMeta" action="{% url 'guardar_meta_bonificacion' %}" method="POST" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label>Vendedor *</label>
+                <div class="autocomplete-wrapper">
+                  <input type="text" id="vendedor_search" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Buscar vendedor..." autocomplete="off">
+                  <button type="button" class="autocomplete-arrow" onclick="toggleVendedorDropdown()">
+                    <i class="bi bi-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="vendedor" id="vendedor_id">
+                  <div class="autocomplete-results" id="vendedor_results"></div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label>Mes de la Meta *</label>
+                <input type="text" name="mes_anio" id="mes_anio" class="form-control" placeholder="Selecciona el mes" onfocus="(this.type='month')" onblur="(this.value == '' ? this.type='text' : null)">
+              </div>
+
+              <div class="mb-3">
+                <label>Categoría a Evaluar *</label>
+                <select name="categoria" id="categoria" class="form-select" onchange="toggleMetaFields()">
+                  <option value="Vehiculos">Vehículos</option>
+                  <option value="Repuestos">Repuestos</option>
+                  <option value="Ambas">Ambas</option>
+                </select>
+              </div>
+
+              <div class="mb-3" id="div_meta_unidades">
+                <label>Meta en Unidades (Vehículos) *</label>
+                <input type="number" name="meta_unidades" id="meta_unidades" class="form-control" placeholder="Ej: 10">
+              </div>
+
+              <div class="mb-3 d-none" id="div_meta_soles">
+                <label>Meta en Soles (Repuestos) *</label>
+                <input type="number" step="0.01" name="meta_soles" id="meta_soles" class="form-control" placeholder="Ej: 5000.00">
+              </div>
+
+              <div class="mb-3">
+                <label>Porcentaje de Bono Meta (%) *</label>
+                <input type="number" step="0.01" name="porcentaje_bono" id="porcentaje_bono" class="form-control" placeholder="Ej: 10.00" value="0.00" required>
+              </div>
+
+              <div class="row g-2 mt-3">
+                <div class="col-6">
+                  <button type="button" class="btn btn-secondary w-100" onclick="limpiarFormulario()">Limpiar</button>
+                </div>
+                <div class="col-6">
+                  <button type="submit" class="btn btn-primary w-100">Guardar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Metas -->
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Listado de Metas</h5>
+            <table class="table table-striped datatable">
+              <thead>
+                <tr>
+                  <th>Vendedor</th>
+                  <th>Mes</th>
+                  <th>Categoría</th>
+                  <th>Meta Unidades</th>
+                  <th>Meta Soles</th>
+                  <th>Bono (%)</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in metas %}
+                <tr>
+                  <td>{{ m.vendedor.nombrecompleto }}</td>
+                  <td>{{ m.mes_anio|date:"m/Y" }}</td>
+                  <td><span class="badge bg-secondary">{{ m.categoria }}</span></td>
+                  <td>{{ m.meta_unidades|default:"-" }}</td>
+                  <td>{% if m.meta_soles %}S/ {{ m.meta_soles }}{% else %}-{% endif %}</td>
+                  <td><span class="text-success fw-bold">{{ m.porcentaje_bono }}%</span></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-primary" title="Editar"
+                            data-id="{{ m.id_meta }}"
+                            data-vendedor="{{ m.vendedor_id }}"
+                            data-nombre-vendedor="{{ m.vendedor.nombrecompleto }}"
+                            data-mes="{{ m.mes_anio|date:'Y-m' }}"
+                            data-categoria="{{ m.categoria }}"
+                            data-unidades="{{ m.meta_unidades|default:'' }}"
+                            data-soles="{{ m.meta_soles|default:'' }}"
+                            data-porcentaje="{{ m.porcentaje_bono|default:'0.00' }}"
+                            onclick="abrirModalEditar(this)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{% url 'eliminar_meta_bonificacion' m.id_meta %}')" title="Eliminar">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal Editar Meta -->
+<div class="modal fade" id="modalEditarMeta" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background-color: #1a202c; color: white;">
+      <div class="modal-header" style="background-color: #0d6efd; border-bottom: none;">
+        <h5 class="modal-title text-white">Editar Meta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarMeta" action="{% url 'editar_meta_bonificacion' %}" method="POST" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="id_meta_edit" id="id_meta_edit">
+          
+          <div class="mb-3">
+            <label>Vendedor *</label>
+            <div class="autocomplete-wrapper">
+              <input type="text" id="vendedor_search_edit" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Buscar vendedor..." autocomplete="off" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+              <button type="button" class="autocomplete-arrow" onclick="toggleVendedorDropdownEdit()" style="color: #94a3b8;">
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              <input type="hidden" name="vendedor_edit" id="vendedor_id_edit">
+              <div class="autocomplete-results" id="vendedor_results_edit" style="background:#1e293b; border-color:#334155;"></div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label>Mes de la Meta *</label>
+            <input type="text" name="mes_anio_edit" id="mes_anio_edit" class="form-control" placeholder="Selecciona el mes" onfocus="(this.type='month')" onblur="(this.value == '' ? this.type='text' : null)" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          </div>
+
+          <div class="mb-3">
+            <label>Categoría a Evaluar *</label>
+            <select name="categoria_edit" id="categoria_edit" class="form-select" onchange="toggleMetaFieldsEdit()" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+              <option value="Vehiculos">Vehículos</option>
+              <option value="Repuestos">Repuestos</option>
+              <option value="Ambas">Ambas</option>
+            </select>
+          </div>
+
+          <div class="mb-3" id="div_meta_unidades_edit">
+            <label>Meta en Unidades (Vehículos) *</label>
+            <input type="number" name="meta_unidades_edit" id="meta_unidades_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          </div>
+
+          <div class="mb-3 d-none" id="div_meta_soles_edit">
+            <label>Meta en Soles (Repuestos) *</label>
+            <input type="number" step="0.01" name="meta_soles_edit" id="meta_soles_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          </div>
+          
+          <div class="mb-3">
+            <label>Porcentaje de Bono Meta (%) *</label>
+            <input type="number" step="0.01" name="porcentaje_bono_edit" id="porcentaje_bono_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #334155;">
+        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info rounded-pill" onclick="submitEditForm()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleMetaFields() {
+    var cat = document.getElementById('categoria').value;
+    var divU = document.getElementById('div_meta_unidades');
+    var divS = document.getElementById('div_meta_soles');
+    
+    if(cat === 'Vehiculos') {
+        divU.classList.remove('d-none');
+        divS.classList.add('d-none');
+    } else if(cat === 'Repuestos') {
+        divU.classList.add('d-none');
+        divS.classList.remove('d-none');
+    } else {
+        divU.classList.remove('d-none');
+        divS.classList.remove('d-none');
+    }
+}
+
+function toggleMetaFieldsEdit() {
+    var cat = document.getElementById('categoria_edit').value;
+    var divU = document.getElementById('div_meta_unidades_edit');
+    var divS = document.getElementById('div_meta_soles_edit');
+    
+    if(cat === 'Vehiculos') {
+        divU.classList.remove('d-none');
+        divS.classList.add('d-none');
+    } else if(cat === 'Repuestos') {
+        divU.classList.add('d-none');
+        divS.classList.remove('d-none');
+    } else {
+        divU.classList.remove('d-none');
+        divS.classList.remove('d-none');
+    }
+}
+
+function limpiarFormulario() {
+    document.getElementById('formMeta').reset();
+    toggleMetaFields();
+}
+
+document.getElementById('formMeta').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var cat = document.getElementById('categoria').value;
+    var unid = document.getElementById('meta_unidades').value;
+    var soles = document.getElementById('meta_soles').value;
+    var vendedorId = document.getElementById('vendedor_id').value;
+    var vendedorNombre = document.getElementById('vendedor_search').value;
+    var mes = document.getElementById('mes_anio').value;
+    
+    if(!mes) {
+        Swal.fire('Error', 'Seleccione un mes válido', 'warning');
+        return;
+    }
+    if(!vendedorId || !vendedorNombre.trim()) {
+        Swal.fire('Error', 'Seleccione un vendedor válido del listado', 'warning');
+        return;
+    }
+    if((cat === 'Vehiculos' || cat === 'Ambas') && !unid) {
+        Swal.fire('Error', 'Debe especificar la meta en unidades', 'warning');
+        return;
+    }
+    if((cat === 'Repuestos' || cat === 'Ambas') && !soles) {
+        Swal.fire('Error', 'Debe especificar la meta en soles', 'warning');
+        return;
+    }
+    
+    Swal.fire({
+        title: '¿Guardar Meta?',
+        text: "Se asignará esta meta al vendedor para el mes indicado",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, guardar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            this.submit();
+        }
+    });
+});
+
+function abrirModalEditar(btn) {
+    var id = btn.getAttribute('data-id');
+    var vendedor = btn.getAttribute('data-vendedor');
+    var mes = btn.getAttribute('data-mes');
+    var categoria = btn.getAttribute('data-categoria');
+    var soles = btn.getAttribute('data-soles').replace(',', '.');
+    var unidades = btn.getAttribute('data-unidades');
+    var porcentaje = btn.getAttribute('data-porcentaje').replace(',', '.');
+
+    document.getElementById('id_meta_edit').value = id;
+    // Autocompletar vendedor en el modal de edición
+    var vendedorNombre = btn.getAttribute('data-nombre-vendedor') || btn.closest('tr').querySelector('td:first-child').textContent;
+    document.getElementById('vendedor_search_edit').value = btn.getAttribute('data-nombre-vendedor') || '';
+    document.getElementById('vendedor_id_edit').value = vendedor;
+    document.getElementById('mes_anio_edit').value = mes;
+    document.getElementById('categoria_edit').value = categoria;
+    document.getElementById('meta_unidades_edit').value = unidades;
+    document.getElementById('meta_soles_edit').value = soles;
+    document.getElementById('porcentaje_bono_edit').value = porcentaje;
+
+    toggleMetaFieldsEdit();
+
+    var modal = new bootstrap.Modal(document.getElementById('modalEditarMeta'));
+    modal.show();
+}
+
+function submitEditForm() {
+    var cat = document.getElementById('categoria_edit').value;
+    var unid = document.getElementById('meta_unidades_edit').value;
+    var soles = document.getElementById('meta_soles_edit').value;
+    var vendedorId = document.getElementById('vendedor_id_edit').value;
+    var vendedorNombre = document.getElementById('vendedor_search_edit').value;
+    
+    if(!vendedorId || !vendedorNombre.trim()) {
+        Swal.fire('Error', 'Seleccione un vendedor válido del listado', 'warning');
+        return;
+    }
+    if((cat === 'Vehiculos' || cat === 'Ambas') && !unid) {
+        Swal.fire('Error', 'Debe especificar la meta en unidades', 'warning');
+        return;
+    }
+    if((cat === 'Repuestos' || cat === 'Ambas') && !soles) {
+        Swal.fire('Error', 'Debe especificar la meta en soles', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: '¿Actualizar Meta?',
+        text: "Se modificarán los objetivos del vendedor",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#00d0c4',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, actualizar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('formEditarMeta').submit();
+        }
+    });
+}
+
+function confirmDelete(url) {
+    Swal.fire({
+        title: '¿Eliminar Meta?',
+        text: "Este registro se borrará permanentemente.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = url;
+        }
+    });
+}
+
+// ============================================
+// AUTOCOMPLETE DE VENDEDORES
+// ============================================
+const BUSCAR_URL = '{% url "buscar_vendedores_bonificacion" %}';
+let debounceTimer = null;
+
+function setupAutocomplete(inputId, resultsId, hiddenId, darkMode) {
+    var input = document.getElementById(inputId);
+    var results = document.getElementById(resultsId);
+    var hidden = document.getElementById(hiddenId);
+
+    input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        var q = this.value.trim();
+        hidden.value = ''; // Limpiar hidden cuando el usuario escribe
+        debounceTimer = setTimeout(() => fetchVendedores(q, results, hidden, darkMode), 250);
+    });
+
+    input.addEventListener('focus', function() {
+        fetchVendedores(this.value.trim(), results, hidden, darkMode);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+function fetchVendedores(q, resultsEl, hiddenEl, darkMode) {
+    fetch(BUSCAR_URL + '?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+            resultsEl.innerHTML = '';
+            if (data.length === 0) {
+                var noItem = document.createElement('div');
+                noItem.className = 'autocomplete-item no-results';
+                noItem.textContent = 'No se encontraron resultados';
+                if(darkMode) noItem.style.cssText = 'background:#1e293b; color:#94a3b8;';
+                resultsEl.appendChild(noItem);
+            } else {
+                data.forEach(function(v) {
+                    var item = document.createElement('div');
+                    item.className = 'autocomplete-item';
+                    if(darkMode) item.style.cssText = 'background:#1e293b; color:white; border-bottom:1px solid #334155;';
+                    item.innerHTML = '<strong>' + v.nombre + '</strong>';
+                    item.addEventListener('mouseover', function() {
+                        this.style.backgroundColor = darkMode ? '#0f172a' : '#e9f5ff';
+                    });
+                    item.addEventListener('mouseout', function() {
+                        this.style.backgroundColor = darkMode ? '#1e293b' : '';
+                    });
+                    item.addEventListener('click', function() {
+                        hiddenEl.value = v.id;
+                        // Setear el input texto
+                        var inputEl = resultsEl.previousElementSibling ? resultsEl.parentElement.querySelector('input[type="text"]') : null;
+                        if(hiddenEl.id === 'vendedor_id') {
+                            document.getElementById('vendedor_search').value = v.nombre;
+                        } else {
+                            document.getElementById('vendedor_search_edit').value = v.nombre;
+                        }
+                        resultsEl.style.display = 'none';
+                    });
+                    resultsEl.appendChild(item);
+                });
+            }
+            resultsEl.style.display = 'block';
+        })
+        .catch(function() {
+            resultsEl.style.display = 'none';
+        });
+}
+
+function toggleVendedorDropdown() {
+    var results = document.getElementById('vendedor_results');
+    if (results.style.display === 'block') {
+        results.style.display = 'none';
+    } else {
+        fetchVendedores(document.getElementById('vendedor_search').value, results, document.getElementById('vendedor_id'), false);
+    }
+}
+
+function toggleVendedorDropdownEdit() {
+    var results = document.getElementById('vendedor_results_edit');
+    if (results.style.display === 'block') {
+        results.style.display = 'none';
+    } else {
+        fetchVendedores(document.getElementById('vendedor_search_edit').value, results, document.getElementById('vendedor_id_edit'), true);
+    }
+}
+
+// CSS del autocomplete embebido
+var style = document.createElement('style');
+style.textContent = `
+.autocomplete-wrapper { position: relative; }
+.autocomplete-input { width: 100%; padding-right: 40px !important; }
+.autocomplete-arrow {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer; padding: 5px 8px;
+    color: #6c757d; z-index: 10;
+}
+.autocomplete-results {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+    max-height: 220px; overflow-y: auto;
+    background: white; border: 1px solid #ced4da; border-top: none;
+    border-radius: 0 0 6px 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: none;
+}
+.autocomplete-item {
+    padding: 10px 15px; cursor: pointer;
+    border-bottom: 1px solid #f0f0f0; font-size: 0.875rem;
+}
+.autocomplete-item.no-results { color: #6c757d; cursor: default; font-style: italic; }
+.autocomplete-item:hover { background-color: #e9f5ff; }
+`;
+document.head.appendChild(style);
+
+// Inicializar autocompletes
+setupAutocomplete('vendedor_search', 'vendedor_results', 'vendedor_id', false);
+setupAutocomplete('vendedor_search_edit', 'vendedor_results_edit', 'vendedor_id_edit', true);
+
+// Validar que al enviar el form el vendedor fue seleccionado del listado
+document.getElementById('formMeta').addEventListener('submit', function(e) {
+    if(!document.getElementById('vendedor_id').value) {
+        e.preventDefault();
+        // El Swal ya está en el listener anterior, pero por si acaso:
+        Swal.fire('Error', 'Seleccione un vendedor válido del listado (haga clic en una opción)', 'warning');
+    }
+}, true); // capture phase para que se ejecute antes del submit existente
+</script>
+{% endblock %}

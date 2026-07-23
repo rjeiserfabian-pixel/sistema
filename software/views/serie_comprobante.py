@@ -1,9 +1,23 @@
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from software.models.SeriecomprobanteModel import Seriecomprobante
 from software.models.TipocomprobanteModel import Tipocomprobante
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
+
+
+def _mensaje_validacion(e):
+    """Convierte ValidationError (dict o mensaje) en un texto para mostrar al usuario."""
+    if getattr(e, 'message_dict', None):
+        partes = []
+        for campo, mensajes in e.message_dict.items():
+            if isinstance(mensajes, (list, tuple)):
+                partes.extend(mensajes)
+            else:
+                partes.append(str(mensajes))
+        return ' '.join(partes) if partes else str(e)
+    return str(e)
 
 
 def serie_comprobante(request):
@@ -39,189 +53,112 @@ def eliminar_serie_comprobante(request, id):
 
 
 def agregar_serie_comprobante(request):
-    """Agregar una nueva serie de comprobante con validaciones - Compatible con AJAX"""
+    """Agregar una nueva serie de comprobante con validaciones. Siempre responde JSON."""
     try:
         idtipocomprobante = request.POST.get('tipoComprobanteSerieComprobante', '').strip()
         serie = request.POST.get('serieSerieComprobante', '').strip().upper()
         numero_actual = request.POST.get('numeroActualSerieComprobante', '').strip()
 
-        # ========== VALIDACIONES ==========
-        
-        # 1. Validar tipo de comprobante
         if not idtipocomprobante:
-            error_msg = "Debe seleccionar un tipo de comprobante"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
+            return JsonResponse({'error': 'Debe seleccionar un tipo de comprobante'}, status=400)
         try:
             tipo_comprobante = Tipocomprobante.objects.get(idtipocomprobante=idtipocomprobante, estado=1)
         except Tipocomprobante.DoesNotExist:
-            error_msg = "El tipo de comprobante seleccionado no existe"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
-        # 2. Validar serie
+            return JsonResponse({'error': 'El tipo de comprobante seleccionado no existe'}, status=400)
+
         if not serie:
-            error_msg = "La serie es obligatoria"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
+            return JsonResponse({'error': 'La serie es obligatoria'}, status=400)
         if len(serie) != 4:
-            error_msg = "La serie debe tener exactamente 4 caracteres"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
-        # Validar formato alfanumérico
+            return JsonResponse({'error': 'La serie debe tener exactamente 4 caracteres'}, status=400)
         if not serie.isalnum():
-            error_msg = "La serie solo puede contener letras y números (sin espacios ni caracteres especiales)"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
-        # 3. Validar que la serie no esté duplicada para el mismo tipo de comprobante
+            return JsonResponse({'error': 'La serie solo puede contener letras y números (sin espacios ni caracteres especiales)'}, status=400)
         if Seriecomprobante.objects.filter(idtipocomprobante=tipo_comprobante, serie=serie, estado=1).exists():
-            error_msg = f"Ya existe una serie {serie} para el tipo de comprobante {tipo_comprobante.nombre}"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
-        # 4. Validar número actual
+            return JsonResponse({'error': f'Ya existe una serie {serie} para el tipo de comprobante {tipo_comprobante.nombre}'}, status=400)
+
         if not numero_actual:
-            error_msg = "El número actual es obligatorio"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
+            return JsonResponse({'error': 'El número actual es obligatorio'}, status=400)
         try:
             numero_actual_int = int(numero_actual)
         except ValueError:
-            error_msg = "El número actual debe ser un número entero"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
-        if numero_actual_int < 0:  # ✅ PERMITE 0
-            error_msg = "El número actual debe ser mayor o igual a 0"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
+            return JsonResponse({'error': 'El número actual debe ser un número entero'}, status=400)
+        if numero_actual_int < 0:
+            return JsonResponse({'error': 'El número actual debe ser mayor o igual a 0'}, status=400)
         if numero_actual_int > 99999999:
-            error_msg = "El número actual no puede exceder 99999999 (8 dígitos)"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            return HttpResponse(error_msg, status=400)
-        
-        # ========== CREAR SERIE DE COMPROBANTE ==========
-        serie_comprobante = Seriecomprobante.objects.create(
+            return JsonResponse({'error': 'El número actual no puede exceder 99999999 (8 dígitos)'}, status=400)
+
+        Seriecomprobante.objects.create(
             idtipocomprobante=tipo_comprobante,
             serie=serie,
             numero_actual=numero_actual_int,
             estado=1
         )
-        
-        # ✅ DETECTAR SI ES AJAX
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'ok': True,
-                'idseriecomprobante': serie_comprobante.idseriecomprobante,
-                'serie': serie_comprobante.serie,
-                'numero_actual': serie_comprobante.numero_actual,
-                'tipo_comprobante': serie_comprobante.idtipocomprobante.nombre,
-                'serie_completa': serie_comprobante.serie_completa,
-                'siguiente_numero': serie_comprobante.siguiente_numero
-            })
-        
-        # Si NO es AJAX, redireccionar normalmente
-        return redirect('serie_comprobante')
-        
+        return JsonResponse({'success': 'Serie de comprobante creada correctamente'}, status=200)
+
+    except IntegrityError:
+        return JsonResponse({'error': 'Error de integridad. La serie podría estar duplicada para este tipo de comprobante.'}, status=400)
     except ValidationError as e:
-        error_msg = str(e)
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-        return HttpResponse(error_msg, status=400)
+        error_msg = _mensaje_validacion(e)
+        return JsonResponse({'error': error_msg}, status=400)
     except Exception as e:
-        error_msg = f"Error al guardar la serie de comprobante: {str(e)}"
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'ok': False, 'error': error_msg}, status=500)
-        return HttpResponse(error_msg, status=500)
+        return JsonResponse({'error': f'Error al guardar la serie de comprobante: {str(e)}'}, status=500)
 
 
 def editar_serie_comprobante(request):
-    """Editar una serie de comprobante existente con validaciones"""
+    """Editar una serie de comprobante existente con validaciones. Siempre responde JSON."""
     try:
         id = request.POST.get('idSerieComprobante', '').strip()
         idtipocomprobante = request.POST.get('tipoComprobanteSerieComprobante', '').strip()
         serie = request.POST.get('serieSerieComprobante', '').strip().upper()
         numero_actual = request.POST.get('numeroActualSerieComprobante', '').strip()
 
-        # ========== VALIDACIONES ==========
-        
-        # 1. Validar ID de la serie de comprobante
         if not id:
-            return HttpResponse("ID de serie de comprobante inválido", status=400)
-        
+            return JsonResponse({'error': 'ID de serie de comprobante inválido'}, status=400)
         try:
             serie_comprobante = Seriecomprobante.objects.get(idseriecomprobante=id)
         except Seriecomprobante.DoesNotExist:
-            return HttpResponse("La serie de comprobante no existe", status=404)
-        
-        # 2. Validar tipo de comprobante
+            return JsonResponse({'error': 'La serie de comprobante no existe'}, status=404)
+
         if not idtipocomprobante:
-            return HttpResponse("Debe seleccionar un tipo de comprobante", status=400)
-        
+            return JsonResponse({'error': 'Debe seleccionar un tipo de comprobante'}, status=400)
         try:
             tipo_comprobante = Tipocomprobante.objects.get(idtipocomprobante=idtipocomprobante, estado=1)
         except Tipocomprobante.DoesNotExist:
-            return HttpResponse("El tipo de comprobante seleccionado no existe", status=400)
-        
-        # 3. Validar serie
+            return JsonResponse({'error': 'El tipo de comprobante seleccionado no existe'}, status=400)
+
         if not serie:
-            return HttpResponse("La serie es obligatoria", status=400)
-        
+            return JsonResponse({'error': 'La serie es obligatoria'}, status=400)
         if len(serie) != 4:
-            return HttpResponse("La serie debe tener exactamente 4 caracteres", status=400)
-        
-        # Validar formato alfanumérico
+            return JsonResponse({'error': 'La serie debe tener exactamente 4 caracteres'}, status=400)
         if not serie.isalnum():
-            return HttpResponse("La serie solo puede contener letras y números (sin espacios ni caracteres especiales)", status=400)
-        
-        # 4. Validar que la serie no esté duplicada (excepto la actual)
+            return JsonResponse({'error': 'La serie solo puede contener letras y números (sin espacios ni caracteres especiales)'}, status=400)
         if Seriecomprobante.objects.filter(
             idtipocomprobante=tipo_comprobante,
             serie=serie,
             estado=1
         ).exclude(idseriecomprobante=id).exists():
-            return HttpResponse(f"Ya existe otra serie {serie} para el tipo de comprobante {tipo_comprobante.nombre}", status=400)
-        
-        # 5. Validar número actual
+            return JsonResponse({'error': f'Ya existe otra serie {serie} para el tipo de comprobante {tipo_comprobante.nombre}'}, status=400)
+
         if not numero_actual:
-            return HttpResponse("El número actual es obligatorio", status=400)
-        
+            return JsonResponse({'error': 'El número actual es obligatorio'}, status=400)
         try:
             numero_actual_int = int(numero_actual)
         except ValueError:
-            return HttpResponse("El número actual debe ser un número entero", status=400)
-        
-        if numero_actual_int < 0:  # ✅ PERMITE 0
-            return HttpResponse("El número actual debe ser mayor o igual a 0", status=400)
-        
+            return JsonResponse({'error': 'El número actual debe ser un número entero'}, status=400)
+        if numero_actual_int < 0:
+            return JsonResponse({'error': 'El número actual debe ser mayor o igual a 0'}, status=400)
         if numero_actual_int > 99999999:
-            return HttpResponse("El número actual no puede exceder 99999999 (8 dígitos)", status=400)
-        
-        # ========== ACTUALIZAR SERIE DE COMPROBANTE ==========
+            return JsonResponse({'error': 'El número actual no puede exceder 99999999 (8 dígitos)'}, status=400)
+
         serie_comprobante.idtipocomprobante = tipo_comprobante
         serie_comprobante.serie = serie
         serie_comprobante.numero_actual = numero_actual_int
         serie_comprobante.save()
-        
-        return redirect('serie_comprobante')
-        
+        return JsonResponse({'success': 'Serie de comprobante actualizada correctamente'}, status=200)
+
+    except IntegrityError:
+        return JsonResponse({'error': 'Error de integridad. La serie podría estar duplicada para este tipo de comprobante.'}, status=400)
     except ValidationError as e:
-        return HttpResponse(str(e), status=400)
+        error_msg = _mensaje_validacion(e)
+        return JsonResponse({'error': error_msg}, status=400)
     except Exception as e:
-        return HttpResponse(f"Error al editar la serie de comprobante: {str(e)}", status=500)
+        return JsonResponse({'error': f'Error al editar la serie de comprobante: {str(e)}'}, status=500)

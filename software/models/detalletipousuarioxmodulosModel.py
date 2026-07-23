@@ -6,8 +6,8 @@ from software.models.TipousuarioModel import Tipousuario
 
 class Detalletipousuarioxmodulos(models.Model):
     iddetalletipousuarioxmodulos = models.AutoField(primary_key=True)
-    idmodulo = models.ForeignKey(Modulos, models.DO_NOTHING, db_column='idmodulo')
-    idtipousuario = models.ForeignKey(Tipousuario, models.DO_NOTHING, db_column='idtipousuario')
+    idmodulo = models.ForeignKey(Modulos, models.DO_NOTHING, db_column='idmodulo', null=True, blank=True)
+    idtipousuario = models.ForeignKey(Tipousuario, models.DO_NOTHING, db_column='idtipousuario', null=True, blank=True)
 
     class Meta:
         managed = True

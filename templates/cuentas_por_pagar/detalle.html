@@ -1,0 +1,611 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+    
+    <!-- HEADER CON BOTONES -->
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold">
+                <i class="bi bi-file-invoice-dollar text-primary me-2"></i>
+                Compra: <span class="text-primary">{{ compra.numcorrelativo }}</span>
+            </h1>
+            <p class="text-muted mb-0">Detalle completo de la cuenta por pagar y sus cuotas</p>
+        </div>
+        <div>
+            <a href="{% url 'cuentas_por_pagar' %}" class="btn btn-secondary rounded-pill">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+            <!-- Botón opcional para Imprimir Ticket General o Cronograma -->
+            <a href="{% url 'compra_pdf' compra.idcompra %}" class="btn btn-info rounded-pill" target="_blank">
+                <i class="bi bi-printer me-2"></i>Imprimir Compra
+            </a>
+        </div>
+    </div>
+
+    <nav aria-label="breadcrumb" class="mt-2">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'cuentas_por_pagar' %}">Cuentas por Pagar</a></li>
+            <li class="breadcrumb-item active">{{ compra.numcorrelativo }}</li>
+        </ol>
+    </nav>
+
+    <section class="section dashboard mt-4">
+        <div class="row">
+            <!-- DATOS DEL PROVEEDOR -->
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100 mb-3">
+                    <div class="card-header bg-primary text-white py-2">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bi bi-person-fill me-2"></i>Datos del Proveedor
+                        </h6>
+                    </div>
+                    <div class="card-body pt-3">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td width="35%" class="fw-bold">Proveedor:</td>
+                                <td>{{ compra.idproveedor.razonsocial }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">DNI/RUC:</td>
+                                <td>{{ compra.idproveedor.numdoc|default:"---" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Teléfono:</td>
+                                <td>{{ compra.idproveedor.telefono|default:"---" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Dirección:</td>
+                                <td>{{ compra.idproveedor.direccion|default:"---" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATOS DE LA COMPRA / CRÉDITO -->
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100 mb-3">
+                    <div class="card-header bg-success text-white py-2">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bi bi-info-circle-fill me-2"></i>Información del Crédito
+                        </h6>
+                    </div>
+                    <div class="card-body pt-3">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td width="35%" class="fw-bold">N° Compra:</td>
+                                <td><span class="badge bg-primary px-2" style="font-size: 0.85rem;">{{ compra.numcorrelativo }}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Comprobante:</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ compra.idtipocliente.nomtipocliente }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Fecha:</td>
+                                <td>{{ compra.fechacompra|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Estado:</td>
+                                <td>
+                                    {% if saldo_total <= 0 %}
+                                        <span class="badge bg-info px-2" style="font-size: 0.8rem;">PAGADO</span>
+                                    {% else %}
+                                        <span class="badge bg-success px-2" style="font-size: 0.8rem;">ACTIVO</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row justify-content-center mt-2 mb-4">
+            <!-- DETALLES DEL PRODUCTO / ARTÍCULOS COMRADOS -->
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-secondary text-white py-2">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bi bi-box-seam-fill me-2"></i>Artículos / Vehículos Comprados
+                        </h6>
+                    </div>
+                    <div class="card-body pt-3">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless mb-0">
+                                {% for d in compra.compradetalle.all %}
+                                <tr>
+                                    <td width="5%" class="text-center">
+                                        <i class="bi {% if d.id_vehiculo %}bi-car-front-fill text-primary{% else %}bi-tools text-secondary{% endif %}"></i>
+                                    </td>
+                                    <td width="45%" class="fw-bold">
+                                        {% if d.id_vehiculo %}
+                                            {{ d.id_vehiculo.idproducto.nomproducto }}
+                                        {% elif d.id_repuesto_comprado %}
+                                            {{ d.id_repuesto_comprado.id_repuesto.nombre }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted" style="font-size: 0.9em;">
+                                        <strong>Cant:</strong> {{ d.cantidad }} | <strong>P.Compra:</strong> S/ {{ d.precio_compra|floatformat:2 }} | <strong>Subtotal:</strong> S/ {{ d.subtotal|floatformat:2 }}
+                                    </td>
+                                </tr>
+                                {% if not forloop.last %}
+                                    <tr><td colspan="3"><hr class="my-1" style="opacity: 0.1;"></td></tr>
+                                {% endif %}
+                                {% empty %}
+                                    <tr><td colspan="3" class="text-center text-muted py-2">No hay detalles de productos.</td></tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMEN FINANCIERO -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card info-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Monto Total de la Compra</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #4154f1;">
+                                <i class="bi bi-cash-stack text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0">S/ {{ compra.total_compra|floatformat:2 }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card info-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Pagado al Proveedor</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #4bc0c0;">
+                                <i class="bi bi-check-circle text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0 text-info">S/ {{ total_pagado|floatformat:2 }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card info-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Saldo Pendiente</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ff771d;">
+                                <i class="bi bi-exclamation-triangle text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0 text-danger">S/ {{ saldo_total|floatformat:2 }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLA DE CUOTAS POR PAGAR -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-check me-2"></i>Cronograma de Cuotas a Pagar
+                    </h5>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="tablaCuotas">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center">N° Cuota</th>
+                                <th>F. Vencimiento</th>
+                                <th class="text-end">Monto Cuota</th>
+                                <th class="text-end">Pagado</th>
+                                <th class="text-end">Saldo Cuota</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in cuotas %}
+                            <tr class="{% if c.estado_pago == 'Cancelado' %}table-success{% elif c.esta_vencida %}table-danger{% endif %}">
+                                <td class="text-center">
+                                    {% if c.numero_cuota == 0 %}
+                                        <span class="badge bg-warning text-dark">Adelanto</span>
+                                    {% else %}
+                                        <strong>{{ c.numero_cuota }}</strong>
+                                    {% endif %}
+                                </td>
+                                <td>{{ c.fecha_vencimiento|date:"d/m/Y" }}</td>
+                                <td class="text-end"><strong>S/ {{ c.total|floatformat:2 }}</strong></td>
+                                <td class="text-end text-success"><strong>S/ {{ c.monto_pagado|floatformat:2 }}</strong></td>
+                                <td class="text-end text-danger"><strong>S/ {{ c.calcular_saldo|floatformat:2 }}</strong></td>
+                                <td class="text-center">
+                                    {% if c.estado_pago == 'Cancelado' %}
+                                        <span class="badge bg-success">PAGADO</span>
+                                    {% elif c.monto_pagado > 0 %}
+                                        <span class="badge bg-warning text-dark">PARCIAL</span>
+                                    {% else %}
+                                        {% if c.esta_vencida %}
+                                            <span class="badge bg-danger">VENCIDA</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">PENDIENTE</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if c.estado_pago != 'Cancelado' %}
+                                        <button class="btn btn-sm btn-success" title="Registrar Pago a Proveedor" onclick="abrirModalPago({{ c.id_cuota }}, {{ c.calcular_saldo }})">
+                                            <i class="bi bi-currency-dollar"></i> Pagar
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% if c.pagos.all %}
+                                        <button class="btn btn-sm btn-info" 
+                                                data-bs-toggle="collapse" 
+                                                data-bs-target="#historial-{{ c.id_cuota }}"
+                                                title="Ver Historial de Egresos">
+                                            <i class="bi bi-clock-history"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            
+                            <!-- FILA EXPANDIBLE CON HISTORIAL DE ABONOS -->
+                            {% if c.pagos.all %}
+                            <tr class="collapse" id="historial-{{ c.id_cuota }}">
+                                <td colspan="7" class="bg-light">
+                                    <div class="p-3">
+                                        <h6 class="text-primary">
+                                            <i class="bi bi-clock-history me-2"></i>Historial de Abonos a Proveedor - Cuota {{ c.numero_cuota }}
+                                        </h6>
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead style="background: #012970; color: white;">
+                                                <tr>
+                                                    <th>Fecha de Abono</th>
+                                                    <th>Monto</th>
+                                                    <th>Caja Origen (Tipo)</th>
+                                                    <th>Registrado Por</th>
+                                                    <th>Observaciones</th>
+                                                    <th>Comprobante</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for pago in c.pagos.all %}
+                                                <tr>
+                                                    <td>{{ pago.fecha_pago|date:"d/m/Y H:i" }}</td>
+                                                    <td class="text-end text-success"><strong>S/ {{ pago.monto_pago|floatformat:2 }}</strong></td>
+                                                    <td>{{ pago.nombres_metodos_display|default:pago.id_tipo_pago.nombre }}</td>
+                                                    <td>{{ pago.idusuario.nombrecompleto }}</td>
+                                                    <td data-obs-clean="{{ pago.observaciones|default:'' }}"></td>
+                                                    <td class="text-center">
+                                                        <a href="{% url 'imprimir_ticket_pago_compra' pago.idpagocuotacompra %}" class="btn btn-sm btn-info me-1" target="_blank" title="Imprimir Ticket">
+                                                            <i class="bi bi-printer"></i> Comprobante
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                        <tfoot style="background: #f8f9fa;">
+                            <tr>
+                                <th colspan="2" class="text-end">TOTALES:</th>
+                                <th class="text-end">S/ {{ compra.total_compra|floatformat:2 }}</th>
+                                <th class="text-end text-success">S/ {{ total_pagado|floatformat:2 }}</th>
+                                <th class="text-end text-danger">S/ {{ saldo_total|floatformat:2 }}</th>
+                                <th colspan="2"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal Pagar Cuota (Mantenido para el cobro) -->
+    <div class="modal fade" id="modalPagarCuota" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white py-3">
+            <h5 class="modal-title fw-bold">
+                <i class="bi bi-cash-coin me-2"></i>Registrar Abono a Proveedor
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+            <div class="alert alert-info border-0 shadow-sm" style="background: #cfe2ff; color: #084298;">
+                <i class="bi bi-info-circle-fill me-2"></i>El pago podrá registrarse como un <strong>Egreso</strong> en la caja de su usuario actual si activa la opción inferior.
+            </div>
+            
+            <form id="formPagarCuota">
+                <input type="hidden" id="pago_idcuota" name="idcuota">
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Afecta Caja</label>
+                  <select name="afecta_caja" id="afecta_caja_abono" class="form-select form-select-lg">
+                    <option value="1" selected>Sí</option>
+                    <option value="0">No</option>
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between">
+                    <label class="form-label fw-bold">Total a Pagar (S/)</label>
+                    <span class="badge bg-warning text-dark mb-1 d-none" id="error_monto_excedido">Monto excede el saldo</span>
+                  </div>
+                  <div class="input-group input-group-lg">
+                      <span class="input-group-text bg-white">S/</span>
+                      <input type="number" class="form-control text-end fw-bold text-success bg-light" id="pago_monto" name="monto_pago" step="0.01" readonly>
+                  </div>
+                  <input type="hidden" id="pago_saldo_maximo">
+                </div>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-bold mb-0">Métodos de Pago</label>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="agregarFilaAbonoProveedor()">
+                      <i class="bi bi-plus-lg me-1"></i>Agregar
+                    </button>
+                  </div>
+                  <div id="contenedor_metodos_abono" class="p-2 border rounded bg-light">
+                      <!-- Filas dinámicas aquí -->
+                  </div>
+                </div>
+                
+                <div class="mb-4">
+                <label class="form-label fw-bold">Observaciones (Opcional)</label>
+                <textarea class="form-control border-secondary text-dark" name="observaciones" rows="2"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-success w-100 fw-bold btn-lg">
+                <i class="bi bi-check-circle-fill me-2"></i>Confirmar Pago
+                </button>
+            </form>
+            </div>
+        </div>
+        </div>
+    </div>
+
+</main>
+
+<style>
+.info-card {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+.info-card table td {
+    background: transparent !important;
+}
+
+.info-card {
+    border: none;
+    box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
+}
+
+.card-icon {
+    font-size: 32px;
+    line-height: 0;
+    width: 64px;
+    height: 64px;
+}
+
+.card-title {
+    padding: 20px 0 15px 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: #012970;
+}
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const TIPOS_PAGO_TPL = `{% for t in tipos_pago %}<option value="{{ t.id_tipo_pago }}">{{ t.nombre }}</option>{% endfor %}`;
+    let contadorPagos = 0;
+
+    function agregarFilaAbonoProveedor(monto='') {
+        if (monto === '') {
+            let totalActual = 0;
+            document.querySelectorAll('.input-monto-abono').forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val)) totalActual += val;
+            });
+            const saldoMaximo = parseFloat(document.getElementById('pago_saldo_maximo').value) || 0;
+            const diferencia = saldoMaximo - totalActual;
+            if (diferencia > 0) {
+                monto = diferencia.toFixed(2);
+            }
+        }
+        
+        contadorPagos++;
+        const div = document.createElement('div');
+        div.className = 'fila-abono row g-2 mb-2 align-items-center';
+        div.id = `fila-abono-${contadorPagos}`;
+        div.innerHTML = `
+          <div class="col-md-4">
+            <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago-abono" required onchange="toggleOperacionAbono(this)">
+              <option value="">Método...</option>
+              ${TIPOS_PAGO_TPL}
+            </select>
+          </div>
+          <div class="col-md-4 nro-op-abono-container d-none">
+            <input type="text" name="nro_operacion[]" class="form-control form-control-sm nro-operacion-abono" placeholder="N° Operación">
+          </div>
+          <div class="col-md-3 flex-grow-1">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text">S/</span>
+                <input type="number" name="monto[]" class="form-control input-monto-abono text-end" step="0.01" min="0.01" required value="${monto}" oninput="calcularTotalAbono()">
+            </div>
+          </div>
+          <div class="col-md-1 text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="eliminarFilaAbono(this)" title="Eliminar fila">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        `;
+        document.getElementById('contenedor_metodos_abono').appendChild(div);
+        calcularTotalAbono();
+    }
+
+    function eliminarFilaAbono(btn) {
+        btn.closest('.fila-abono').remove();
+        calcularTotalAbono();
+    }
+
+    function toggleOperacionAbono(select) {
+        const row = select.closest('.fila-abono');
+        const containerOp = row.querySelector('.nro-op-abono-container');
+        const inputOp = row.querySelector('.nro-operacion-abono');
+        const tipoTexto = select.options[select.selectedIndex].text.toLowerCase();
+        const esEfectivo = tipoTexto.includes('efectivo') || select.value === '';
+        
+        if (!esEfectivo) {
+            containerOp.classList.remove('d-none');
+            inputOp.required = true;
+        } else {
+            containerOp.classList.add('d-none');
+            inputOp.required = false;
+            inputOp.value = '';
+        }
+    }
+
+    function calcularTotalAbono() {
+        let total = 0;
+        document.querySelectorAll('.input-monto-abono').forEach(input => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val)) total += val;
+        });
+        
+        const saldoMaximo = parseFloat(document.getElementById('pago_saldo_maximo').value);
+        const inputTotal = document.getElementById('pago_monto');
+        inputTotal.value = total.toFixed(2);
+        
+        const badgeExceso = document.getElementById('error_monto_excedido');
+        if (total > saldoMaximo) {
+            badgeExceso.classList.remove('d-none');
+            inputTotal.classList.add('text-danger', 'border-danger');
+            inputTotal.classList.remove('text-success');
+        } else {
+            badgeExceso.classList.add('d-none');
+            inputTotal.classList.remove('text-danger', 'border-danger');
+            inputTotal.classList.add('text-success');
+        }
+    }
+
+    function abrirModalPago(id, saldo) {
+        document.getElementById('pago_idcuota').value = id;
+        document.getElementById('pago_saldo_maximo').value = saldo.toFixed(2);
+        
+        // Resetear filas
+        document.getElementById('contenedor_metodos_abono').innerHTML = '';
+        contadorPagos = 0;
+        agregarFilaAbonoProveedor(saldo.toFixed(2));
+        
+        var myModal = new bootstrap.Modal(document.getElementById('modalPagarCuota'));
+        myModal.show();
+    }
+
+    document.getElementById('formPagarCuota').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validación de múltiples métodos
+        const selects = document.querySelectorAll('.select-tipo-pago-abono');
+        if (selects.length === 0) {
+            Swal.fire('Atención', 'Debe agregar al menos un método de pago.', 'warning');
+            return;
+        }
+
+        const totalPagado = parseFloat(document.getElementById('pago_monto').value);
+        const saldoMaximo = parseFloat(document.getElementById('pago_saldo_maximo').value);
+        
+        if (totalPagado <= 0) {
+            Swal.fire('Atención', 'El monto a pagar debe ser mayor a cero.', 'warning');
+            return;
+        }
+        if (totalPagado > saldoMaximo + 0.01) {
+            Swal.fire('Atención', 'El monto total no puede exceder el saldo de la cuota (S/ ' + saldoMaximo.toFixed(2) + ').', 'warning');
+            return;
+        }
+
+        const csrfToken = '{{ csrf_token }}';
+        const formData = new FormData(this);
+        
+        Swal.fire({
+            title: 'Procesando pago...',
+            text: 'Por favor espere',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading()
+            }
+        });
+        
+        fetch("{% url 'registrar_pago_cuota_compra' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pago Registrado',
+                    text: data.message,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Ver Ticket de Pago',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cerrar'
+                }).then((result) => {
+                    if(result.isConfirmed) {
+                        window.open(`/cuentas-por-pagar/ticket-pago/${data.idpagocuotacompra}/`, '_blank');
+                    }
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.fire('Error', 'Hubo un problema de conexión al procesar el pago.', 'error');
+        });
+    });
+</script>
+
+<script>
+// Limpiar observaciones: remover tags [FRACCIONADO:...] y [MULTIPAGO:...]
+document.querySelectorAll('[data-obs-clean]').forEach(function(el) {
+    var obs = el.getAttribute('data-obs-clean') || '';
+    var texto = obs
+        .replace(/\[FRACCIONADO:\s*.*?\]/g, '')
+        .replace(/\[MULTIPAGO:[^\]]+\]/g, '')
+        .trim();
+    el.textContent = texto || '---';
+});
+</script>
+
+{% endblock %}

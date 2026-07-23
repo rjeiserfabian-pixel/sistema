@@ -101,10 +101,20 @@
   <section class="section dashboard mt-4">
     <div class="card shadow-sm border-0">
       <div class="card-body">
-        <h5 class="card-title">Historial de Movimientos</h5>
+        <h5 class="card-title d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+          <span>Historial de Movimientos</span>
+          <div class="d-flex gap-2 align-items-center">
+            <select id="filtroTipo" class="form-select form-select-sm" style="width: auto;">
+              <option value="todos">Todos los Tipos</option>
+              <option value="ingreso">Ingresos</option>
+              <option value="egreso">Egresos</option>
+            </select>
+            <input type="text" id="buscarMovimiento" class="form-control form-control-sm" placeholder="Buscar por concepto o usuario..." style="width: 250px;">
+          </div>
+        </h5>
         
         <div class="table-responsive">
-          <table class="table table-hover align-middle datatable">
+          <table class="table table-hover align-middle" id="tablaMovimientos">
             <thead class="table-dark">
               <tr>
                 <th scope="col">#</th>
@@ -113,49 +123,16 @@
                 <th scope="col">Descripción</th>
                 <th scope="col">Usuario</th>
                 <th scope="col" class="text-end">Monto</th>
-                <th scope="col">Comprobante</th>
+                <th scope="col" class="text-center">Comprobante</th>
               </tr>
             </thead>
-            <tbody>
-              {% for mov in movimientos %}
-              <tr>
-                <td class="fw-semibold">{{ forloop.counter }}</td>
-                <td>{{ mov.fecha_movimiento|date:"d/m/Y H:i" }}</td>
-                <td>
-                  {% if mov.tipo_movimiento == 'ingreso' %}
-                    <span class="badge bg-success">
-                      <i class="bi bi-arrow-up-circle me-1"></i>Ingreso
-                    </span>
-                  {% else %}
-                    <span class="badge bg-danger">
-                      <i class="bi bi-arrow-down-circle me-1"></i>Egreso
-                    </span>
-                  {% endif %}
-                </td>
-                <td>{{ mov.descripcion|truncatewords:15 }}</td>
-                <td>{{ mov.idusuario.nombrecompleto }}</td>
-                <td class="text-end fw-bold {% if mov.tipo_movimiento == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
-                  {% if mov.tipo_movimiento == 'ingreso' %}+{% else %}-{% endif %}
-                  S/ {{ mov.monto|floatformat:2 }}
-                </td>
-                <td>
-                  {% if mov.idventa %}
-                    <a href="{% url 'imprimir_comprobante' mov.idventa.idventa %}" target="_blank" class="btn btn-sm btn-outline-primary">
-                      <i class="bi bi-receipt"></i> {{ mov.idventa.numero_comprobante }}
-                    </a>
-                  {% else %}
-                    <span class="text-muted">---</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="7" class="text-center text-muted">No hay movimientos registrados</td>
-              </tr>
-              {% endfor %}
+            <tbody id="tbodyMovimientos">
+              <tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>
             </tbody>
           </table>
         </div>
+        
+        <div id="paginacionMovimientos" class="d-flex justify-content-end mt-3"></div>
       </div>
     </div>
   </section>
@@ -163,7 +140,7 @@
   <!-- Modal Registrar Egreso -->
   {% if tiene_caja_abierta %}
   <div class="modal fade" id="modalRegistrarEgreso" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title">
@@ -180,20 +157,89 @@
               <strong>Caja actual:</strong> {{ apertura_actual.id_caja.nombre_caja }}<br>
               <strong>Saldo disponible:</strong> S/ {{ saldo_actual|floatformat:2 }}
             </div>
-            
+
+            <!-- Switch: ¿Es una compra? -->
+            <div class="mb-3 p-3 bg-light rounded border">
+              <div class="form-check form-switch d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" id="switchEsCompra" role="switch" style="width:2.5em; height:1.3em;">
+                <label class="form-check-label fw-semibold" for="switchEsCompra">
+                  <i class="bi bi-receipt me-1 text-danger"></i> ¿El egreso corresponde a una compra registrada?
+                </label>
+              </div>
+            </div>
+
+            <!-- Campo búsqueda de compra (oculto por defecto) -->
+            <div id="seccionBusquedaCompra" style="display:none;">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Nro. de Comprobante <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" id="nroComprobante" class="form-control"
+                         placeholder="Ej: FR01-4358, B001-0001, NC01-0010"
+                         autocomplete="off">
+                  <button type="button" class="btn btn-outline-danger" id="btnBuscarCompra">
+                    <i class="bi bi-search me-1"></i>Buscar
+                  </button>
+                </div>
+                <small class="text-muted">Ingrese el número exacto del comprobante de compra.</small>
+              </div>
+
+              <!-- Panel de detalles de la compra -->
+              <div id="panelDetalleCompra" style="display:none;" class="mb-3">
+                <div class="card border-danger">
+                  <div class="card-header bg-danger text-white py-2">
+                    <i class="bi bi-bag-check me-1"></i> <strong>Detalle de la Compra Encontrada</strong>
+                  </div>
+                  <div class="card-body p-3">
+                    <div class="row mb-2">
+                      <div class="col-sm-4"><strong>Proveedor:</strong></div>
+                      <div class="col-sm-8" id="detProveedor">---</div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-4"><strong>Comprobante:</strong></div>
+                      <div class="col-sm-8" id="detNumero">---</div>
+                    </div>
+                    <div class="row mb-3">
+                      <div class="col-sm-4"><strong>Fecha:</strong></div>
+                      <div class="col-sm-8" id="detFecha">---</div>
+                    </div>
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered mb-2">
+                        <thead class="table-dark">
+                          <tr>
+                            <th style="width: 45%;">Artículo</th>
+                            <th class="text-center" style="width: 10%;">Cant.</th>
+                            <th class="text-end" style="width: 20%;">P. Compra</th>
+                            <th class="text-end" style="width: 20%;">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody id="tbodyDetalleCompra"></tbody>
+                      </table>
+                    </div>
+                    <div class="text-end">
+                      <span class="fw-bold fs-5 text-danger">Total: S/ <span id="detTotal">0.00</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input oculto para guardar el idcompra -->
+            <input type="hidden" name="idcompra" id="hiddenIdCompra" value="">
+
             <div class="mb-3">
               <label class="form-label fw-semibold">Monto del Egreso <span class="text-danger">*</span></label>
               <div class="input-group">
                 <span class="input-group-text">S/</span>
                 <input type="number" name="monto" id="monto_egreso" class="form-control" 
-                       step="0.01" min="0.01" max="{{ saldo_actual }}" required placeholder="0.00">
+                       step="0.01" min="0.01" max="{{ saldo_actual }}" placeholder="0.00">
               </div>
               <small class="text-muted">Máximo: S/ {{ saldo_actual|floatformat:2 }}</small>
             </div>
             
             <div class="mb-3">
               <label class="form-label fw-semibold">Descripción <span class="text-danger">*</span></label>
-              <textarea name="descripcion" class="form-control" rows="3" required 
+              <textarea name="descripcion" id="descripcion_egreso" class="form-control" rows="3" 
                         placeholder="Ej: Pago de servicios, compra de útiles, etc."></textarea>
             </div>
             
@@ -237,30 +283,148 @@ $(document).ready(function() {
   }
 });
 
-// Registrar egreso
+// ── LÓGICA DEL SWITCH "¿Es una compra?" ─────────────────────────────────────
+$('#switchEsCompra').on('change', function() {
+  if ($(this).is(':checked')) {
+    $('#seccionBusquedaCompra').slideDown(250);
+  } else {
+    $('#seccionBusquedaCompra').slideUp(250);
+    limpiarDetalleCompra();
+  }
+});
+
+// Permitir buscar también con Enter en el campo de comprobante
+$('#nroComprobante').on('keypress', function(e) {
+  if (e.which === 13) {
+    e.preventDefault();
+    buscarCompra();
+  }
+});
+
+$('#btnBuscarCompra').on('click', function() {
+  buscarCompra();
+});
+
+function buscarCompra() {
+  const numero = $('#nroComprobante').val().trim();
+  if (!numero) {
+    Swal.fire({ icon: 'warning', title: 'Campo vacío', text: 'Ingrese el número de comprobante.', confirmButtonColor: '#dc3545' });
+    return;
+  }
+
+  Swal.fire({ title: 'Buscando compra...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+  $.ajax({
+    url: "{% url 'buscar_compra_egreso' %}",
+    method: 'GET',
+    data: { numero: numero },
+    success: function(res) {
+      Swal.close();
+      if (res.ok) {
+        // Llenar panel de detalles
+        $('#detProveedor').text(res.proveedor);
+        $('#detNumero').text(res.numcorrelativo);
+        $('#detFecha').text(res.fecha_compra);
+        $('#detTotal').text(parseFloat(res.total).toFixed(2));
+
+        // Llenar tabla de artículos
+        let filas = '';
+        if (res.items.length === 0) {
+          filas = '<tr><td colspan="4" class="text-center text-muted">Sin artículos registrados</td></tr>';
+        } else {
+          res.items.forEach(function(item) {
+            filas += `<tr>
+              <td class="text-break">${item.descripcion}</td>
+              <td class="text-center">${item.cantidad}</td>
+              <td class="text-end">S/ ${parseFloat(item.precio_compra).toFixed(2)}</td>
+              <td class="text-end">S/ ${parseFloat(item.subtotal).toFixed(2)}</td>
+            </tr>`;
+          });
+        }
+        $('#tbodyDetalleCompra').html(filas);
+
+        // Auto-completar monto (bloqueado) y descripción
+        $('#monto_egreso').val(parseFloat(res.total).toFixed(2)).prop('readonly', true).addClass('bg-light');
+        $('#descripcion_egreso').val(`Pago de compra ${res.numcorrelativo} - ${res.proveedor}`);
+        $('#hiddenIdCompra').val(res.idcompra);
+
+        $('#panelDetalleCompra').slideDown(300);
+      } else {
+        limpiarDetalleCompra();
+        Swal.fire({ icon: 'error', title: 'No encontrado', text: res.error, confirmButtonColor: '#dc3545' });
+      }
+    },
+    error: function(xhr) {
+      Swal.close();
+      let msg = 'Error al buscar la compra.';
+      try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}
+      limpiarDetalleCompra();
+      Swal.fire({ icon: 'error', title: 'Error', text: msg, confirmButtonColor: '#dc3545' });
+    }
+  });
+}
+
+function limpiarDetalleCompra() {
+  $('#panelDetalleCompra').slideUp(200);
+  $('#tbodyDetalleCompra').html('');
+  $('#detProveedor, #detNumero, #detFecha').text('---');
+  $('#detTotal').text('0.00');
+  $('#hiddenIdCompra').val('');
+  $('#nroComprobante').val('');
+  // Restaurar campo monto a editable
+  $('#monto_egreso').val('').prop('readonly', false).removeClass('bg-light');
+  $('#descripcion_egreso').val('');
+}
+
+// Limpiar todo al cerrar el modal
+$('#modalRegistrarEgreso').on('hidden.bs.modal', function() {
+  $('#switchEsCompra').prop('checked', false);
+  $('#seccionBusquedaCompra').hide();
+  limpiarDetalleCompra();
+});
+
+// ── SUBMIT del formulario de egreso ──────────────────────────────────────────
 $('#formRegistrarEgreso').submit(function(e) {
   e.preventDefault();
   
-  const monto = parseFloat($('#monto_egreso').val());
+  const montoStr = $('#monto_egreso').val();
+  const descripcion = $('#descripcion_egreso').val().trim();
   const saldoDisponible = parseFloat('{{ saldo_actual }}');
-  
-  if (monto > saldoDisponible) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Monto excedido',
-      text: `El monto del egreso no puede ser mayor al saldo disponible (S/ ${saldoDisponible.toFixed(2)})`,
-      confirmButtonColor: '#dc3545'
-    });
+  const monto = parseFloat(montoStr);
+  const esCompra = $('#switchEsCompra').is(':checked');
+  const idcompra = $('#hiddenIdCompra').val();
+
+  // Validación: si es compra, debe haberse buscado y encontrado
+  if (esCompra && !idcompra) {
+    Swal.fire({ icon: 'warning', title: 'Compra no seleccionada', text: 'Debe buscar y confirmar el comprobante de compra antes de registrar el egreso.', confirmButtonColor: '#dc3545' });
+    return;
+  }
+
+  // Validación: monto obligatorio
+  if (!montoStr || montoStr.trim() === '') {
+    Swal.fire({ icon: 'warning', title: 'Monto requerido', text: 'Debe ingresar el monto del egreso.', confirmButtonColor: '#dc3545' });
+    return;
+  }
+
+  // Validación: monto numérico y > 0
+  if (isNaN(monto) || monto <= 0) {
+    Swal.fire({ icon: 'warning', title: 'Monto inválido', text: 'El monto del egreso debe ser un número mayor a cero.', confirmButtonColor: '#dc3545' });
     return;
   }
   
-  Swal.fire({
-    title: 'Registrando egreso...',
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading();
-    }
-  });
+  // Validación: monto no puede exceder saldo disponible
+  if (monto > saldoDisponible) {
+    Swal.fire({ icon: 'error', title: 'Monto excedido', text: `El monto del egreso no puede ser mayor al saldo disponible (S/ ${saldoDisponible.toFixed(2)})`, confirmButtonColor: '#dc3545' });
+    return;
+  }
+
+  // Validación: descripción obligatoria
+  if (!descripcion) {
+    Swal.fire({ icon: 'warning', title: 'Descripción requerida', text: 'Debe ingresar una descripción del egreso.', confirmButtonColor: '#dc3545' });
+    return;
+  }
+  
+  Swal.fire({ title: 'Registrando egreso...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
   
   let formData = new FormData(this);
   
@@ -294,10 +458,7 @@ $('#formRegistrarEgreso').submit(function(e) {
           }).then((result) => {
             if (result.isConfirmed) {
               const modalEgreso = bootstrap.Modal.getInstance(document.getElementById('modalRegistrarEgreso'));
-              if (modalEgreso) {
-                modalEgreso.hide();
-              }
-              
+              if (modalEgreso) modalEgreso.hide();
               setTimeout(() => {
                 const modalCaja = new bootstrap.Modal(document.getElementById('modalGestionCaja'));
                 modalCaja.show();
@@ -312,14 +473,91 @@ $('#formRegistrarEgreso').submit(function(e) {
     error: function(xhr) {
       console.error(xhr);
       let errorMsg = 'Error al registrar el egreso';
-      
-      try {
-        const response = JSON.parse(xhr.responseText);
-        errorMsg = response.error || errorMsg;
-      } catch(e) {}
-      
+      try { const response = JSON.parse(xhr.responseText); errorMsg = response.error || errorMsg; } catch(e) {}
       Swal.fire('Error', errorMsg, 'error');
     }
+  });
+});
+
+let currentPage = 1;
+let debounceTimer;
+
+function cargarMovimientos(page = 1) {
+  currentPage = page;
+  const search = $('#buscarMovimiento').val();
+  const tipo = $('#filtroTipo').val();
+  
+  $('#tbodyMovimientos').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>');
+  
+  $.ajax({
+    url: '/movimientos-caja/api/listar/',
+    data: { page: page, search: search, tipo: tipo },
+    success: function(res) {
+      renderTablaMovimientos(res.data);
+      renderPaginacion(res.current_page, res.total_pages);
+    },
+    error: function() {
+      $('#tbodyMovimientos').html('<tr><td colspan="7" class="text-center text-danger py-4">Error al cargar datos.</td></tr>');
+    }
+  });
+}
+
+function renderTablaMovimientos(data) {
+  let html = '';
+  if (data.length === 0) {
+    html = '<tr><td colspan="7" class="text-center text-muted py-4">No hay movimientos registrados.</td></tr>';
+  } else {
+    data.forEach((mov, index) => {
+      let counter = (currentPage - 1) * 10 + index + 1;
+      let badgeTipo = mov.tipo_movimiento === 'ingreso' ? 
+        '<span class="badge bg-success"><i class="bi bi-arrow-up-circle me-1"></i>Ingreso</span>' : 
+        '<span class="badge bg-danger"><i class="bi bi-arrow-down-circle me-1"></i>Egreso</span>';
+      
+      let montoClass = mov.tipo_movimiento === 'ingreso' ? 'text-success' : 'text-danger';
+      let montoSign = mov.tipo_movimiento === 'ingreso' ? '+' : '-';
+      let montoFormatted = parseFloat(mov.monto).toFixed(2);
+      
+      let comprobanteHtml = mov.comprobante_url ? 
+        `<a href="${mov.comprobante_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-receipt"></i> ${mov.comprobante_numero}</a>` : 
+        '<span class="text-muted">---</span>';
+        
+      html += `<tr>
+        <td class="fw-semibold">${counter}</td>
+        <td>${mov.fecha_movimiento}</td>
+        <td>${badgeTipo}</td>
+        <td>${mov.descripcion}</td>
+        <td>${mov.usuario}</td>
+        <td class="text-end fw-bold ${montoClass}">${montoSign} S/ ${montoFormatted}</td>
+        <td class="text-center">${comprobanteHtml}</td>
+      </tr>`;
+    });
+  }
+  $('#tbodyMovimientos').html(html);
+}
+
+function renderPaginacion(currentPage, totalPages) {
+  let html = '<div class="custom-pagination">';
+  
+  html += `<button class="btn btn-sm" ${currentPage === 1 ? 'disabled' : `onclick="cargarMovimientos(${currentPage - 1})"`}><i class="bi bi-chevron-left"></i></button>`;
+  html += `<div class="page-indicator">Pág. ${currentPage} de ${totalPages || 1}</div>`;
+  html += `<button class="btn btn-sm" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : `onclick="cargarMovimientos(${currentPage + 1})"`}><i class="bi bi-chevron-right"></i></button>`;
+  
+  html += '</div>';
+  $('#paginacionMovimientos').html(html);
+}
+
+$(document).ready(function() {
+  cargarMovimientos();
+  
+  $('#buscarMovimiento').on('keyup', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      cargarMovimientos(1);
+    }, 300);
+  });
+  
+  $('#filtroTipo').on('change', function() {
+    cargarMovimientos(1);
   });
 });
 </script>
@@ -361,6 +599,38 @@ $('#formRegistrarEgreso').submit(function(e) {
   .customers-card .card-icon {
     background: #ffe0e0;
     color: #ff0000;
+  }
+  
+  .custom-pagination {
+    display: inline-flex;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+  .custom-pagination .btn {
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    color: #0dcaf0;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+  }
+  .custom-pagination .btn:hover:not(:disabled) {
+    background-color: #f8f9fa;
+  }
+  .custom-pagination .btn:disabled {
+    color: #6c757d;
+    background-color: #e9ecef;
+    cursor: not-allowed;
+  }
+  .custom-pagination .page-indicator {
+    background-color: #0d6efd;
+    color: #fff;
+    font-weight: bold;
+    padding: 0.375rem 1rem;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #0d6efd;
+    border-bottom: 1px solid #0d6efd;
   }
 </style>
 {% endblock %}

@@ -1,0 +1,290 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<main id="main" class="main">
+
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <h1 class="fw-bold text-primary">
+      <i class="fa-solid fa-file-invoice-dollar me-2"></i>Proformas
+    </h1>
+    <a href="{% url 'nueva_proforma' %}" class="btn btn-success rounded-pill shadow-sm">
+      <i class="fa-solid fa-circle-plus me-2"></i>Nueva Proforma
+    </a>
+  </div>
+
+  <nav aria-label="breadcrumb" class="mt-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+      <li class="breadcrumb-item active">Proformas</li>
+    </ol>
+  </nav>
+
+  <!-- Listado -->
+  <section class="section dashboard mt-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Listado de Proformas</h5>
+        
+        <!-- Filtros y Búsqueda -->
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-3">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Fecha Desde</label>
+            <div class="input-group input-group-sm">
+              <input type="date" id="filtroFechaDesde" class="form-control" value="{{ fecha_desde }}">
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Fecha Hasta</label>
+            <div class="input-group input-group-sm">
+              <input type="date" id="filtroFechaHasta" class="form-control" value="{{ fecha_hasta }}">
+            </div>
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Estado</label>
+            <select id="filtroEstado" class="form-select form-select-sm">
+              <option value="todos">Todos</option>
+              <option value="activa" selected>Activas</option>
+              <option value="convertida">Convertidas</option>
+              <option value="anulada">Anuladas</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Buscar</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+              <input type="text" id="buscadorProformas" class="form-control" placeholder="Cliente o N° Proforma..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>#</th>
+                <th>N° Proforma</th>
+                <th>Cliente</th>
+                <th>Fecha Emisión</th>
+                <th>Vencimiento</th>
+                <th>Asesor</th>
+                <th class="text-end">Subtotal</th>
+                <th class="text-end">IGV</th>
+                <th class="text-end fw-bold">Total</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyProformas">
+              <!-- Carga por AJAX -->
+              <tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Cargando proformas...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Paginador personalizado -->
+        <div id="paginacionProformas" class="d-flex justify-content-between align-items-center mt-3 flex-column flex-md-row gap-3">
+          <!-- Se inyectará el paginador AJAX aquí -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+  .page-indicator {
+    padding: 0.375rem 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+</style>
+
+<script>
+let currentPage = 1;
+let debounceTimer;
+
+$(document).ready(function () {
+  // Carga inicial
+  cargarProformas(1);
+
+  // Filtros interactivos
+  $('#filtroFechaDesde, #filtroFechaHasta, #filtroEstado').on('change', function() {
+    cargarProformas(1);
+  });
+
+  // Búsqueda en vivo (debounce)
+  $('#buscadorProformas').on('input', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      cargarProformas(1);
+    }, 400);
+  });
+});
+
+function cargarProformas(page) {
+  currentPage = page;
+  const tbody = $('#tbodyProformas');
+  const paginacion = $('#paginacionProformas');
+  
+  const fechaDesde = $('#filtroFechaDesde').val() || '';
+  const fechaHasta = $('#filtroFechaHasta').val() || '';
+  const estado = $('#filtroEstado').val() || 'todos';
+  const search = $('#buscadorProformas').val() || '';
+
+  // Indicador de carga
+  tbody.html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Cargando proformas...</div></td></tr>');
+  
+  $.ajax({
+    url: '{% url "api_listar_proformas" %}',
+    type: 'GET',
+    data: {
+      page: page,
+      search: search,
+      estado: estado,
+      fecha_desde: fechaDesde,
+      fecha_hasta: fechaHasta
+    },
+    success: function(response) {
+      if(response.ok) {
+        renderTablaProformas(response.data, tbody);
+        renderPaginacion(response, paginacion);
+      } else {
+        tbody.html(`<tr><td colspan="11" class="text-center text-danger py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i> Error: ${response.error}</td></tr>`);
+      }
+    },
+    error: function() {
+      tbody.html('<tr><td colspan="11" class="text-center text-danger py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i> Error de conexión con el servidor.</td></tr>');
+    }
+  });
+}
+
+function renderTablaProformas(data, tbody) {
+  tbody.empty();
+  if (data.length === 0) {
+    tbody.html('<tr><td colspan="11" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>No se encontraron proformas con los filtros actuales.</td></tr>');
+    return;
+  }
+
+  // Índice continuo
+  let startIdx = (currentPage - 1) * 10 + 1;
+
+  data.forEach((p, i) => {
+    // Render de Estado
+    let badgeEstado = '';
+    let btnAnular = '';
+    
+    if (p.estado === 1) {
+      badgeEstado = '<span class="badge bg-success">Activa</span>';
+      // Botón Anular (solo si está Activa)
+      btnAnular = `<button type="button" class="btn btn-sm btn-danger" title="Anular Proforma" onclick="anularProforma(${p.idproforma}, '${p.numero_proforma}')"><i class="fa-solid fa-ban"></i></button>`;
+      
+      // Botón Generar Venta (solo si está Activa)
+      btnGenerarVenta = `<a href="/ventas/?idproforma=${p.idproforma}" class="btn btn-sm btn-success" title="Generar Venta"><i class="fa-solid fa-cart-arrow-down"></i></a>`;
+    } else if (p.estado === 2) {
+      badgeEstado = '<span class="badge bg-info">Convertida</span>';
+      btnGenerarVenta = '';
+    } else {
+      badgeEstado = '<span class="badge bg-danger">Anulada</span>';
+      btnGenerarVenta = '';
+    }
+
+    const tr = `
+      <tr>
+        <td class="fw-semibold">${startIdx + i}</td>
+        <td><span class="badge bg-primary">${p.numero_proforma}</span></td>
+        <td>${p.cliente}</td>
+        <td>${p.fecha_emision}</td>
+        <td>${p.vencimiento}</td>
+        <td>${p.asesor}</td>
+        <td class="text-end">S/ ${p.subtotal}</td>
+        <td class="text-end">S/ ${p.igv}</td>
+        <td class="text-end fw-bold text-success">S/ ${p.total}</td>
+        <td class="text-center">${badgeEstado}</td>
+        <td class="text-center">
+          <div class="btn-group" role="group">
+            ${btnGenerarVenta}
+            <a href="/proformas/editar/${p.idproforma}/" class="btn btn-sm btn-primary" title="Editar Proforma"><i class="fas fa-edit"></i></a>
+            <a href="/proformas/pdf/${p.idproforma}/" target="_blank" class="btn btn-sm btn-outline-dark" title="Imprimir"><i class="fas fa-print"></i></a>
+            ${btnAnular}
+          </div>
+        </td>
+      </tr>
+    `;
+    tbody.append(tr);
+  });
+}
+
+function renderPaginacion(data, container) {
+  container.empty();
+  if (data.num_pages <= 1) return; // No paginar si solo hay 1 página
+
+  let btnPrev = data.has_previous 
+    ? `<button class="btn btn-sm btn-outline-primary" onclick="cargarProformas(${data.current_page - 1})"><i class="fa-solid fa-chevron-left me-1"></i> Anterior</button>`
+    : `<button class="btn btn-sm btn-outline-secondary" disabled><i class="fa-solid fa-chevron-left me-1"></i> Anterior</button>`;
+    
+  let btnNext = data.has_next
+    ? `<button class="btn btn-sm btn-outline-primary" onclick="cargarProformas(${data.current_page + 1})">Siguiente <i class="fa-solid fa-chevron-right ms-1"></i></button>`
+    : `<button class="btn btn-sm btn-outline-secondary" disabled>Siguiente <i class="fa-solid fa-chevron-right ms-1"></i></button>`;
+
+  let html = `
+    <div class="d-flex align-items-center gap-2">
+      ${btnPrev}
+      <span class="page-indicator fw-semibold text-primary" style="background-color: #0d6efd15; border-color: #0d6efd30;">
+        Página ${data.current_page} de ${data.num_pages}
+      </span>
+      ${btnNext}
+    </div>
+    <div class="text-muted small mt-2 mt-md-0">
+      Mostrando página ${data.current_page} (Total: ${data.total_registros} proformas)
+    </div>
+  `;
+  container.html(html);
+}
+
+function anularProforma(idproforma, numero) {
+  Swal.fire({
+    title: '¿Anular Proforma?',
+    html: `La proforma <strong>${numero}</strong> será anulada.<br>Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Sí, anular',
+    cancelButtonText: 'Cancelar'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      fetch(`/proformas/anular/${idproforma}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          Swal.fire({
+            title: '¡Anulada!',
+            text: data.message,
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            // Recargar la tabla sin refrescar toda la página
+            cargarProformas(currentPage);
+          });
+        } else {
+          Swal.fire('Error', data.error, 'error');
+        }
+      });
+    }
+  });
+}
+</script>
+{% endblock %}

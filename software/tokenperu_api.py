@@ -1,227 +1,162 @@
+"""
+Módulo de compatibilidad para consultas de DNI y RUC.
 
-import requests
+Mantiene la interfaz pública original (consultar_dni, consultar_ruc,
+consultar_documento) para no modificar las vistas que ya lo consumen
+(clientes.py, garantes.py, proveedores.py).
+
+Internamente delega toda la lógica al ConsultaOrchestrator, que implementa
+el failover automático entre DeColecta (principal) y APIsPERU (respaldo).
+"""
+
+import logging
 from typing import Dict, Optional
-from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+# ── Importación lazy del orquestador para evitar problemas de startup ─────────
+_orchestrator = None
+
+def _get_orchestrator():
+    """
+    Devuelve la instancia global del orquestador, creándola en el primer uso.
+    Usar lazy initialization evita errores de importación durante el arranque
+    de Django (antes de que settings esté completamente cargado).
+    """
+    global _orchestrator
+    if _orchestrator is None:
+        from software.services.dni_ruc_service import ConsultaOrchestrator
+        _orchestrator = ConsultaOrchestrator()
+    return _orchestrator
 
 
-class TokenPeruAPI:
-    """Cliente para la API de APIs.net.pe (DeColecta)"""
-    
-    BASE_URL = "https://api.decolecta.com/v1"
-    
-    def __init__(self, token: Optional[str] = None):
-        """
-        Inicializa el cliente de la API
-        
-        Args:
-            token: Token de autenticación. Si no se proporciona, se obtiene de settings.TOKENPERU_TOKEN
-        """
-        self.token = token or getattr(settings, 'TOKENPERU_TOKEN', None)
-        if not self.token:
-            raise ValueError("Se requiere un token de APIs.net.pe. Configure TOKENPERU_TOKEN en settings.py")
-        
-        self.headers = {
-            'Authorization': f'Bearer {self.token}',
-            'Accept': 'application/json',
-            'Referer': 'https://apis.net.pe'
-        }
-    
-    def consultar_dni(self, dni: str) -> Dict:
-        """
-        Consulta información REAL de una persona por DNI desde RENIEC
-        
-        Args:
-            dni: Número de DNI (8 dígitos)
-            
-        Returns:
-            Dict con la información de la persona
-        """
-        if not dni or len(dni) != 8 or not dni.isdigit():
-            raise ValueError("El DNI debe tener 8 dígitos numéricos")
-        
-        url = f"{self.BASE_URL}/reniec/dni"
-        params = {'numero': dni}
-        
-        try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            
-            # Mapear campos de APIs.net.pe al formato estándar
-            return {
-                'dni': result.get('document_number', result.get('numeroDocumento', dni)),
-                'nombres': result.get('first_name', result.get('nombres', '')),
-                'apellido_paterno': result.get('first_last_name', result.get('apellidoPaterno', '')),
-                'apellido_materno': result.get('second_last_name', result.get('apellidoMaterno', '')),
-                'nombre_completo': result.get('full_name', f"{result.get('first_last_name', '')} {result.get('second_last_name', '')} {result.get('first_name', '')}".strip()),
-                'codigo_verificacion': result.get('codigoVerificacion', result.get('verification_code', '')),
-                'fecha_nacimiento': result.get('fechaNacimiento', result.get('birth_date', '')),
-                'sexo': result.get('sexo', result.get('gender', '')),
-                'ubigeo': result.get('ubigeo', result.get('ubigeo_code', '')),
-                'direccion': result.get('direccion', result.get('address', ''))
-            }
-                
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 401:
-                raise ValueError("Token inválido o expirado")
-            elif response.status_code == 404:
-                raise ValueError("Documento no encontrado en RENIEC")
-            elif response.status_code == 429:
-                raise ValueError("Límite de consultas excedido")
-            else:
-                try:
-                    error_data = response.json()
-                    error_msg = error_data.get('mensaje', error_data.get('error', str(e)))
-                except:
-                    error_msg = str(e)
-                raise ValueError(f"Error en la API: {error_msg}")
-        except requests.exceptions.RequestException as e:
-            raise ValueError(f"Error de conexión: {e}")
-    
-    def consultar_ruc(self, ruc: str) -> Dict:
-        """
-        Consulta información REAL de una empresa por RUC desde SUNAT
-        
-        Args:
-            ruc: Número de RUC (11 dígitos)
-            
-        Returns:
-            Dict con la información de la empresa
-        """
-        if not ruc or len(ruc) != 11 or not ruc.isdigit():
-            raise ValueError("El RUC debe tener 11 dígitos numéricos")
-        
-        url = f"{self.BASE_URL}/sunat/ruc"
-        params = {'numero': ruc}
-        
-        try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            
-            # Mapear campos de APIs.net.pe al formato estándar
-            return {
-                'ruc': result.get('numero_documento', result.get('numeroDocumento', ruc)),
-                'razon_social': result.get('razon_social', result.get('nombre', '')),
-                'nombre_comercial': result.get('nombre_comercial', result.get('nombreComercial', '')),
-                'tipo_contribuyente': result.get('tipo_contribuyente', result.get('tipoContribuyente', '')),
-                'estado': result.get('estado', ''),
-                'condicion': result.get('condicion', ''),
-                'direccion': result.get('direccion', ''),
-                'departamento': result.get('departamento', ''),
-                'provincia': result.get('provincia', ''),
-                'distrito': result.get('distrito', ''),
-                'ubigeo': result.get('ubigeo', ''),
-                'fecha_inscripcion': result.get('fecha_inscripcion', result.get('fechaInscripcion', '')),
-                'actividad_economica': result.get('actividad_economica', result.get('actividadEconomica', [])),
-                # Campos adicionales de SUNAT
-                'via_tipo': result.get('via_tipo', result.get('viaTipo', '')),
-                'via_nombre': result.get('via_nombre', result.get('viaNombre', '')),
-                'numero': result.get('numero', ''),
-                'interior': result.get('interior', ''),
-                'lote': result.get('lote', ''),
-                'departamento_dir': result.get('dpto', ''),
-                'manzana': result.get('manzana', ''),
-                'kilometro': result.get('kilometro', ''),
-                'es_agente_retencion': result.get('es_agente_retencion', False),
-                'es_buen_contribuyente': result.get('es_buen_contribuyente', False)
-            }
-                
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 401:
-                raise ValueError("Token inválido o expirado")
-            elif response.status_code == 404:
-                raise ValueError("Documento no encontrado en SUNAT")
-            elif response.status_code == 429:
-                raise ValueError("Límite de consultas excedido")
-            else:
-                try:
-                    error_data = response.json()
-                    error_msg = error_data.get('mensaje', error_data.get('error', str(e)))
-                except:
-                    error_msg = str(e)
-                raise ValueError(f"Error en la API: {error_msg}")
-        except requests.exceptions.RequestException as e:
-            raise ValueError(f"Error de conexión: {e}")
-    
-    def consultar_ruc_completo(self, ruc: str) -> Dict:
-        """
-        Consulta información COMPLETA de una empresa por RUC desde SUNAT
-        Incluye información adicional como representantes, trabajadores, etc.
-        
-        Args:
-            ruc: Número de RUC (11 dígitos)
-            
-        Returns:
-            Dict con la información completa de la empresa
-        """
-        if not ruc or len(ruc) != 11 or not ruc.isdigit():
-            raise ValueError("El RUC debe tener 11 dígitos numéricos")
-        
-        url = f"{self.BASE_URL}/sunat/ruc/full"
-        params = {'numero': ruc}
-        
-        try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
-                
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 401:
-                raise ValueError("Token inválido o expirado")
-            elif response.status_code == 404:
-                raise ValueError("Documento no encontrado en SUNAT")
-            elif response.status_code == 429:
-                raise ValueError("Límite de consultas excedido")
-            else:
-                try:
-                    error_data = response.json()
-                    error_msg = error_data.get('mensaje', error_data.get('error', str(e)))
-                except:
-                    error_msg = str(e)
-                raise ValueError(f"Error en la API: {error_msg}")
-        except requests.exceptions.RequestException as e:
-            raise ValueError(f"Error de conexión: {e}")
+# ==============================================================================
+# API PÚBLICA — Mismas firmas que antes, ahora con failover automático
+# ==============================================================================
 
-
-# Funciones de utilidad para usar directamente
 def consultar_dni(dni: str, token: Optional[str] = None) -> Dict:
-    """Función de utilidad para consultar DNI"""
-    api = TokenPeruAPI(token)
-    return api.consultar_dni(dni)
+    """
+    Consulta información de una persona por DNI usando RENIEC.
+
+    Utiliza failover automático:
+      1. Intenta con DeColecta (principal)
+      2. Si falla, usa APIsPERU (respaldo)
+
+    Args:
+        dni: Número de DNI (8 dígitos numéricos)
+        token: Ignorado — las credenciales se leen desde settings.py
+
+    Returns:
+        Dict con claves estándar:
+            dni, nombres, apellido_paterno, apellido_materno,
+            nombre_completo, codigo_verificacion, fecha_nacimiento,
+            sexo, ubigeo, direccion
+
+    Raises:
+        ValueError: Si el DNI es inválido o todos los proveedores fallan
+    """
+    if not dni or len(str(dni)) not in (7, 8) or not str(dni).isdigit():
+        raise ValueError("El DNI debe tener 7 u 8 dígitos numéricos")
+    
+    dni_str = str(dni).zfill(8)
+    return _get_orchestrator().consultar_dni(dni_str)
 
 
 def consultar_ruc(ruc: str, token: Optional[str] = None) -> Dict:
-    """Función de utilidad para consultar RUC"""
-    api = TokenPeruAPI(token)
-    return api.consultar_ruc(ruc)
+    """
+    Consulta información de una empresa por RUC usando SUNAT.
+
+    Utiliza failover automático:
+      1. Intenta con DeColecta (principal)
+      2. Si falla, usa APIsPERU (respaldo)
+
+    Args:
+        ruc: Número de RUC (11 dígitos numéricos)
+        token: Ignorado — las credenciales se leen desde settings.py
+
+    Returns:
+        Dict con claves estándar:
+            ruc, razon_social, nombre_comercial, tipo_contribuyente,
+            estado, condicion, direccion, departamento, provincia,
+            distrito, ubigeo, fecha_inscripcion, actividad_economica,
+            via_tipo, via_nombre, numero, interior, lote,
+            departamento_dir, manzana, kilometro,
+            es_agente_retencion, es_buen_contribuyente
+
+    Raises:
+        ValueError: Si el RUC es inválido o todos los proveedores fallan
+    """
+    if not ruc or len(str(ruc)) != 11 or not str(ruc).isdigit():
+        raise ValueError("El RUC debe tener 11 dígitos numéricos")
+    return _get_orchestrator().consultar_ruc(str(ruc))
 
 
 def consultar_documento(numero: str, token: Optional[str] = None) -> Dict:
     """
-    Función inteligente que detecta si es DNI o RUC y consulta automáticamente
-    
+    Función inteligente que detecta si el número es DNI (8 dígitos) o
+    RUC (11 dígitos) y realiza la consulta correspondiente con failover
+    automático entre proveedores.
+
     Args:
-        numero: Número de documento (8 para DNI, 11 para RUC)
-        token: Token de autenticación (opcional)
-        
+        numero: Número de documento (8 dígitos = DNI, 11 dígitos = RUC)
+        token: Ignorado — las credenciales se leen desde settings.py
+
     Returns:
-        Dict con la información y el tipo de documento
+        Dict con los datos del documento más las claves adicionales:
+            tipo_documento: 'DNI' o 'RUC'
+            id_tipo_entidad: 1 (DNI) o 6 (RUC) según la tabla tipo_entidad
+
+    Raises:
+        ValueError: Si el documento es inválido o todos los proveedores fallan
     """
-    if not numero or not numero.isdigit():
-        raise ValueError("El documento debe contener solo números")
-    
-    api = TokenPeruAPI(token)
-    
-    if len(numero) == 8:
-        resultado = api.consultar_dni(numero)
+    if not numero or not str(numero).isdigit():
+        raise ValueError("El número de documento debe contener solo dígitos")
+
+    numero = str(numero).strip()
+
+    if len(numero) in (7, 8):
+        resultado = consultar_dni(numero)
         resultado['tipo_documento'] = 'DNI'
-        resultado['id_tipo_entidad'] = 1  # DNI según tu tabla tipo_entidad
+        resultado['id_tipo_entidad'] = 1   # DNI según tabla tipo_entidad del proyecto
         return resultado
+
     elif len(numero) == 11:
-        resultado = api.consultar_ruc(numero)
+        resultado = consultar_ruc(numero)
         resultado['tipo_documento'] = 'RUC'
-        resultado['id_tipo_entidad'] = 6  # RUC según tu tabla tipo_entidad
+        resultado['id_tipo_entidad'] = 6   # RUC según tabla tipo_entidad del proyecto
         return resultado
+
     else:
-        raise ValueError("El documento debe tener 8 dígitos (DNI) o 11 dígitos (RUC)")
+        raise ValueError(
+            f"Longitud de documento inválida ({len(numero)} dígitos). "
+            "Se esperan 7 u 8 dígitos para DNI o 11 dígitos para RUC."
+        )
+
+
+# ==============================================================================
+# CLASE LEGACY — Mantenida por compatibilidad con código antiguo si existiera
+# ==============================================================================
+
+class TokenPeruAPI:
+    """
+    Clase de compatibilidad. Internamente usa el ConsultaOrchestrator.
+    Mantenida para evitar romper importaciones de código externo si las hubiera.
+    """
+
+    def __init__(self, token: Optional[str] = None):
+        # El token se ignora; las credenciales vienen de settings.py
+        logger.debug(
+            "TokenPeruAPI instanciado. "
+            "Las credenciales se leen desde settings.TOKENPERU_TOKEN y "
+            "settings.APISPERU_TOKEN."
+        )
+
+    def consultar_dni(self, dni: str) -> Dict:
+        return consultar_dni(dni)
+
+    def consultar_ruc(self, ruc: str) -> Dict:
+        return consultar_ruc(ruc)
+
+    def consultar_ruc_completo(self, ruc: str) -> Dict:
+        """Alias de consultar_ruc para compatibilidad con código previo."""
+        return consultar_ruc(ruc)

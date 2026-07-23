@@ -1,0 +1,483 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<style>
+    /* Estilos Móviles para Pantalla de Cobro */
+    .header-cliente {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        color: white;
+        padding: 20px 15px;
+        border-radius: 0 0 20px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .cuota-card {
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 12px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        display: flex;
+        align-items: center;
+        transition: all 0.2s;
+    }
+    .cuota-card.selected {
+        border-color: #198754 !important;
+        background-color: rgba(25, 135, 84, 0.15) !important;
+    }
+    .cuota-card.disabled {
+        opacity: 0.6;
+    }
+    .cuota-checkbox {
+        transform: scale(1.5);
+        margin-right: 15px;
+        cursor: pointer;
+    }
+    .cuota-checkbox:checked {
+        background-color: #198754 !important;
+        border-color: #198754 !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e") !important;
+    }
+    .sticky-bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 15px 20px;
+        box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+        z-index: 1000;
+        border-radius: 20px 20px 0 0;
+        background-color: var(--bg-surface, #ffffff) !important;
+        border-top: 1px solid var(--border-glass, #dee2e6);
+    }
+    .main-wrapper {
+        padding-bottom: 230px !important; /* Espacio base */
+    }
+    #pagos-container {
+        max-height: 150px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    /* Estilizar el scrollbar para que sea sutil */
+    #pagos-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    #pagos-container::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 10px;
+    }
+    .amount-input {
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+        height: 60px;
+        border-radius: 15px;
+        border: 2px solid #0d6efd;
+        color: #0d6efd;
+    }
+    .amount-input:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    @media (min-width: 1200px) {
+        .sticky-bottom-bar {
+            left: 300px;
+        }
+    }
+</style>
+
+<main id="main" class="main main-wrapper px-0 px-md-3">
+    <!-- Cabecera Cliente -->
+    <div class="header-cliente">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <a href="{% url 'cuentas_por_cobrar' %}" class="text-white text-decoration-none">
+                <i class="fas fa-arrow-left fa-lg"></i>
+            </a>
+            <h5 class="m-0 fw-bold">Gestión de Cobro</h5>
+            <div style="width: 24px;"></div> <!-- Spacer -->
+        </div>
+        <h3 class="fw-bold mt-3 mb-1">{{ cliente.razonsocial }}</h3>
+        <p class="mb-0 text-white-50"><i class="fas fa-id-card"></i> {{ cliente.numdoc }}</p>
+        <div class="mt-2 text-warning fw-bold">
+            <i class="fas fa-exclamation-triangle"></i> Deuda Total: S/ {{ total_deuda|floatformat:2 }}
+        </div>
+    </div>
+
+    <div class="container px-3">
+        <h6 class="text-muted fw-bold mb-3"><i class="fas fa-list"></i> CUOTAS PENDIENTES</h6>
+        
+        <form id="formCobro">
+            {% csrf_token %}
+            <!-- Lista de Cuotas -->
+            <div id="lista-cuotas">
+                {% for cuota in cuotas %}
+                <label class="card cuota-card w-100" for="cuota_{{ cuota.idcuotaventa }}">
+                    <div>
+                        <input class="form-check-input cuota-checkbox" type="checkbox" 
+                            id="cuota_{{ cuota.idcuotaventa }}" 
+                            name="cuotas_ids[]" 
+                            value="{{ cuota.idcuotaventa }}"
+                            data-saldo="{{ cuota.saldo_cuota|stringformat:'f' }}">
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">
+                                {% if cuota.numero_cuota == 0 %}Inicial{% else %}Cuota {{ cuota.numero_cuota }}{% endif %}
+                            </span>
+                            <span class="fw-bold text-danger">S/ {{ cuota.saldo_cuota|floatformat:2 }}</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="far fa-calendar-alt"></i> Vence: {{ cuota.fecha_vencimiento|date:"d/m/Y" }}
+                            {% if cuota.estado_pago == 'Parcial' %}
+                            <span class="badge bg-warning ms-1 text-dark">Parcial</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            Ref: {{ cuota.idcredito.codigo_credito|default:cuota.idventa.credito.codigo_credito }}
+                        </div>
+                    </div>
+                </label>
+                {% empty %}
+                <div class="alert alert-success text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                    Este cliente no tiene cuotas pendientes.
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Botones Ocultos de Submit -->
+            <button type="submit" class="d-none" id="btnSubmitHidden"></button>
+        </form>
+    </div>
+</main>
+
+<!-- Sticky Bottom Bar -->
+{% if cuotas %}
+<div class="sticky-bottom-bar mb-0">
+    <div class="px-2" id="pagos-container">
+        <!-- Fila de pago 1 -->
+        <div class="row g-2 mb-2 align-items-end pago-row">
+            <div class="col-4">
+                <label class="text-muted small fw-bold">Método</label>
+                <select name="tipo_pago_id[]" class="form-select border-0 bg-body fw-bold select-tipo-pago" style="height: 45px;" required>
+                    {% for mp in metodos_pago %}
+                        <option value="{{ mp.id_tipo_pago }}" data-nombre="{{ mp.nombre|lower }}" {% if mp.nombre|lower == 'efectivo' %}selected{% endif %}>
+                            {{ mp.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-3 nro-operacion-container d-none">
+                <label class="text-muted small fw-bold"> N° de Operación</label>
+                <input type="text" name="nro_operacion[]" class="form-control fw-bold border-0 bg-body" placeholder="123456" style="height: 45px;">
+            </div>
+            <div class="col-4">
+                <label class="text-muted small fw-bold">Monto (S/)</label>
+                <input type="number" name="monto_pago_item[]" class="form-control fw-bold border-0 bg-body monto-item-input" placeholder="0.00" inputmode="decimal" step="0.01" min="0.01" style="height: 45px;" required>
+            </div>
+            <div class="col-1 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-pago" disabled>
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2 px-2">
+        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="btnAgregarPago">
+            <i class="fas fa-plus me-1"></i>Añadir Método
+        </button>
+        <div class="text-end fw-bold">
+            <span class="text-muted small">Total: </span><span class="text-success fs-5" id="displayTotalPagos">S/ 0.00</span>
+        </div>
+    </div>
+
+    <div class="row g-2 align-items-center mt-2">
+        <div class="col-12">
+            <button type="button" class="btn btn-success w-100 fw-bold shadow-sm" id="btnCobrar" style="height: 50px; font-size: 1.1rem;">
+                <i class="fas fa-check-circle"></i> REGISTRAR
+            </button>
+        </div>
+    </div>
+    <div class="text-center mt-2" id="resumenAutoSelect" style="font-size: 0.85rem; color: #6c757d; min-height: 20px;">
+        <!-- Aquí se mostrará un mensaje indicando qué cuotas se cubrirán -->
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    $(document).ready(function() {
+        const checkboxes = $('.cuota-checkbox');
+        const cards = $('.cuota-card');
+        const msjResumen = $('#resumenAutoSelect');
+
+        // Función para autoseleccionar checkboxes basado en el monto ingresado
+        function simularDistribucion(monto_total) {
+            let monto = parseFloat(monto_total) || 0;
+            let cuotasAfectadas = 0;
+            
+            // Limpiar todo
+            checkboxes.prop('checked', false);
+            cards.removeClass('selected');
+            
+            if (monto <= 0) {
+                msjResumen.text('');
+                return;
+            }
+
+            checkboxes.each(function(index) {
+                if (monto <= 0) return false; // break loop
+                
+                let saldoCuota = parseFloat($(this).data('saldo'));
+                
+                // Marcar checkbox
+                $(this).prop('checked', true);
+                $(this).closest('.cuota-card').addClass('selected');
+                cuotasAfectadas++;
+                
+                monto -= saldoCuota;
+            });
+            
+            if(cuotasAfectadas > 0) {
+                msjResumen.html(`<i class="fas fa-info-circle"></i> Este monto afectará a <b>${cuotasAfectadas} cuota(s)</b> secuenciales.`);
+            } else {
+                msjResumen.text('');
+            }
+        }
+
+        // Lógica de Múltiples Pagos
+        function calcularTotalPagos() {
+            let total = 0;
+            $('.monto-item-input').each(function() {
+                total += parseFloat($(this).val()) || 0;
+            });
+            $('#displayTotalPagos').text('S/ ' + total.toFixed(2));
+            simularDistribucion(total);
+            return total;
+        }
+
+        function actualizarBotonesEliminar() {
+            if ($('.pago-row').length > 1) {
+                $('.btn-remove-pago').prop('disabled', false);
+            } else {
+                $('.btn-remove-pago').prop('disabled', true);
+            }
+        }
+
+        $(document).on('input', '.monto-item-input', function() {
+            calcularTotalPagos();
+        });
+
+        $(document).on('change', '.select-tipo-pago', function() {
+            let nroOpContainer = $(this).closest('.pago-row').find('.nro-operacion-container');
+            let nroOpInput = nroOpContainer.find('input');
+            let nombre = $(this).find('option:selected').data('nombre') || '';
+            
+            if (nombre !== 'efectivo') {
+                nroOpContainer.removeClass('d-none');
+                nroOpInput.prop('required', true);
+            } else {
+                nroOpContainer.addClass('d-none');
+                nroOpInput.prop('required', false);
+                nroOpInput.val('');
+            }
+        });
+
+        $('#btnAgregarPago').click(function() {
+            let optionsHtml = $('.select-tipo-pago').first().html();
+            let nuevaFila = `
+            <div class="row g-2 mb-2 align-items-end pago-row mt-2 border-top pt-2">
+                <div class="col-4">
+                    <select name="tipo_pago_id[]" class="form-select border-0 bg-body fw-bold select-tipo-pago" style="height: 45px;" required>
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div class="col-3 nro-operacion-container d-none">
+                    <input type="text" name="nro_operacion[]" class="form-control fw-bold border-0 bg-body" placeholder="123456" style="height: 45px;">
+                </div>
+                <div class="col-4">
+                    <input type="number" name="monto_pago_item[]" class="form-control fw-bold border-0 bg-body monto-item-input" placeholder="0.00" inputmode="decimal" step="0.01" min="0.01" style="height: 45px;" required>
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-pago">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+            $('#pagos-container').append(nuevaFila);
+            
+            // Forzar el evento change en el nuevo select para que inicialice bien
+            $('#pagos-container .pago-row:last .select-tipo-pago').trigger('change');
+            
+            actualizarBotonesEliminar();
+        });
+
+        $(document).on('click', '.btn-remove-pago', function() {
+            $(this).closest('.pago-row').remove();
+            actualizarBotonesEliminar();
+            calcularTotalPagos();
+        });
+
+        // Si el usuario marca checkboxes manualmente, sumamos el saldo y lo ponemos en el primer input
+        checkboxes.on('change', function() {
+            // Forzar secuencialidad visualmente
+            let checkedIndex = checkboxes.index(this);
+            let isChecked = $(this).is(':checked');
+            
+            if (isChecked) {
+                // Marcar todas las anteriores
+                for (let i = 0; i <= checkedIndex; i++) {
+                    $(checkboxes[i]).prop('checked', true);
+                    $(checkboxes[i]).closest('.cuota-card').addClass('selected');
+                }
+            } else {
+                // Desmarcar todas las siguientes
+                for (let i = checkedIndex; i < checkboxes.length; i++) {
+                    $(checkboxes[i]).prop('checked', false);
+                    $(checkboxes[i]).closest('.cuota-card').removeClass('selected');
+                }
+            }
+            
+            // Recalcular Total Exacto
+            let totalSuma = 0;
+            checkboxes.filter(':checked').each(function() {
+                totalSuma += parseFloat($(this).data('saldo'));
+            });
+            
+            if (totalSuma > 0) {
+                if ($('.pago-row').length === 1) {
+                    $('.monto-item-input').first().val(totalSuma.toFixed(2));
+                }
+                calcularTotalPagos();
+                msjResumen.html(`<i class="fas fa-info-circle"></i> Seleccionaste cuotas completas por <b>S/ ${totalSuma.toFixed(2)}</b>`);
+            } else {
+                $('.monto-item-input').first().val('');
+                calcularTotalPagos();
+                msjResumen.text('');
+            }
+        });
+
+        // Click en REGISTRAR
+        $('#btnCobrar').click(function() {
+            const monto = calcularTotalPagos();
+            const cuotas = checkboxes.filter(':checked');
+            
+            if (isNaN(monto) || monto <= 0) {
+                Swal.fire('Atención', 'Ingrese un monto válido mayor a 0 en los métodos de pago', 'warning');
+                return;
+            }
+            if (cuotas.length === 0) {
+                Swal.fire('Atención', 'Debe marcar al menos 1 cuota o ingresar un monto válido', 'warning');
+                return;
+            }
+            
+            let faltaNroOp = false;
+            let tipos_pago = [];
+            let nros_operacion = [];
+            let montos_pago = [];
+
+            $('.pago-row').each(function() {
+                let tipo = $(this).find('.select-tipo-pago').val();
+                let nro = $(this).find('.nro-operacion-container input').val();
+                let mto = parseFloat($(this).find('.monto-item-input').val()) || 0;
+                let nombre = $(this).find('.select-tipo-pago option:selected').data('nombre') || '';
+
+                if (mto > 0) {
+                    tipos_pago.push(tipo);
+                    montos_pago.push(mto);
+                    nros_operacion.push(nro);
+                    if (nombre !== 'efectivo' && nro.trim() === '') {
+                        faltaNroOp = true;
+                    }
+                }
+            });
+
+            if (faltaNroOp) {
+                Swal.fire('Atención', 'Debe ingresar el N° de Operación para los métodos distintos a Efectivo', 'warning');
+                return;
+            }
+
+            // Preparar data
+            let cuotasIds = [];
+            cuotas.each(function() { cuotasIds.push($(this).val()); });
+            
+            Swal.fire({
+                title: '¿Confirmar Cobro?',
+                html: `Se registrará un cobro por <b>S/ ${monto.toFixed(2)}</b>.<br>Se verán afectadas ${cuotasIds.length} cuota(s).`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, Registrar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({title: 'Procesando...', allowOutsideClick: false});
+                    Swal.showLoading();
+                    
+                    $.ajax({
+                        url: "{% url 'procesar_cobro_cliente' %}",
+                        type: 'POST',
+                        data: {
+                            'csrfmiddlewaretoken': $('input[name="csrfmiddlewaretoken"]').val(),
+                            'tipo_pago_id[]': tipos_pago,
+                            'nro_operacion[]': nros_operacion,
+                            'monto_pago_item[]': montos_pago,
+                            'cuotas_ids[]': cuotasIds
+                        },
+                        success: function(res) {
+                            if(res.ok) {
+                                const clienteTelefono = "{{ cliente.telefono|default_if_none:''|escapejs }}";
+                                const clienteNombre = "{{ cliente.razonsocial|escapejs }}";
+                                const montoTotalFormateado = monto.toFixed(2);
+                                const urlReciboCompleta = window.location.origin + res.url_recibo;
+                                
+                                const mensajeWA = `Hola *${clienteNombre}*, confirmamos que hemos recibido tu pago por *S/ ${montoTotalFormateado}* el día de hoy.\n\nPuedes descargar o ver el PDF de tu recibo ingresando a este enlace:\n${urlReciboCompleta}\n\n¡Gracias por tu preferencia!`;
+                                const encodedMsj = encodeURIComponent(mensajeWA);
+                                
+                                let linkWA = `https://wa.me/?text=${encodedMsj}`;
+                                if (clienteTelefono.trim() !== '') {
+                                    linkWA = `https://wa.me/51${clienteTelefono.replace(/\s+/g, '')}?text=${encodedMsj}`;
+                                }
+                                
+                                Swal.fire({
+                                    title: '¡Cobro Exitoso!',
+                                    text: 'El cobro se registró correctamente. ¿Qué deseas hacer con el recibo?',
+                                    icon: 'success',
+                                    showDenyButton: true,
+                                    showCancelButton: true,
+                                    confirmButtonText: '<i class="fab fa-whatsapp"></i> Enviar por WhatsApp',
+                                    confirmButtonColor: '#25D366',
+                                    denyButtonText: '<i class="fas fa-print"></i> Ver/Imprimir',
+                                    denyButtonColor: '#0d6efd',
+                                    cancelButtonText: 'Cerrar',
+                                    cancelButtonColor: '#6c757d',
+                                    allowOutsideClick: false
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        window.open(linkWA, '_blank');
+                                        window.location.reload();
+                                    } else if (result.isDenied) {
+                                        window.open(res.url_recibo, '_blank');
+                                        window.location.reload();
+                                    } else {
+                                        window.location.reload();
+                                    }
+                                });
+                            } else {
+                                Swal.fire('Error', res.error, 'error');
+                            }
+                        },
+                        error: function(err) {
+                            let msg = 'Ocurrió un error en el servidor.';
+                            if(err.responseJSON && err.responseJSON.error) msg = err.responseJSON.error;
+                            Swal.fire('Error', msg, 'error');
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

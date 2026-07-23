@@ -1,0 +1,100 @@
+  <div class="modal fade" id="modalDetalle{{ trans.id_transferencia }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title fw-bold">Transferencia #{{ trans.id_transferencia }}</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded-3 border-start border-4 border-primary">
+                <p class="text-muted small mb-1 uppercase fw-bold">ORIGEN</p>
+                <h6 class="mb-0 fw-bold">{{ trans.id_almacen_origen.nombre_almacen }}</h6>
+                <small>{{ trans.id_almacen_origen.id_sucursal.nombre_sucursal }}</small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded-3 border-start border-4 border-success">
+                <p class="text-muted small mb-1 uppercase fw-bold">DESTINO</p>
+                <h6 class="mb-0 fw-bold">{{ trans.id_almacen_destino.nombre_almacen }}</h6>
+                <small>{{ trans.id_almacen_destino.id_sucursal.nombre_sucursal }}</small>
+                {% if trans.lugar_destino %}
+                <div class="mt-2 pt-2 border-top border-secondary-light">
+                  <p class="mb-0 text-dark small"><strong>Lugar:</strong> {{ trans.lugar_destino }}</p>
+                  <p class="mb-0 text-dark small"><strong>Dirección:</strong> {{ trans.direccion_destino }}</p>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- LOGÍSTICA SI EXISTE -->
+          {% with logistica=trans.logisticas.first %}
+          {% if logistica %}
+          <div class="card mb-4 border-info shadow-none bg-info-light">
+            <div class="card-body p-3">
+              <h6 class="fw-bold text-info"><i class="bi bi-info-circle me-2"></i>Información Logística</h6>
+              <div class="row small">
+                <div class="col-md-6">
+                  <p class="mb-1"><strong>Vehículo:</strong> {{ logistica.id_transporte_vehiculo.placa }} ({{ logistica.id_transporte_vehiculo.marca }})</p>
+                  <p class="mb-0"><strong>Conductor:</strong> {{ logistica.id_transporte_conductor.nombre_completo }}</p>
+                </div>
+                <div class="col-md-6">
+                  <p class="mb-1"><strong>Salida:</strong> {{ logistica.fecha_salida|date:"d/m/Y H:i" }}</p>
+                  <p class="mb-0"><strong>Estado Log.:</strong> <span class="badge bg-info">{{ logistica.get_estado_logistica_display }}</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endwith %}
+
+          <h6 class="fw-bold mb-3">Productos Transferidos</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead class="bg-light">
+                <tr>
+                  <th>Tipo</th>
+                  <th>Producto</th>
+                  <th>Detalles</th>
+                  <th class="text-center">Cant.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for detalle in trans.detalles.all %}
+                <tr>
+                  <td>
+                    {% if detalle.id_vehiculo %}
+                      <span class="badge bg-success">Vehículo</span>
+                    {% else %}
+                      <span class="badge bg-primary">Repuesto</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if detalle.id_vehiculo %}
+                      {{ detalle.id_vehiculo.idproducto.nomproducto }}
+                    {% else %}
+                      {{ detalle.id_repuesto_comprado.id_repuesto.nombre }}
+                    {% endif %}
+                  </td>
+                  <td class="small">
+                    {% if detalle.id_vehiculo %}
+                      Motor: {{ detalle.id_vehiculo.serie_motor }}<br>Chasis: {{ detalle.id_vehiculo.serie_chasis }}
+                    {% else %}
+                      Código: {{ detalle.id_repuesto_comprado.id_repuesto.codigo_barras }}
+                    {% endif %}
+                  </td>
+                  <td class="text-center fw-bold">{{ detalle.cantidad }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>

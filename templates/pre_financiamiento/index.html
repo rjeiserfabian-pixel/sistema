@@ -1,0 +1,434 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+
+<style>
+/* ─── Pre-Financiamiento: Estilos Premium ─── */
+.pf-stat-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
+}
+.pf-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.14);
+}
+.pf-stat-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+}
+.badge-pendiente  { background: #fff3cd; color: #856404; }
+.badge-aprobado   { background: #d1e7dd; color: #0f5132; }
+.badge-rechazado  { background: #f8d7da; color: #842029; }
+.estado-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.dot-pendiente  { background: #ffc107; }
+.dot-aprobado   { background: #198754; }
+.dot-rechazado  { background: #dc3545; }
+.pf-table th { font-size: 0.8rem; letter-spacing: .04em; text-transform: uppercase; color: #6c757d; }
+.pf-table td { vertical-align: middle; }
+.btn-accion { border-radius: 8px; font-size: 0.82rem; font-weight: 600; padding: 5px 12px; }
+</style>
+
+<main id="main" class="main">
+
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="fw-bold" style="color:#0d6efd;">
+        <i class="fa-solid fa-file-invoice-dollar me-2"></i>Pre-Financiamiento
+      </h1>
+      <nav aria-label="breadcrumb" class="mt-1">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+          <li class="breadcrumb-item active">Pre-Financiamiento</li>
+        </ol>
+      </nav>
+    </div>
+    <a href="{% url 'registrar_pre_financiamiento' %}" class="btn btn-primary rounded-pill shadow-sm px-4">
+      <i class="fa-solid fa-circle-plus me-2"></i>Nueva Solicitud
+    </a>
+  </div>
+
+  <section class="section dashboard mt-3">
+
+    <!-- ── Estadísticas ── -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card pf-stat-card h-100">
+          <div class="card-body d-flex align-items-center gap-3 p-4">
+            <div class="pf-stat-icon" style="background:#fff3cd;">
+              <i class="fa-solid fa-hourglass-half text-warning"></i>
+            </div>
+            <div>
+              <div class="text-muted small fw-semibold">PENDIENTES</div>
+              <div class="fs-2 fw-bold text-warning" id="stat-pendientes">{{ total_pendientes }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card pf-stat-card h-100">
+          <div class="card-body d-flex align-items-center gap-3 p-4">
+            <div class="pf-stat-icon" style="background:#d1e7dd;">
+              <i class="fa-solid fa-circle-check text-success"></i>
+            </div>
+            <div>
+              <div class="text-muted small fw-semibold">APROBADOS</div>
+              <div class="fs-2 fw-bold text-success" id="stat-aprobados">{{ total_aprobados }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card pf-stat-card h-100">
+          <div class="card-body d-flex align-items-center gap-3 p-4">
+            <div class="pf-stat-icon" style="background:#f8d7da;">
+              <i class="fa-solid fa-circle-xmark text-danger"></i>
+            </div>
+            <div>
+              <div class="text-muted small fw-semibold">RECHAZADOS</div>
+              <div class="fs-2 fw-bold text-danger" id="stat-rechazados">{{ total_rechazados }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Filtros ── -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-3">
+        <form id="formFiltrosPreFinanciamiento" class="row g-2 align-items-end" onsubmit="return false;">
+          <div class="col-md-3">
+            <label class="form-label fw-semibold small">Buscar</label>
+            <input type="text" name="busqueda" id="pf_busqueda" class="form-control form-control-sm"
+                   placeholder="Cliente, documento o vehículo...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold small">Estado</label>
+            <select name="estado" id="pf_estado" class="form-select form-select-sm">
+              <option value="todos">Todos</option>
+              <option value="pendiente">🟡 Pendiente</option>
+              <option value="aprobado">🟢 Aprobado</option>
+              <option value="rechazado">🔴 Rechazado</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-semibold small">Fecha Desde</label>
+            <input type="date" name="fecha_desde" id="pf_fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-semibold small">Fecha Hasta</label>
+            <input type="date" name="fecha_hasta" id="pf_fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
+          </div>
+          <div class="col-md-2">
+            <button type="button" id="btnLimpiarFiltros" class="btn btn-outline-secondary btn-sm w-100">
+              <i class="fa-solid fa-rotate-left me-1"></i>Limpiar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Tabla de Solicitudes ── -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 pf-table">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">#</th>
+                <th>Cliente</th>
+                <th>Vehículo</th>
+                <th class="text-end">Monto Inicial</th>
+                <th>Método(s) de Pago</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Registrado por</th>
+                <th class="text-center pe-3">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPreFinanciamiento">
+              <tr>
+                <td colspan="9" class="text-center py-5 text-muted">
+                  <div class="spinner-border text-primary mb-2" role="status"></div>
+                  <div class="small fw-semibold">Cargando solicitudes...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación JS -->
+        <div id="paginacionPreFinanciamiento" class="d-flex justify-content-end align-items-center mt-3 p-3">
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+</main>{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+let currentPage = 1;
+let searchTimeout = null;
+
+// ── OBTENER DATOS (AJAX) ─────────────────────────────────────────────────────
+function cargarPreFinanciamientos(page=1) {
+    currentPage = page;
+    const busqueda = document.getElementById('pf_busqueda').value;
+    const estado = document.getElementById('pf_estado').value;
+    const fecha_desde = document.getElementById('pf_fecha_desde').value;
+    const fecha_hasta = document.getElementById('pf_fecha_hasta').value;
+
+    const tbody = document.getElementById('tbodyPreFinanciamiento');
+    const pagination = document.getElementById('paginacionPreFinanciamiento');
+
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted"><div class="spinner-border text-primary mb-2"></div><div>Cargando...</div></td></tr>`;
+    
+    fetch(`/pre-financiamiento/api/listar/?page=${page}&busqueda=${encodeURIComponent(busqueda)}&estado=${estado}&fecha_desde=${fecha_desde}&fecha_hasta=${fecha_hasta}`)
+    .then(response => response.json())
+    .then(data => {
+        if (!data.ok) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">Error cargando datos.</td></tr>`;
+            return;
+        }
+
+        // Actualizar estadísticas
+        document.getElementById('stat-pendientes').textContent = data.stats.pendientes;
+        document.getElementById('stat-aprobados').textContent = data.stats.aprobados;
+        document.getElementById('stat-rechazados').textContent = data.stats.rechazados;
+
+        // Renderizar Filas
+        if (data.solicitudes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fa-solid fa-inbox fa-2x mb-2 d-block opacity-30"></i>No se encontraron solicitudes.</td></tr>`;
+            pagination.innerHTML = '';
+            return;
+        }
+
+        tbody.innerHTML = data.solicitudes.map(s => renderFilaPreFinanciamiento(s)).join('');
+
+        // Renderizar Paginación
+        renderPaginacion(data.pagination);
+    })
+    .catch(error => {
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">Error de conexión.</td></tr>`;
+    });
+}
+
+// ── RENDERIZAR FILA ──────────────────────────────────────────────────────────
+function renderFilaPreFinanciamiento(s) {
+    // Vehiculo HTML
+    let vehiculoHtml = '<span class="text-muted">—</span>';
+    if (s.vehiculo_nombre) {
+        vehiculoHtml = `
+            <div class="d-flex flex-column gap-1">
+                <span class="badge bg-light text-dark border text-start">
+                    <i class="fa-solid fa-motorcycle me-1"></i>${s.vehiculo_nombre}
+                </span>
+                <div class="d-flex flex-wrap gap-1">
+                    <small class="badge bg-white text-muted border px-2 py-1" style="font-size: 0.65rem; border-color: #e9ecef !important;">
+                        <strong class="text-primary">CH:</strong> ${s.vehiculo_chasis}
+                    </small>
+                    <small class="badge bg-white text-muted border px-2 py-1" style="font-size: 0.65rem; border-color: #e9ecef !important;">
+                        <strong class="text-primary">MOT:</strong> ${s.vehiculo_motor}
+                    </small>
+                </div>
+            </div>`;
+    }
+
+    // Pagos HTML
+    let pagosHtml = '<span class="text-muted">—</span>';
+    if (s.pagos.length > 0) {
+        pagosHtml = s.pagos.map(p => `<span class="badge bg-secondary me-1">${p.tipo}: S/${parseFloat(p.monto).toFixed(2)}</span>`).join('');
+    }
+
+    // Estado HTML
+    let estadoHtml = '';
+    if (s.estado === 'pendiente') {
+        estadoHtml = `<span class="badge badge-pendiente px-2 py-1"><span class="estado-dot dot-pendiente"></span>Pendiente</span>`;
+    } else if (s.estado === 'aprobado') {
+        estadoHtml = `<span class="badge badge-aprobado px-2 py-1"><span class="estado-dot dot-aprobado"></span>Aprobado</span>`;
+    } else if (s.estado === 'completado') {
+        estadoHtml = `<span class="badge px-2 py-1" style="background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-weight: 600; border-radius: 6px;"><i class="fa-solid fa-check-double me-1"></i>Completado</span>`;
+    } else {
+        estadoHtml = `<span class="badge badge-rechazado px-2 py-1"><span class="estado-dot dot-rechazado"></span>Rechazado</span>`;
+    }
+
+    // Acciones HTML
+    let accionesHtml = '<div class="d-flex gap-1 justify-content-center">';
+    if (s.estado === 'pendiente') {
+        accionesHtml += `
+            <button type="button" class="btn btn-success btn-accion btn-evaluar" data-id="${s.id_pre_credito}" data-accion="aprobar" title="Aprobar solicitud"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
+            <button type="button" class="btn btn-danger btn-accion btn-evaluar" data-id="${s.id_pre_credito}" data-accion="rechazar" title="Rechazar solicitud"><i class="fa-solid fa-xmark me-1"></i>Rechazar</button>
+        `;
+    } else if (s.estado === 'aprobado') {
+        accionesHtml += `<a href="/ventas/?pre_credito_id=${s.id_pre_credito}" class="btn btn-primary btn-accion" title="Procesar Venta a Crédito"><i class="fa-solid fa-cart-shopping me-1"></i>Procesar Venta</a>`;
+    } else if (s.estado === 'completado') {
+        accionesHtml += `<span class="text-muted small fw-bold" style="color: #0284c7 !important;"><i class="fa-solid fa-check-double me-1"></i>Venta Exitosa</span>`;
+    } else {
+        accionesHtml += `<span class="text-muted small">Cerrado</span>`;
+    }
+    if (s.observaciones) {
+        accionesHtml += `<button type="button" class="btn btn-light btn-accion btn-obs" data-obs="${s.observaciones}"><i class="fa-solid fa-comment-dots"></i></button>`;
+    }
+    accionesHtml += '</div>';
+
+    return `
+        <tr id="fila-${s.id_pre_credito}">
+            <td class="ps-3 fw-semibold text-muted">#${s.id_pre_credito}</td>
+            <td>
+                <div class="fw-semibold">${s.cliente_razonsocial}</div>
+                <small class="text-muted">${s.cliente_numdoc}</small>
+            </td>
+            <td>${vehiculoHtml}</td>
+            <td class="text-end fw-bold text-success">S/ ${parseFloat(s.monto_inicial).toFixed(2)}</td>
+            <td>${pagosHtml}</td>
+            <td>${estadoHtml}</td>
+            <td><small>${s.fecha_registro}</small></td>
+            <td><small class="text-muted">${s.usuario_nombre}</small></td>
+            <td class="text-center pe-3">${accionesHtml}</td>
+        </tr>
+    `;
+}
+
+// ── RENDERIZAR PAGINACION ────────────────────────────────────────────────────
+function renderPaginacion(pag) {
+    if (pag.total_pages <= 1) {
+        document.getElementById('paginacionPreFinanciamiento').innerHTML = '';
+        return;
+    }
+
+    let html = `<nav aria-label="Navegación"><ul class="pagination mb-0">`;
+    
+    // Anterior
+    if (pag.has_previous) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarPreFinanciamientos(${pag.previous_page_number}); return false;">Anterior</a></li>`;
+    } else {
+        html += `<li class="page-item disabled"><span class="page-link">Anterior</span></li>`;
+    }
+
+    // Paginas
+    pag.page_range.forEach(i => {
+        if (i === pag.current_page) {
+            html += `<li class="page-item active" aria-current="page"><span class="page-link">${i}</span></li>`;
+        } else {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarPreFinanciamientos(${i}); return false;">${i}</a></li>`;
+        }
+    });
+
+    // Siguiente
+    if (pag.has_next) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarPreFinanciamientos(${pag.next_page_number}); return false;">Siguiente</a></li>`;
+    } else {
+        html += `<li class="page-item disabled"><span class="page-link">Siguiente</span></li>`;
+    }
+
+    html += `</ul></nav>`;
+    document.getElementById('paginacionPreFinanciamiento').innerHTML = html;
+}
+
+// ── EVENTOS (Filtros y Búsqueda) ──────────────────────────────────────────────
+document.getElementById('pf_busqueda').addEventListener('keyup', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { cargarPreFinanciamientos(1); }, 500);
+});
+document.getElementById('pf_estado').addEventListener('change', () => cargarPreFinanciamientos(1));
+document.getElementById('pf_fecha_desde').addEventListener('change', () => cargarPreFinanciamientos(1));
+document.getElementById('pf_fecha_hasta').addEventListener('change', () => cargarPreFinanciamientos(1));
+document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
+    document.getElementById('pf_busqueda').value = '';
+    document.getElementById('pf_estado').value = 'todos';
+    cargarPreFinanciamientos(1);
+});
+
+// ── EVENT DELEGATION PARA BOTONES DE ACCION ──────────────────────────────────
+document.getElementById('tbodyPreFinanciamiento').addEventListener('click', function(e) {
+    const btnEvaluar = e.target.closest('.btn-evaluar');
+    if (btnEvaluar) {
+        const id     = btnEvaluar.dataset.id;
+        const accion = btnEvaluar.dataset.accion;
+        const label  = accion === 'aprobar' ? '¿Aprobar esta solicitud?' : '¿Rechazar esta solicitud?';
+        const icon   = accion === 'aprobar' ? 'success' : 'warning';
+
+        Swal.fire({
+            title: label,
+            icon: icon,
+            showCancelButton: true,
+            confirmButtonText: accion === 'aprobar' ? '✅ Sí, aprobar' : '❌ Sí, rechazar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: accion === 'aprobar' ? '#198754' : '#dc3545',
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fetch(`/pre-financiamiento/evaluar/${id}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CSRF_TOKEN,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `accion=${accion}`,
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    Swal.fire({
+                        title: '¡Listo!',
+                        text: data.message,
+                        icon: 'success',
+                        timer: 2500,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        if (accion === 'aprobar' && data.redirect_url) {
+                            Swal.fire({
+                                title: '¿Procesar venta ahora?',
+                                text: 'La solicitud fue aprobada. ¿Desea ir al módulo de ventas?',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: '🛒 Ir a ventas',
+                                cancelButtonText: 'Quedarse aquí',
+                            }).then(r2 => {
+                                if (r2.isConfirmed) {
+                                    window.location.href = data.redirect_url;
+                                } else {
+                                    cargarPreFinanciamientos(currentPage);
+                                }
+                            });
+                        } else {
+                            cargarPreFinanciamientos(currentPage);
+                        }
+                    });
+                } else {
+                    Swal.fire('Error', data.error, 'error');
+                }
+            })
+            .catch(() => Swal.fire('Error', 'Error de conexión.', 'error'));
+        });
+    }
+
+    const btnObs = e.target.closest('.btn-obs');
+    if (btnObs) {
+        Swal.fire({
+            title: 'Observaciones',
+            text: btnObs.dataset.obs,
+            icon: 'info',
+        });
+    }
+});
+
+// Cargar inicialmente al entrar a la página
+document.addEventListener('DOMContentLoaded', () => {
+    cargarPreFinanciamientos(1);
+});
+</script>
+{% endblock %}

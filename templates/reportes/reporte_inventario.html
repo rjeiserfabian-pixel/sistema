@@ -1,0 +1,209 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle">
+    <h1 class="fw-bold text-primary"><i class="fas fa-file-invoice-dollar me-2"></i>Reporte de Inventario (Valoración Económica)</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'index' %}">Inicio</a></li>
+        <li class="breadcrumb-item">Reportes</li>
+        <li class="breadcrumb-item active">Inventario Económico</li>
+      </ol>
+    </nav>
+  </div>
+
+  <section class="section">
+    <!-- Resumen Económico -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card bg-primary-light mb-0 shadow-sm border-0 border-start border-primary border-4">
+          <div class="card-body p-3 text-center">
+            <h6 class="text-muted text-uppercase small">Inversión Total (Costo)</h6>
+            <h3 class="mb-0 text-primary">S/ {{ inversion_total|floatformat:2 }}</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-success-light mb-0 shadow-sm border-0 border-start border-success border-4">
+          <div class="card-body p-3 text-center">
+            <h6 class="text-muted text-uppercase small">Ganancia Proyectada</h6>
+            <h3 class="mb-0 text-success">S/ {{ ganancia_total|floatformat:2 }}</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-info-light mb-0 shadow-sm border-0 border-start border-info border-4">
+          <div class="card-body p-3 text-center">
+            <h6 class="text-muted text-uppercase small">Unidades en Stock</h6>
+            <h3 class="mb-0 text-info">{{ total_unidades }} unids.</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body pt-3">
+        
+        <div class="d-flex justify-content-between mb-4 flex-wrap gap-2 text-end">
+          <div class="ms-auto w-100 pb-2 border-bottom">
+            <h5 class="d-inline-block text-muted m-0 me-3">Exportar Reporte:</h5>
+            <a href="?export=excel" class="btn btn-success ms-2" title="Exportar a Excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+            <a href="?export=pdf" class="btn btn-danger ms-2" title="Exportar a PDF"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+          </div>
+        </div>
+
+        <ul class="nav nav-tabs nav-tabs-bordered" id="invTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="veh-tab" data-bs-toggle="tab" data-bs-target="#veh" type="button" role="tab">Vehículos</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="rep-tab" data-bs-toggle="tab" data-bs-target="#rep" type="button" role="tab">Repuestos</button>
+          </li>
+        </ul>
+
+        <div class="tab-content pt-3" id="invTabContent">
+          <!-- VEHICULOS -->
+          <div class="tab-pane fade show active" id="veh" role="tabpanel">
+            <div class="table-responsive">
+              <table id="tablaVehiculos" class="table table-striped table-hover align-middle rounded w-100" style="width: 100%;">
+                <thead class="bg-dark text-white">
+                  <tr>
+                    <th>Producto</th>
+                    <th class="text-center">Stock</th>
+                    <th class="text-end">Costo Unit.</th>
+                    <th class="text-end">Venta Unit.</th>
+                    <th class="text-end bg-primary-light">Total Inversión</th>
+                    <th class="text-end bg-success-light">Ganancia Estimada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- REPUESTOS -->
+          <div class="tab-pane fade" id="rep" role="tabpanel">
+            <div class="table-responsive">
+              <table id="tablaRepuestos" class="table table-striped table-hover align-middle rounded w-100" style="width: 100%;">
+                <thead class="bg-dark text-white">
+                  <tr>
+                    <th>Repuesto</th>
+                    <th class="text-center">Stock</th>
+                    <th class="text-end">Costo Unit.</th>
+                    <th class="text-end">Venta Unit.</th>
+                    <th class="text-end bg-primary-light">Total Inversión</th>
+                    <th class="text-end bg-success-light">Ganancia Estimada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<style>
+.bg-primary-light { background-color: rgba(13, 110, 253, 0.05); }
+.bg-success-light { background-color: rgba(25, 135, 84, 0.05); }
+.bg-info-light { background-color: rgba(13, 202, 240, 0.05); }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    var formatCurrency = function(data) {
+        return 'S/ ' + parseFloat(data).toFixed(2);
+    };
+
+    $('#tablaVehiculos').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: "{% url 'api_listar_inventario_vehiculos' %}",
+            type: "GET",
+        },
+        columns: [
+            { 
+                data: 'producto',
+                render: function(data, type, row) {
+                    return '<div class="fw-bold">' + data + '</div><small class="text-muted">CH: ' + row.chasis + ' | MOT: ' + row.motor + '</small>';
+                }
+            },
+            { 
+                data: 'stock',
+                className: 'text-center',
+                render: function(data) {
+                    return '<span class="badge bg-secondary">' + data + '</span>';
+                }
+            },
+            { data: 'costo_unit', className: 'text-end', render: formatCurrency },
+            { data: 'venta_unit', className: 'text-end', render: formatCurrency },
+            { data: 'total_inversion', className: 'text-end fw-bold', render: formatCurrency },
+            { data: 'ganancia_est', className: 'text-end text-success fw-bold', render: formatCurrency }
+        ],
+        pagingType: 'simple_numbers',
+        language: {
+            url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+        },
+        pageLength: 10,
+        lengthChange: false,
+        ordering: false
+    });
+
+    // Initialize repuestos table but delay it until tab is shown, or initialize it normally
+    $('#tablaRepuestos').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: "{% url 'api_listar_inventario_repuestos' %}",
+            type: "GET",
+        },
+        columns: [
+            { 
+                data: 'producto',
+                render: function(data, type, row) {
+                    return '<div class="fw-bold">' + data + '</div><small class="text-muted">' + row.codigo + '</small>';
+                }
+            },
+            { 
+                data: 'stock',
+                className: 'text-center',
+                render: function(data) {
+                    return '<span class="badge bg-secondary">' + data + '</span>';
+                }
+            },
+            { data: 'costo_unit', className: 'text-end', render: formatCurrency },
+            { data: 'venta_unit', className: 'text-end', render: formatCurrency },
+            { data: 'total_inversion', className: 'text-end fw-bold', render: formatCurrency },
+            { data: 'ganancia_est', className: 'text-end text-success fw-bold', render: formatCurrency }
+        ],
+        pagingType: 'simple_numbers',
+        language: {
+            url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+        },
+        pageLength: 10,
+        lengthChange: false,
+        ordering: false
+    });
+    
+    // Adjust columns when switching tabs for DataTables in hidden tabs
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+    });
+});
+</script>
+{% endblock %}

@@ -3,7 +3,9 @@
 <main id="main" class="main">
   <!-- Encabezado -->
   <div class="pagetitle d-flex justify-content-between align-items-center">
-    <h1 class="fw-bold text-primary">Clientes</h1>
+    <h1 class="fw-bold text-primary">
+      <i class="fas fa-id-card me-2"></i>Clientes
+    </h1>
     <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#myModalAgregar">
       <i class="fa-solid fa-circle-plus me-2"></i>Agregar Cliente
     </button>
@@ -23,7 +25,7 @@
         <h5 class="card-title">Listado de clientes</h5>
         
         <div class="table-responsive">
-          <table class="table table-hover align-middle datatable" style="width: 100%;">
+          <table id="tabla-clientes" class="table table-hover align-middle" style="width: 100%;">
             <thead class="table-dark">
               <tr>
                 <th scope="col" style="width: 5%;">#</th>
@@ -38,103 +40,135 @@
               </tr>
             </thead>
             <tbody>
-              {% for cliente in clientes_registros %}
-              <tr>
-                <td class="fw-semibold text-center">{{ forloop.counter }}</td>
-                <td><span class="badge bg-info text-dark">{{ cliente.tipo_documento }}</span></td>
-                <td class="fw-bold">{{ cliente.numdoc }}</td>
-                <td>{{ cliente.razonsocial }}</td>
-                <td>{{ cliente.nombre_comercial_cliente|default:"-" }}</td>
-                <td>{{ cliente.telefono|default:"-" }}</td>
-                <td>{{ cliente.direccion|default:"-" }}</td>
-                <td><span class="badge bg-secondary">{{ cliente.id_tipo_entidad.tipo_entidad }}</span></td>
-                <td class="text-center">
-                  <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
-                    data-bs-target="#myModalEditar{{ cliente.idcliente }}" title="Editar">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </a>
 
-                  <a href="{% url 'eliminar_cliente' id=cliente.idcliente %}" class="btn btn-sm btn-outline-danger eliminar"
-                    onclick="return confirmarEliminar('{{ cliente.idcliente }}', this)" title="Eliminar">
-                    <i class="fa-solid fa-trash"></i>
-                  </a>
-                </td>
-              </tr>
-
-              <!-- Modal Editar -->
-              <div class="modal fade" id="myModalEditar{{ cliente.idcliente }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
-                  <div class="modal-content rounded-3 shadow-lg">
-                    <div class="modal-header bg-primary text-white">
-                      <h5 class="modal-title">Editar Cliente</h5>
-                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                      <form id="formEditarCliente{{ cliente.idcliente }}" action="{% url 'editar_cliente' %}" method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="idCliente" value="{{ cliente.idcliente }}">
-                        
-                        <div class="row">
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Tipo de Entidad <span class="text-danger">*</span></label>
-                            <select name="tipoEntidadCliente" class="form-select rounded-pill" required>
-                              <option value="">Seleccione...</option>
-                              {% for tipo in tipos_entidad %}
-                              <option value="{{ tipo.id_tipo_entidad }}" {% if tipo.id_tipo_entidad == cliente.id_tipo_entidad.id_tipo_entidad %}selected{% endif %}>
-                                {{ tipo.tipo_entidad }}
-                              </option>
-                              {% endfor %}
-                            </select>
-                          </div>
-
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Número de Documento <span class="text-danger">*</span></label>
-                            <input type="text" name="numdocCliente" value="{{ cliente.numdoc }}" class="form-control rounded-pill" maxlength="25" required>
-                          </div>
-                        </div>
-
-                        <div class="row">
-                          <div class="col-md-12 mb-3">
-                            <label class="form-label fw-semibold">Razón Social / Nombre Completo <span class="text-danger">*</span></label>
-                            <input type="text" name="razonsocialCliente" value="{{ cliente.razonsocial }}" class="form-control rounded-pill" maxlength="255" required>
-                          </div>
-                        </div>
-
-                        <div class="row">
-                          <div class="col-md-12 mb-3">
-                            <label class="form-label fw-semibold">Nombre Comercial</label>
-                            <input type="text" name="nombreComercialCliente" value="{{ cliente.nombre_comercial_cliente }}" class="form-control rounded-pill" maxlength="255">
-                          </div>
-                        </div>
-
-                        <div class="row">
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Teléfono</label>
-                            <input type="text" name="telefonoCliente" value="{{ cliente.telefono }}" class="form-control rounded-pill" maxlength="10">
-                          </div>
-
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Dirección</label>
-                            <input type="text" name="direccionCliente" value="{{ cliente.direccion }}" class="form-control rounded-pill" maxlength="255">
-                          </div>
-                        </div>
-
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar" data-id="{{ cliente.idcliente }}">Guardar</button>
-                          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {% endfor %}
             </tbody>
           </table>
         </div>
       </div>
     </div>
   </section>
+
+  <!-- Modal Único de Edición -->
+  <div class="modal fade" id="myModalEditar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Editar Cliente</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditarCliente" action="{% url 'editar_cliente' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="idCliente" id="editIdCliente">
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Tipo de Entidad <span class="text-danger">*</span></label>
+                <select name="tipoEntidadCliente" id="editTipoEntidadCliente" class="form-select rounded-pill" required>
+                  <option value="">Seleccione...</option>
+                  {% for tipo in tipos_entidad %}
+                  <option value="{{ tipo.id_tipo_entidad }}">{{ tipo.tipo_entidad }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Número de Documento <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="text" name="numdocCliente" id="editNumdocCliente" class="form-control rounded-start" maxlength="11" required>
+                  <button class="btn btn-primary rounded-end btn-consultar-doc-edit" type="button" title="Consultar documento">
+                    <i class="fa-solid fa-search"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label fw-semibold">Razón Social / Nombre Completo <span class="text-danger">*</span></label>
+                <input type="text" name="razonsocialCliente" id="editRazonsocialCliente" class="form-control rounded-pill" maxlength="255" required>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label fw-semibold">Nombre Comercial</label>
+                <input type="text" name="nombreComercialCliente" id="editNombreComercialCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Teléfono</label>
+                <input type="text" name="telefonoCliente" id="editTelefonoCliente" class="form-control rounded-pill" maxlength="150">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Email</label>
+                <input type="email" name="emailCliente" id="editEmailCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label fw-semibold">Dirección</label>
+                <input type="text" name="direccionCliente" id="editDireccionCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Departamento</label>
+                <select name="idRegion" id="editIdRegion" class="form-select rounded-pill select-region" data-type="edit">
+                  <option value="">Seleccione...</option>
+                  {% for region in regiones %}
+                  <option value="{{ region.id_region }}">{{ region.nombre_region }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Provincia</label>
+                <select name="idProvincia" id="editIdProvincia" class="form-select rounded-pill select-provincia" data-type="edit">
+                  <option value="">Seleccione...</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Distrito</label>
+                <select name="idDistrito" id="editIdDistrito" class="form-select rounded-pill" data-type="edit">
+                  <option value="">Seleccione...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Cónyuge Edit -->
+            <hr>
+            <h6 class="mb-3 text-muted fw-bold"><i class="bi bi-people-fill"></i> Datos del Cónyuge (Opcional)</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                  <label for="editConyugeNombre" class="form-label fw-semibold">Nombre del Cónyuge</label>
+                  <input type="text" class="form-control rounded-pill" id="editConyugeNombre" name="conyugeNombre">
+              </div>
+              <div class="col-md-6 mb-3">
+                  <label for="editConyugeDni" class="form-label fw-semibold">DNI del Cónyuge</label>
+                  <div class="input-group">
+                      <input type="text" class="form-control rounded-start" id="editConyugeDni" name="conyugeDni" maxlength="8">
+                      <button class="btn btn-primary rounded-end btn-consultar-conyuge-edit" type="button" title="Consultar DNI Cónyuge">
+                          <i class="fa-solid fa-search"></i>
+                      </button>
+                  </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary rounded-pill px-4" id="btnGuardarEdicion">Guardar</button>
+              <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Modal Agregar CON TOKENPERU -->
   <div class="modal fade" id="myModalAgregar" tabindex="-1">
@@ -230,12 +264,62 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label class="form-label fw-semibold">Teléfono</label>
-                <input type="text" name="telefonoCliente" id="telefonoCliente" class="form-control rounded-pill" maxlength="10">
+                <input type="text" name="telefonoCliente" id="telefonoCliente" class="form-control rounded-pill" maxlength="150">
               </div>
 
               <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Email</label>
+                <input type="email" name="emailCliente" id="emailCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
                 <label class="form-label fw-semibold">Dirección</label>
                 <input type="text" name="direccionCliente" id="direccionCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Departamento</label>
+                <select name="idRegion" id="idRegion" class="form-select rounded-pill select-region" data-type="add">
+                  <option value="">Seleccione...</option>
+                  {% for region in regiones %}
+                  <option value="{{ region.id_region }}">{{ region.nombre_region }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Provincia</label>
+                <select name="idProvincia" id="idProvincia" class="form-select rounded-pill select-provincia" data-type="add">
+                  <option value="">Seleccione...</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Distrito</label>
+                <select name="idDistrito" id="idDistrito" class="form-select rounded-pill" data-type="add">
+                  <option value="">Seleccione...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Cónyuge -->
+            <hr>
+            <h6 class="mb-3 text-muted fw-bold"><i class="bi bi-people-fill"></i> Datos del Cónyuge (Opcional)</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                  <label for="conyugeNombre" class="form-label fw-semibold">Nombre del Cónyuge</label>
+                  <input type="text" class="form-control rounded-pill" id="conyugeNombre" name="conyugeNombre" placeholder="Nombre Completo">
+              </div>
+              <div class="col-md-6 mb-3">
+                  <label for="conyugeDni" class="form-label fw-semibold">DNI del Cónyuge</label>
+                  <div class="input-group">
+                      <input type="text" class="form-control rounded-start" id="conyugeDni" name="conyugeDni" maxlength="8" placeholder="DNI">
+                      <button class="btn btn-primary rounded-end" type="button" id="btnConsultarConyuge" title="Consultar DNI Cónyuge">
+                          <i class="fa-solid fa-search"></i>
+                      </button>
+                  </div>
               </div>
             </div>
 
@@ -250,20 +334,13 @@
   </div>
 </main>
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<!-- DataTables + Bootstrap 5 -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
 <style>
   /* Mejoras visuales para la tabla */
-  .datatable {
+  #tabla-clientes {
     font-size: 0.9rem;
   }
   
-  .datatable thead th {
+  #tabla-clientes thead th {
     background-color: #212529 !important;
     color: white !important;
     font-weight: 600;
@@ -273,13 +350,13 @@
     padding: 12px 8px;
   }
   
-  .datatable tbody td {
+  #tabla-clientes tbody td {
     vertical-align: middle;
     padding: 10px 8px;
     font-size: 0.875rem;
   }
   
-  .datatable tbody tr:hover {
+  #tabla-clientes tbody tr:hover {
     background-color: #f8f9fa;
   }
   
@@ -324,12 +401,12 @@
   
   /* Responsive */
   @media (max-width: 768px) {
-    .datatable {
+    #tabla-clientes {
       font-size: 0.8rem;
     }
     
-    .datatable thead th,
-    .datatable tbody td {
+    #tabla-clientes thead th,
+    #tabla-clientes tbody td {
       padding: 8px 4px;
     }
   }
@@ -345,79 +422,139 @@
   }
 </style>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
 // ==================== FUNCIÓN PRINCIPAL TOKENPERU ====================
+// Se reemplaza consultarDocumentoTokenPeru por consultarDocumentoGenerico para evitar duplicidad y soportar Editar
 async function consultarDocumentoTokenPeru(numero) {
-  const alertCargando = $('#alertCargando');
-  const alertError = $('#alertError');
-  const alertExito = $('#alertExito');
+  return consultarDocumentoGenerico(numero, false);
+}
+
+// Nueva función para consultar cónyuge
+async function consultarConyugeTokenPeru(numero, isEdit = false, id = '') {
+  const modalId = isEdit ? (id ? `#myModalEditar${id}` : '#myModalEditar') : '#myModalAgregar';
+  const modal = $(modalId);
+  const inputNombre = modal.find('[name="conyugeNombre"]');
   
-  // Validar longitud
-  if (numero.length !== 8 && numero.length !== 11) {
+  if (numero.length !== 7 && numero.length !== 8) {
+    Swal.fire({ title: 'DNI inválido', text: 'El DNI debe tener 7 u 8 dígitos', icon: 'warning' });
     return;
   }
 
-  // Mostrar loading
-  alertCargando.removeClass('d-none');
-  alertError.addClass('d-none');
-  alertExito.addClass('d-none');
+  Swal.fire({
+    title: 'Consultando...',
+    text: 'Buscando datos en RENIEC',
+    allowOutsideClick: false,
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  try {
+    const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
+    const data = await response.json();
+    Swal.close();
+
+    if (data.success) {
+      inputNombre.val(data.razonsocial).addClass('campo-autocompletado');
+      
+      Swal.fire({ title: 'Éxito', text: `Cónyuge encontrado: ${data.razonsocial}`, icon: 'success', timer: 2000, showConfirmButton: false });
+      
+      setTimeout(() => { modal.find('.campo-autocompletado').removeClass('campo-autocompletado'); }, 600);
+    } else {
+      Swal.fire({ title: 'No encontrado', text: data.error || 'No se encontró el DNI', icon: 'error' });
+    }
+  } catch (error) {
+    Swal.close();
+    Swal.fire({ title: 'Error', text: 'Error de conexión', icon: 'error' });
+    console.error('Error:', error);
+  }
+}
+
+// Nueva función genérica para consultar documento de cliente (Agregar o Editar)
+async function consultarDocumentoGenerico(numero, isEdit = false, id = '') {
+  const modalId = isEdit ? (id ? `#myModalEditar${id}` : '#myModalEditar') : '#myModalAgregar';
+  const modal = $(modalId);
+  const inputRazon = modal.find('[name="razonsocialCliente"]');
+  const inputNombreComercial = modal.find('[name="nombreComercialCliente"]');
+  const inputDireccion = modal.find('[name="direccionCliente"]');
+  const inputTipoEntidad = modal.find('[name="tipoEntidadCliente"]');
   
+  const alertCargando = isEdit ? null : $('#alertCargando');
+  const alertError = isEdit ? null : $('#alertError');
+  const alertExito = isEdit ? null : $('#alertExito');
+
+  if (numero.length !== 7 && numero.length !== 8 && numero.length !== 11) {
+    if (isEdit) Swal.fire({ title: 'Documento inválido', text: 'Ingrese DNI (7-8 dígitos) o RUC (11 dígitos)', icon: 'warning' });
+    return;
+  }
+
+  if (isEdit) {
+    Swal.fire({ title: 'Consultando...', text: 'Buscando datos en RENIEC/SUNAT', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+  } else {
+    alertCargando.removeClass('d-none');
+    alertError.addClass('d-none');
+    alertExito.addClass('d-none');
+  }
+
   try {
     const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
     const data = await response.json();
     
-    alertCargando.addClass('d-none');
-    
+    if (isEdit) Swal.close();
+    else if (alertCargando) alertCargando.addClass('d-none');
+
     if (data.success) {
-      // Autocompletar campos - SIEMPRE autocompletar nombre comercial
-      $('#razonsocialCliente').val(data.razonsocial).addClass('campo-autocompletado');
-      $('#direccionCliente').val(data.direccion || '').addClass('campo-autocompletado');
-      $('#nombreComercialCliente').val(data.nombre_comercial || '').addClass('campo-autocompletado');
-      $('#tipoEntidadCliente').val(data.id_tipo_entidad);
-      
-      if (data.tipo === 'RUC') {
-        // Mostrar info SUNAT
-        $('#infoRuc').removeClass('d-none');
-        $('#estadoSunat').text(data.estado || 'N/A')
-          .removeClass('bg-success bg-danger')
-          .addClass(data.estado === 'ACTIVO' ? 'bg-success' : 'bg-danger');
-        $('#condicionSunat').text(data.condicion || 'N/A');
-        
-        // Badge RUC
-        $('#badgeTipoDoc').text('RUC').removeClass('bg-secondary bg-info').addClass('bg-info').show();
-        
-        // Validar estado
-        if (data.estado !== 'ACTIVO') {
-          alertExito.removeClass('d-none');
-          $('#mensajeExito').html(`<strong>RUC encontrado:</strong> ${data.razonsocial}<br><small class="text-warning">⚠️ Advertencia: El RUC no está ACTIVO en SUNAT</small>`);
-        } else {
-          alertExito.removeClass('d-none');
-          $('#mensajeExito').html(`<strong>RUC encontrado:</strong> ${data.razonsocial}`);
+      inputRazon.val(data.razonsocial).addClass('campo-autocompletado');
+      inputNombreComercial.val(data.nombre_comercial || '').addClass('campo-autocompletado');
+      inputDireccion.val(data.direccion || '').addClass('campo-autocompletado');
+      inputTipoEntidad.val(data.id_tipo_entidad);
+
+      // Autocompletar ubicación si viene en la respuesta
+      if (data.departamento) {
+        const regionSelect = modal.find('[name="idRegion"]');
+        const regionOption = regionSelect.find(`option:contains("${data.departamento.toUpperCase()}")`);
+        if (regionOption.length > 0) {
+          regionSelect.val(regionOption.val()).trigger('change', [data.provincia, data.distrito]);
         }
+      }
+
+      if (isEdit) {
+        Swal.fire({ title: 'Éxito', text: `Documento encontrado: ${data.razonsocial}`, icon: 'success', timer: 2000, showConfirmButton: false });
       } else {
-        // DNI
-        $('#infoRuc').addClass('d-none');
-        $('#badgeTipoDoc').text('DNI').removeClass('bg-secondary bg-info').addClass('bg-secondary').show();
-        
+        $('#badgeTipoDoc').text(data.tipo).removeClass('bg-secondary bg-info').addClass(data.tipo === 'RUC' ? 'bg-info' : 'bg-secondary').show();
+        if (data.tipo === 'RUC') {
+          $('#infoRuc').removeClass('d-none');
+          $('#estadoSunat').text(data.estado || 'N/A').removeClass('bg-success bg-danger').addClass(data.estado === 'ACTIVO' ? 'bg-success' : 'bg-danger');
+          $('#condicionSunat').text(data.condicion || 'N/A');
+        } else {
+          $('#infoRuc').addClass('d-none');
+        }
         alertExito.removeClass('d-none');
-        $('#mensajeExito').html(`<strong>DNI encontrado:</strong> ${data.razonsocial}`);
+        $('#mensajeExito').html(`<strong>${data.tipo} encontrado:</strong> ${data.razonsocial}`);
       }
       
-      // Remover animación después de 600ms
-      setTimeout(() => {
-        $('.campo-autocompletado').removeClass('campo-autocompletado');
-      }, 600);
-      
+      setTimeout(() => { modal.find('.campo-autocompletado').removeClass('campo-autocompletado'); }, 600);
     } else {
-      // Error de API
-      alertError.removeClass('d-none');
-      $('#mensajeError').text(data.error || 'No se encontró el documento');
-      limpiarCampos();
+      if (isEdit) Swal.fire({ title: 'No encontrado', text: data.error || 'No se encontró el documento', icon: 'error' });
+      else {
+        alertError.removeClass('d-none');
+        $('#mensajeError').text(data.error || 'No se encontró el documento');
+      }
     }
   } catch (error) {
-    alertCargando.addClass('d-none');
-    alertError.removeClass('d-none');
-    $('#mensajeError').text('Error de conexión. Intente nuevamente.');
+    if (isEdit) {
+      Swal.close();
+      Swal.fire({ title: 'Error', text: 'Error de conexión', icon: 'error' });
+    } else {
+      if (alertCargando) alertCargando.addClass('d-none');
+      alertError.removeClass('d-none');
+      $('#mensajeError').text('Error de conexión. Intente nuevamente.');
+    }
     console.error('Error:', error);
   }
 }
@@ -431,6 +568,11 @@ function limpiarCampos() {
   $('#badgeTipoDoc').hide();
 }
 
+function updateTableRow(data, isNew) {
+  $('#tabla-clientes').DataTable().ajax.reload(null, false);
+}
+
+
 $(function(){
   // ==================== EVENTOS TOKENPERU ====================
   
@@ -440,7 +582,7 @@ $(function(){
     this.value = valor; // Solo números
     
     const badge = $('#badgeTipoDoc');
-    if (valor.length === 8) {
+    if (valor.length === 7 || valor.length === 8) {
       badge.text('DNI').removeClass('bg-info').addClass('bg-secondary').show();
       $('#tipoEntidadCliente').val(1);
     } else if (valor.length === 11) {
@@ -456,7 +598,7 @@ $(function(){
     if (e.which === 13) { // Enter
       e.preventDefault();
       const numero = $(this).val().trim();
-      if (numero.length === 8 || numero.length === 11) {
+      if (numero.length === 7 || numero.length === 8 || numero.length === 11) {
         consultarDocumentoTokenPeru(numero);
       }
     }
@@ -465,16 +607,158 @@ $(function(){
   // Consultar al hacer clic en el botón
   $('#btnConsultarDoc').on('click', function() {
     const numero = $('#numdocCliente').val().trim();
-    if (numero.length === 8 || numero.length === 11) {
+    if (numero.length === 7 || numero.length === 8 || numero.length === 11) {
       consultarDocumentoTokenPeru(numero);
     } else {
       Swal.fire({
         title: 'Documento inválido',
-        text: 'Ingrese un DNI (8 dígitos) o RUC (11 dígitos)',
+        text: 'Ingrese un DNI (7 u 8 dígitos) o RUC (11 dígitos)',
         icon: 'warning',
         confirmButtonText: 'OK'
       });
     }
+  });
+
+  // Eventos para consulta de cónyuge (Agregar)
+  $('#btnConsultarConyuge').on('click', function() {
+    const numero = $('#conyugeDni').val().trim();
+    consultarConyugeTokenPeru(numero, false);
+  });
+
+  $('#conyugeDni').on('keypress', function(e) {
+    if (e.which === 13) {
+      e.preventDefault();
+      consultarConyugeTokenPeru($(this).val().trim(), false);
+    }
+  });
+
+  // Eventos para consulta de cónyuge (Editar)
+  $(document).on('click', '.btn-consultar-conyuge-edit', function() {
+    const id = $(this).data('id') || '';
+    const inputSelector = id ? `#editConyugeDni${id}` : '#editConyugeDni';
+    const numero = $(inputSelector).val().trim();
+    consultarConyugeTokenPeru(numero, true, id);
+  });
+
+  $(document).on('keypress', '[id^="editConyugeDni"]', function(e) {
+    if (e.which === 13) {
+      e.preventDefault();
+      const id = $(this).attr('id').replace('editConyugeDni', '');
+      consultarConyugeTokenPeru($(this).val().trim(), true, id);
+    }
+  });
+
+  $(document).on('click', '.btn-consultar-doc-edit', function() {
+    const numero = $('#editNumdocCliente').val().trim();
+    consultarDocumentoGenerico(numero, true);
+  });
+
+  $('#editNumdocCliente').on('keypress', function(e) {
+    if (e.which === 13) {
+      e.preventDefault();
+      consultarDocumentoGenerico($(this).val().trim(), true);
+    }
+  });
+
+  // Evento para abrir el modal de edición y poblar datos
+  $(document).on('click', '.btn-abrir-editar', function() {
+    var btn = $(this);
+    var modal = $('#myModalEditar');
+    
+    modal.find('#editIdCliente').val(btn.data('id'));
+    modal.find('#editTipoEntidadCliente').val(btn.data('tipo-entidad'));
+    modal.find('#editNumdocCliente').val(btn.data('numdoc'));
+    modal.find('#editRazonsocialCliente').val(btn.data('razonsocial'));
+    modal.find('#editNombreComercialCliente').val(btn.data('nombre-comercial') === '-' ? '' : btn.data('nombre-comercial'));
+    modal.find('#editTelefonoCliente').val(btn.data('telefono') === '-' ? '' : btn.data('telefono'));
+    modal.find('#editEmailCliente').val(btn.data('email') === '-' ? '' : btn.data('email'));
+    modal.find('#editDireccionCliente').val(btn.data('direccion') === '-' ? '' : btn.data('direccion'));
+    modal.find('#editConyugeNombre').val(btn.data('conyuge-nombre'));
+    modal.find('#editConyugeDni').val(btn.data('conyuge-dni'));
+    
+    var region = btn.data('region');
+    var provincia = btn.data('provincia');
+    var distrito = btn.data('distrito');
+    
+    modal.find('#editIdRegion').val(region);
+    modal.find('#editIdProvincia').html('<option value="">Seleccione...</option>');
+    modal.find('#editIdDistrito').html('<option value="">Seleccione...</option>');
+    
+    if (region) {
+      modal.find('#editIdRegion').trigger('change', [provincia, distrito]);
+    }
+  });
+
+  // ==================== LÓGICA DE UBICACIÓN (DEPARTAMENTO, PROVINCIA, DISTRITO) ====================
+  
+  // Evento cuando cambia el Departamento
+  $(document).on('change', '.select-region', function(e, autoProvincia, autoDistrito) {
+    const idRegion = $(this).val();
+    const type = $(this).data('type');
+    const targetProvinciaSelect = type === 'edit' ? $('#editIdProvincia') : $('#idProvincia');
+    const targetDistritoSelect = type === 'edit' ? $('#editIdDistrito') : $('#idDistrito');
+    
+    targetProvinciaSelect.html('<option value="">Cargando...</option>');
+    targetDistritoSelect.html('<option value="">Seleccione...</option>');
+    
+    if (!idRegion) {
+      targetProvinciaSelect.html('<option value="">Seleccione...</option>');
+      return;
+    }
+    
+    $.get('/sucursales/obtener-provincias/', { id_region: idRegion }, function(data) {
+      let options = '<option value="">Seleccione...</option>';
+      data.forEach(function(item) {
+        options += `<option value="${item.id_provincia}">${item.nombre_provincia}</option>`;
+      });
+      targetProvinciaSelect.html(options);
+      
+      // Si viene de autocompletado (nombre) o edición (id)
+      if (autoProvincia) {
+        if (targetProvinciaSelect.find(`option[value="${autoProvincia}"]`).length > 0) {
+          targetProvinciaSelect.val(autoProvincia).trigger('change', [autoDistrito]);
+        } else {
+          const provOption = targetProvinciaSelect.find(`option:contains("${String(autoProvincia).toUpperCase()}")`);
+          if (provOption.length > 0) {
+            targetProvinciaSelect.val(provOption.val()).trigger('change', [autoDistrito]);
+          }
+        }
+      }
+    });
+  });
+  
+  // Evento cuando cambia la Provincia
+  $(document).on('change', '.select-provincia', function(e, autoDistrito) {
+    const idProvincia = $(this).val();
+    const type = $(this).data('type');
+    const targetDistritoSelect = type === 'edit' ? $('#editIdDistrito') : $('#idDistrito');
+    
+    targetDistritoSelect.html('<option value="">Cargando...</option>');
+    
+    if (!idProvincia) {
+      targetDistritoSelect.html('<option value="">Seleccione...</option>');
+      return;
+    }
+    
+    $.get('/sucursales/obtener-distritos/', { id_provincia: idProvincia }, function(data) {
+      let options = '<option value="">Seleccione...</option>';
+      data.forEach(function(item) {
+        options += `<option value="${item.id_distrito}">${item.nombre_distrito}</option>`;
+      });
+      targetDistritoSelect.html(options);
+      
+      // Si viene de autocompletado (nombre) o edición (id)
+      if (autoDistrito) {
+        if (targetDistritoSelect.find(`option[value="${autoDistrito}"]`).length > 0) {
+          targetDistritoSelect.val(autoDistrito);
+        } else {
+          const distOption = targetDistritoSelect.find(`option:contains("${String(autoDistrito).toUpperCase()}")`);
+          if (distOption.length > 0) {
+            targetDistritoSelect.val(distOption.val());
+          }
+        }
+      }
+    });
   });
   
   // Limpiar al cerrar el modal
@@ -484,8 +768,73 @@ $(function(){
     $('.alert').addClass('d-none');
   });
 
-  // ==================== AJAX AGREGAR CLIENTE ====================
-  $("#agregar").click(function(){
+  // ==================== AJAX AGREGAR CLIENTE (con validaciones) ====================
+  $("#agregar").click(function(e){
+    e.preventDefault();
+
+    var $form = $('#formAgregarCliente');
+    var tipoEntidad = $form.find('select[name="tipoEntidadCliente"]').val();
+    var numdoc = ($form.find('input[name="numdocCliente"]').val() || '').trim();
+    var razonsocial = ($form.find('input[name="razonsocialCliente"]').val() || '').trim();
+    var telefono = ($form.find('input[name="telefonoCliente"]').val() || '').trim();
+    var direccion = ($form.find('input[name="direccionCliente"]').val() || '').trim();
+    var nombreComercial = ($form.find('input[name="nombreComercialCliente"]').val() || '').trim();
+
+    if (!tipoEntidad) {
+      Swal.fire({ title: 'Campo requerido', text: 'Debe seleccionar un tipo de entidad', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (!numdoc) {
+      Swal.fire({ title: 'Campo requerido', text: 'El número de documento es obligatorio', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (!/^[0-9]+$/.test(numdoc)) {
+      Swal.fire({ title: 'Documento inválido', text: 'El número de documento debe contener solo números', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (String(tipoEntidad) === '1' && (numdoc.length < 7 || numdoc.length > 8)) {
+      Swal.fire({ title: 'Documento inválido', text: 'Para DNI el número debe tener 7 u 8 dígitos', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (String(tipoEntidad) === '6' && numdoc.length !== 11) {
+      Swal.fire({ title: 'Documento inválido', text: 'Para RUC el número debe tener exactamente 11 dígitos', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (String(tipoEntidad) !== '1' && String(tipoEntidad) !== '6' && (numdoc.length < 7 || numdoc.length > 11)) {
+      Swal.fire({ title: 'Documento inválido', text: 'El número de documento debe tener entre 7 y 11 dígitos', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (!razonsocial) {
+      Swal.fire({ title: 'Campo requerido', text: 'La razón social / nombre completo es obligatorio', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (razonsocial.length < 3) {
+      Swal.fire({ title: 'Dato inválido', text: 'La razón social debe tener al menos 3 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (razonsocial.length > 255) {
+      Swal.fire({ title: 'Dato inválido', text: 'La razón social no puede exceder 255 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (nombreComercial && nombreComercial.length > 255) {
+      Swal.fire({ title: 'Dato inválido', text: 'El nombre comercial no puede exceder 255 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (direccion && direccion.length > 255) {
+      Swal.fire({ title: 'Dato inválido', text: 'La dirección no puede exceder 255 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (telefono) {
+      if (!/^[0-9\s\/\-]+$/.test(telefono)) {
+        Swal.fire({ title: 'Teléfono inválido', text: 'El teléfono solo puede contener números, espacios, guiones (-) y barras (/)', icon: 'warning', confirmButtonText: 'OK' });
+        return false;
+      }
+      if (telefono.length > 150) {
+        Swal.fire({ title: 'Teléfono inválido', text: 'El teléfono no puede exceder los 150 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+        return false;
+      }
+    }
+
     var formData = new FormData($('#formAgregarCliente')[0]);
     $.ajax({
       type: "POST",
@@ -494,21 +843,27 @@ $(function(){
       processData: false,
       contentType: false,
       success: function (response) {
+        $('#myModalAgregar').modal('hide');
         Swal.fire({
           title: 'Cliente guardado exitosamente',
           icon: 'success',
           confirmButtonColor: '#3085d6',
           confirmButtonText: '¡Ok!',
         }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "{% url 'clientes' %}";
-          }
+          updateTableRow(response, true);
         });
       },
-      error: function(response) {
+      error: function(xhr) {
+        var errorMessage = 'Ocurrió un error desconocido';
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data.error) errorMessage = data.error;
+        } catch (e) {
+          errorMessage = xhr.responseText || errorMessage;
+        }
         Swal.fire({
           title: 'Error al guardar el cliente',
-          text: response.responseText,
+          text: errorMessage,
           icon: 'error',
           confirmButtonText: 'OK'
         });
@@ -517,10 +872,79 @@ $(function(){
     return false;
   });
 
-  // ==================== AJAX EDITAR CLIENTE ====================
-  $(".btn-editar").click(function(){
-    var id = $(this).data('id');
-    var form = $('#formEditarCliente' + id);
+  // ==================== AJAX EDITAR CLIENTE (con validaciones) ====================
+  $("#btnGuardarEdicion").click(function(e){
+    e.preventDefault();
+
+    var modal = $('#myModalEditar');
+    if (modal.length === 0) {
+      Swal.fire({ title: 'Error', text: 'No se pudo encontrar el modal', icon: 'error', confirmButtonText: 'OK' });
+      return false;
+    }
+
+    var tipoEntidad = modal.find('select[name="tipoEntidadCliente"]').val();
+    var numdoc = (modal.find('input[name="numdocCliente"]').val() || '').trim();
+    var razonsocial = (modal.find('input[name="razonsocialCliente"]').val() || '').trim();
+    var telefono = (modal.find('input[name="telefonoCliente"]').val() || '').trim();
+    var direccion = (modal.find('input[name="direccionCliente"]').val() || '').trim();
+    var nombreComercial = (modal.find('input[name="nombreComercialCliente"]').val() || '').trim();
+
+    if (!tipoEntidad) {
+      Swal.fire({ title: 'Campo requerido', text: 'Debe seleccionar un tipo de entidad', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (!numdoc) {
+      Swal.fire({ title: 'Campo requerido', text: 'El número de documento es obligatorio', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (!/^[0-9]+$/.test(numdoc)) {
+      Swal.fire({ title: 'Documento inválido', text: 'El número de documento debe contener solo números', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (String(tipoEntidad) === '1' && (numdoc.length < 7 || numdoc.length > 8)) {
+      Swal.fire({ title: 'Documento inválido', text: 'Para DNI el número debe tener 7 u 8 dígitos', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (String(tipoEntidad) === '6' && numdoc.length !== 11) {
+      Swal.fire({ title: 'Documento inválido', text: 'Para RUC el número debe tener exactamente 11 dígitos', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (String(tipoEntidad) !== '1' && String(tipoEntidad) !== '6' && (numdoc.length < 7 || numdoc.length > 11)) {
+      Swal.fire({ title: 'Documento inválido', text: 'El número de documento debe tener entre 7 y 11 dígitos', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (!razonsocial) {
+      Swal.fire({ title: 'Campo requerido', text: 'La razón social / nombre completo es obligatorio', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (razonsocial.length < 3) {
+      Swal.fire({ title: 'Dato inválido', text: 'La razón social debe tener al menos 3 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (razonsocial.length > 255) {
+      Swal.fire({ title: 'Dato inválido', text: 'La razón social no puede exceder 255 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (nombreComercial && nombreComercial.length > 255) {
+      Swal.fire({ title: 'Dato inválido', text: 'El nombre comercial no puede exceder 255 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (direccion && direccion.length > 255) {
+      Swal.fire({ title: 'Dato inválido', text: 'La dirección no puede exceder 255 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+      return false;
+    }
+    if (telefono) {
+      if (!/^[0-9\s\/\-]+$/.test(telefono)) {
+        Swal.fire({ title: 'Teléfono inválido', text: 'El teléfono solo puede contener números, espacios, guiones (-) y barras (/)', icon: 'warning', confirmButtonText: 'OK' });
+        return false;
+      }
+      if (telefono.length > 150) {
+        Swal.fire({ title: 'Teléfono inválido', text: 'El teléfono no puede exceder los 150 caracteres', icon: 'warning', confirmButtonText: 'OK' });
+        return false;
+      }
+    }
+
+    var form = modal.find('form');
     var formData = new FormData(form[0]);
     $.ajax({
       type: "POST",
@@ -529,21 +953,27 @@ $(function(){
       processData: false,
       contentType: false,
       success: function (response) {
+        modal.modal('hide');
         Swal.fire({
           title: 'Cliente editado exitosamente',
           icon: 'success',
           confirmButtonColor: '#3085d6',
           confirmButtonText: '¡Ok!',
         }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "{% url 'clientes' %}";
-          }
+          updateTableRow(response, false);
         });
       },
-      error: function(response) {
+      error: function(xhr) {
+        var errorMessage = 'Ocurrió un error desconocido';
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data.error) errorMessage = data.error;
+        } catch (e) {
+          errorMessage = xhr.responseText || errorMessage;
+        }
         Swal.fire({
           title: 'Error al guardar el cliente',
-          text: response.responseText,
+          text: errorMessage,
           icon: 'error',
           confirmButtonText: 'OK'
         });
@@ -553,7 +983,28 @@ $(function(){
   });
 
   // ==================== DATATABLE ====================
-  $('.datatable').DataTable({
+  $('#tabla-clientes').DataTable({
+    processing: true,
+    serverSide: true,
+    ajax: {
+      url: "{% url 'api_listar_clientes' %}",
+      type: 'GET',
+      error: function(xhr, error, thrown) {
+        console.error('DataTables AJAX Error:', xhr.status, xhr.responseText, error, thrown);
+        alert('Error al cargar clientes: ' + xhr.status + ' ' + (xhr.responseText || thrown));
+      }
+    },
+    columns: [
+      { data: 'index', className: 'fw-semibold text-center index-col' },
+      { data: 'tipo_doc', className: 'tipo-doc-col text-center' },
+      { data: 'numdoc', className: 'fw-bold numdoc-col' },
+      { data: 'razonsocial', className: 'razonsocial-col' },
+      { data: 'nombrecomercial', className: 'nombrecomercial-col' },
+      { data: 'telefono', className: 'telefono-col' },
+      { data: 'direccion', className: 'direccion-col' },
+      { data: 'tipoentidad', className: 'tipoentidad-col text-center' },
+      { data: 'acciones', className: 'text-center' }
+    ],
     language: {
       "processing": "Procesando...",
       "lengthMenu": "Mostrar _MENU_ registros",
@@ -578,7 +1029,7 @@ $(function(){
     pageLength: 10,
     lengthMenu: [5, 10, 25, 50, 100],
     responsive: true,
-    order: [[2, 'asc']],
+    order: [[0, 'desc']],
     columnDefs: [
       { 
         targets: [8],
@@ -622,3 +1073,4 @@ function confirmarEliminar(id, enlace) {
 }
 </script>
 {% endblock %}
+

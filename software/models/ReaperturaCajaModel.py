@@ -15,12 +15,14 @@ class ReaperturaCaja(models.Model):
         Usuario, 
         on_delete=models.CASCADE,
         db_column='usuario_solicitante',
-        related_name='reaperturas_solicitadas'
+        related_name='reaperturas_solicitadas',
+        null=True, 
+        blank=True
     )
-    motivo = models.TextField()
+    motivo = models.TextField(null=True, blank=True)
     fecha_reapertura = models.DateTimeField(auto_now_add=True)
     fecha_cierre_reapertura = models.DateTimeField(null=True, blank=True)
-    codigo_2fa_enviado = models.CharField(max_length=6)
+    codigo_2fa_enviado = models.CharField(max_length=6, null=True, blank=True)
     estado = models.CharField(
         max_length=20,
         default='reabierta',

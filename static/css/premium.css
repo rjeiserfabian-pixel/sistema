@@ -1,0 +1,1631 @@
+/* ==========================================================================
+   SISTEMA COMERCIAL - TEMA DUAL: OSCURO / CLARO
+   Funciona con data-theme="dark" | data-theme="light" en <html>
+   Por defecto activo: dark
+   ========================================================================== */
+
+/* ===========================================================
+   VARIABLES POR TEMA
+   =========================================================== */
+:root,
+[data-theme="dark"] {
+  --bg-deep: #080d16;
+  --bg-surface: rgba(13, 20, 35, 0.80);
+  --bg-header: rgba(11, 17, 30, 0.90);
+  --bg-sidebar: #0b111e;
+  --bg-table-odd: rgba(255, 255, 255, 0.03);
+  --bg-table-even: rgba(255, 255, 255, 0.015);
+  --bg-table-head: rgba(11, 17, 30, 0.95);
+  --bg-input: rgba(0, 0, 0, 0.30);
+  --bg-modal: rgba(15, 23, 42, 0.97);
+  --bg-hover-row: rgba(0, 191, 165, 0.08);
+
+  --border-glass: rgba(255, 255, 255, 0.07);
+  --border-focus: rgba(0, 191, 165, 0.50);
+
+  --accent: #00bfa5;
+  --accent-light: #00e5ff;
+  --accent-glow: rgba(0, 191, 165, 0.25);
+
+  --text-base: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-head-col: #ffffff;
+  --text-label: #00bfa5;
+
+  --grid-lines: rgba(255, 255, 255, 0.005);
+}
+
+[data-theme="light"] {
+  --bg-deep: #f0f4f8;
+  --bg-surface: rgba(255, 255, 255, 0.92);
+  --bg-header: rgba(255, 255, 255, 0.95);
+  --bg-sidebar: #1a2942;
+  --bg-table-odd: rgba(0, 0, 0, 0.02);
+  --bg-table-even: rgba(0, 0, 0, 0.005);
+  --bg-table-head: rgba(240, 244, 248, 0.98);
+  --bg-input: rgba(255, 255, 255, 0.95);
+  --bg-modal: rgba(255, 255, 255, 0.98);
+  --bg-hover-row: rgba(0, 191, 165, 0.06);
+
+  --border-glass: rgba(0, 0, 0, 0.09);
+  --border-focus: rgba(0, 150, 130, 0.50);
+
+  --accent: #00897b;
+  --accent-light: #0097a7;
+  --accent-glow: rgba(0, 137, 123, 0.15);
+
+  --text-base: #1f2937;
+  --text-muted: #6b7280;
+  --text-head-col: #111827;
+  --text-label: #00897b;
+
+  --grid-lines: rgba(0, 0, 0, 0.04);
+}
+
+/* ===========================================================
+   1. FONDO GLOBAL
+   =========================================================== */
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--bg-deep) !important;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(0, 191, 165, 0.10) 0px, transparent 40%),
+    radial-gradient(at 100% 100%, rgba(0, 229, 255, 0.07) 0px, transparent 40%),
+    linear-gradient(var(--grid-lines) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-lines) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 35px 35px, 35px 35px !important;
+  background-attachment: fixed !important;
+  color: var(--text-base) !important;
+  font-family: "Outfit", "Poppins", "Nunito", sans-serif !important;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Modo claro: quitar el gradiente radial fuerte */
+[data-theme="light"] body {
+  background-image:
+    linear-gradient(var(--grid-lines) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-lines) 1px, transparent 1px) !important;
+}
+
+/* ===========================================================
+   2. HEADER
+   =========================================================== */
+.header {
+  background: var(--bg-header) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  border-bottom: 1px solid var(--border-glass) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  transition: background 0.35s ease !important;
+}
+
+.header .logo span,
+.header .logo a span {
+  color: var(--text-base) !important;
+  font-weight: 700 !important;
+  -webkit-text-fill-color: var(--text-base) !important;
+  background: none !important;
+}
+
+.header .toggle-sidebar-btn {
+  color: var(--text-base) !important;
+  transition: color 0.3s ease !important;
+}
+
+.header .toggle-sidebar-btn:hover {
+  color: var(--accent) !important;
+}
+
+.company-name {
+  color: var(--text-base) !important;
+  font-weight: 600 !important;
+}
+
+.company-details {
+  color: var(--text-muted) !important;
+  font-size: 0.75rem !important;
+}
+
+.branch-info {
+  background: rgba(0, 191, 165, 0.06) !important;
+  border: 1px solid rgba(0, 191, 165, 0.18) !important;
+  border-radius: 30px !important;
+  padding: 0.3rem 0.9rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: var(--accent) !important;
+}
+
+.header-nav .nav-icon {
+  color: var(--text-base) !important;
+  transition: color 0.3s !important;
+}
+
+.header-nav .nav-icon:hover {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .header-nav .nav-profile span,
+[data-theme="light"] .nav-profile .d-none {
+  color: #1f2937 !important;
+}
+
+/* Modo claro: chevron del perfil (cabecera blanca) más visible que gris tenue */
+[data-theme="light"] .header .nav-profile i.bi-chevron-down,
+[data-theme="light"] .header .nav-profile .dropdown-toggle.bi-chevron-down {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  opacity: 1 !important;
+}
+
+/* ===========================================================
+   3. SIDEBAR
+   =========================================================== */
+.sidebar {
+  background: var(--bg-sidebar) !important;
+  border-right: 1px solid var(--border-glass) !important;
+  box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2) !important;
+  transition: background 0.35s ease !important;
+}
+
+.sidebar-nav .nav-link {
+  color: #c8cfe0 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 12px !important;
+  padding: 0.72rem 1rem !important;
+  margin: 0.2rem 0.7rem !important;
+  border: 1px solid transparent !important;
+  transition: all 0.3s ease !important;
+  font-weight: 500 !important;
+}
+
+.sidebar-nav .nav-link i {
+  color: #8fa3c0 !important;
+  transition: color 0.3s !important;
+}
+
+.sidebar-nav .nav-link.collapsed {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #c8cfe0 !important;
+}
+
+.sidebar-nav .nav-link.collapsed i {
+  color: #8fa3c0 !important;
+}
+
+.sidebar-nav .nav-link.active,
+.sidebar-nav .nav-link:not(.collapsed)[data-bs-toggle="collapse"] {
+  background: rgba(0, 191, 165, 0.12) !important;
+  color: #ffffff !important;
+  border-color: rgba(0, 191, 165, 0.2) !important;
+}
+
+.sidebar-nav .nav-link.active i,
+.sidebar-nav .nav-link:not(.collapsed)[data-bs-toggle="collapse"] i {
+  color: var(--accent) !important;
+}
+
+.sidebar-nav .nav-link:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+}
+
+.sidebar-nav .nav-link:hover i {
+  color: #ffffff !important;
+}
+
+.sidebar-nav .nav-content a {
+  color: #8fa3c0 !important;
+  transition: color 0.3s !important;
+}
+
+.sidebar-nav .nav-content a:hover {
+  color: var(--accent) !important;
+}
+
+/* Corrección DEFINITIVA de visibilidad de texto para la barra lateral (siempre oscuro el fondo = siempre claro el texto) */
+#sidebar .sidebar-nav .nav-link,
+#sidebar .sidebar-nav .nav-link span,
+#sidebar .sidebar-nav .nav-content a,
+#sidebar .sidebar-nav .nav-content a span {
+  color: #e2e8f0 !important;
+}
+
+#sidebar .sidebar-nav .nav-link i {
+  color: #8fa3c0 !important;
+}
+
+#sidebar .sidebar-nav .nav-link.active i,
+#sidebar .sidebar-nav .nav-link:not(.collapsed)[data-bs-toggle="collapse"] i {
+  color: var(--accent) !important;
+}
+
+#sidebar .sidebar-nav .nav-link:hover,
+#sidebar .sidebar-nav .nav-link:hover span,
+#sidebar .sidebar-nav .nav-link:hover i {
+  color: #ffffff !important;
+}
+
+/* ===========================================================
+   4. TARJETAS
+   =========================================================== */
+.card {
+  background: var(--bg-surface) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18) !important;
+  transition: border-color 0.3s, box-shadow 0.3s, background 0.35s !important;
+  overflow: hidden !important;
+}
+
+.card:hover {
+  border-color: rgba(0, 191, 165, 0.18) !important;
+  box-shadow: 0 10px 36px rgba(0, 191, 165, 0.07) !important;
+}
+
+.card-header {
+  background: rgba(255, 255, 255, 0.01) !important;
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+
+.card-footer {
+  background: rgba(255, 255, 255, 0.01) !important;
+  border-top: 1px solid var(--border-glass) !important;
+}
+
+/* Textos dentro de cards */
+.card,
+.card-body,
+.card-header,
+.card-footer,
+.card p,
+.card span:not(.badge),
+.card li,
+.card div:not(.card):not(.modal) {
+  color: var(--text-base) !important;
+}
+
+/* Títulos de sección */
+.pagetitle h1,
+.pagetitle h2,
+.pagetitle h3 {
+  color: var(--text-base) !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+}
+
+/* ===========================================================
+   5. TEXTOS GENERALES — COBERTURA AMPLIA
+   =========================================================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+  color: var(--text-base) !important;
+}
+
+p,
+span:not(.badge):not([class*="bg-"]),
+small,
+li,
+dd,
+dt,
+blockquote {
+  color: var(--text-base) !important;
+}
+
+/* Texto atenuado */
+.text-muted,
+.text-secondary {
+  color: var(--text-muted) !important;
+}
+
+/* Texto primario (antes azul oscuro ilegible) */
+.text-primary,
+a.text-primary {
+  color: var(--accent-light) !important;
+  -webkit-text-fill-color: var(--accent-light) !important;
+}
+
+/* Breadcrumb */
+.breadcrumb-item,
+.breadcrumb-item a,
+.breadcrumb-item.active {
+  color: var(--text-muted) !important;
+}
+
+.breadcrumb-item a:hover {
+  color: var(--accent) !important;
+}
+
+/* Links generales */
+a:not(.btn):not(.nav-link):not(.badge):not(.dropdown-item) {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+}
+
+a:not(.btn):not(.nav-link):not(.badge):not(.dropdown-item):hover {
+  color: var(--accent-light) !important;
+}
+
+/* ===========================================================
+   6. TABLAS — COBERTURA TOTAL
+   =========================================================== */
+.table,
+table {
+  color: var(--text-base) !important;
+  border-color: var(--border-glass) !important;
+}
+
+/* Celdas */
+.table td,
+.table th,
+table td,
+table th {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: var(--text-base) !important;
+  border-color: var(--border-glass) !important;
+  vertical-align: middle !important;
+}
+
+/* Filas alternas */
+.table tbody tr:nth-of-type(odd),
+table tbody tr:nth-of-type(odd) {
+  background-color: var(--bg-table-odd) !important;
+}
+
+.table tbody tr:nth-of-type(even),
+table tbody tr:nth-of-type(even) {
+  background-color: var(--bg-table-even) !important;
+}
+
+/* Fila hover */
+.table tbody tr:hover,
+table tbody tr:hover {
+  background-color: var(--bg-hover-row) !important;
+}
+
+.table tbody tr:hover td,
+table tbody tr:hover td {
+  color: var(--text-base) !important;
+}
+
+/* Cabecera de tabla */
+.table thead th,
+table thead th,
+.dataTable-table thead th {
+  background-color: var(--bg-table-head) !important;
+  color: var(--text-head-col) !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid rgba(0, 191, 165, 0.20) !important;
+  text-transform: uppercase !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* SimpleDatatables controles */
+.dataTable-input,
+.dataTable-selector {
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: var(--text-base) !important;
+  border-radius: 8px !important;
+}
+
+.dataTable-input:focus,
+.dataTable-selector:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow) !important;
+  outline: none !important;
+}
+
+.dataTable-info,
+.dataTable-dropdown label,
+.dataTable-pagination li a {
+  color: var(--text-muted) !important;
+}
+
+/* ===========================================================
+   7. INPUTS Y FORMULARIOS
+   =========================================================== */
+input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+select,
+textarea,
+.form-control,
+.form-select {
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: var(--text-base) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.3s, box-shadow 0.3s !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.7 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow) !important;
+  outline: none !important;
+  background-color: var(--bg-input) !important;
+  color: var(--text-base) !important;
+}
+
+label,
+.form-label,
+.col-form-label {
+  color: var(--text-label) !important;
+  font-weight: 600 !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.3px !important;
+}
+
+/* ===========================================================
+   8. BOTONES
+   =========================================================== */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #00c8db) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 14px var(--accent-glow) !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px var(--accent-glow) !important;
+  color: #ffffff !important;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #d97706, #f59e0b) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+}
+
+.btn-info {
+  background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: var(--text-base) !important;
+  border-radius: 10px !important;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Botones outline */
+.btn-outline-primary {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  border-radius: 10px !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+}
+
+/* Botón Outline Dark adaptable al Modo Oscuro */
+[data-theme="dark"] .btn-outline-dark {
+  border-color: #64748b !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .btn-outline-dark:hover {
+  background: #64748b !important;
+  color: #ffffff !important;
+}
+
+
+/* ==========================================================================
+   9. BADGES
+   ========================================================================== */
+.badge {
+  border-radius: 30px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px !important;
+}
+
+/* Configuración de Badges (Colores Sólidos Vibrantes para Ambos Modos) */
+.bg-success,
+[data-theme="dark"] .bg-success,
+[data-theme="light"] .bg-success {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.bg-danger,
+[data-theme="dark"] .bg-danger,
+[data-theme="light"] .bg-danger {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.bg-warning,
+[data-theme="dark"] .bg-warning,
+[data-theme="light"] .bg-warning {
+  background-color: #ffb703 !important;
+  color: #1f2937 !important;
+  border: none !important;
+}
+
+.bg-info,
+[data-theme="dark"] .bg-info,
+[data-theme="light"] .bg-info {
+  background-color: #0dcaf0 !important;
+  color: #1f2937 !important;
+  border: none !important;
+}
+
+.bg-primary,
+[data-theme="dark"] .bg-primary,
+[data-theme="light"] .bg-primary {
+  background-color: #0d6efd !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.bg-secondary,
+[data-theme="dark"] .bg-secondary,
+[data-theme="light"] .bg-secondary {
+  background-color: #6c757d !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+/* SOBREESCRITURAS DE TEXT-DARK EN BADGES MODO OSCURO (Resuelve el problema de texto negro en Cajero/Activo) */
+[data-theme="dark"] .badge.text-dark,
+[data-theme="dark"] .badge[class*="text-dark"],
+[data-theme="dark"] td .badge.text-dark {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .badge.text-dark {
+  color: #1f2937 !important;
+}
+
+/* ===========================================================
+   10. MODALES
+   =========================================================== */
+.modal-content {
+  background: var(--bg-modal) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4) !important;
+  color: var(--text-base) !important;
+  transition: background 0.35s ease !important;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-glass) !important;
+  color: var(--text-base) !important;
+}
+
+.modal-body,
+.modal-footer {
+  color: var(--text-base) !important;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-glass) !important;
+}
+
+.modal-title {
+  color: var(--text-base) !important;
+  font-weight: 700 !important;
+}
+
+/* btn-close en modales modo claro */
+[data-theme="light"] .btn-close {
+  filter: none !important;
+}
+
+/* ===========================================================
+   11. DROPDOWN MENUS (Notificaciones, Perfil)
+   =========================================================== */
+.dropdown-menu {
+  background: var(--bg-modal) !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: 14px !important;
+  backdrop-filter: blur(18px) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dropdown-item {
+  color: var(--text-base) !important;
+  transition: background 0.2s, color 0.2s !important;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 191, 165, 0.10) !important;
+  color: var(--accent) !important;
+}
+
+.dropdown-divider {
+  border-color: var(--border-glass) !important;
+}
+
+.dropdown-header {
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+}
+
+/* Perfil premium */
+.profile-premium {
+  background: var(--bg-modal) !important;
+  border-color: var(--border-glass) !important;
+}
+
+.profile-premium h6 {
+  color: var(--text-base) !important;
+}
+
+.profile-premium .dropdown-item {
+  color: var(--text-muted) !important;
+}
+
+.profile-premium .dropdown-item:hover {
+  color: var(--accent) !important;
+}
+
+/* ===========================================================
+   12. ALERTS / NOTIFICACIONES
+   =========================================================== */
+.alert {
+  border-radius: 12px !important;
+  border-width: 1px !important;
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  color: #34d399 !important;
+}
+
+.alert-danger {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #f87171 !important;
+}
+
+.alert-warning {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #fbbf24 !important;
+}
+
+.alert-info {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  color: #7dd3fc !important;
+}
+
+.alert-primary {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #1d4ed8 !important;
+}
+
+/* ===========================================================
+   13. LISTAS Y SECCIONES CON FONDO CLARO FORZADO
+       (tarjetas con bg-white, bg-light, etc.)
+   =========================================================== */
+.bg-white,
+.bg-light,
+.card.bg-white,
+.card.bg-light,
+.card-body.bg-white,
+.card-body.bg-light {
+  background-color: var(--bg-surface) !important;
+  background: var(--bg-surface) !important;
+  color: var(--text-base) !important;
+  border: 1px solid var(--border-glass) !important;
+}
+
+.bg-white *,
+.bg-light *,
+.card.bg-white *,
+.card.bg-light * {
+  color: var(--text-base) !important;
+}
+
+/* Excepciones: mantener color propio en badges y botones de colores */
+.bg-white .badge,
+.bg-light .badge,
+.bg-white .badge *,
+.bg-light .badge * {
+  color: inherit !important;
+}
+
+/* Botones con relleno sólido → texto blanco */
+.bg-white .btn:not([class*="btn-outline-"]),
+.bg-light .btn:not([class*="btn-outline-"]),
+.bg-white .btn:not([class*="btn-outline-"]) *,
+.bg-light .btn:not([class*="btn-outline-"]) * {
+  color: #ffffff !important;
+}
+
+/* Botones outline en modo claro → usar su color propio para que sean visibles */
+[data-theme="light"] .bg-white .btn-outline-primary,
+[data-theme="light"] .bg-light .btn-outline-primary,
+[data-theme="light"] .bg-white .btn-outline-primary *,
+[data-theme="light"] .bg-light .btn-outline-primary * {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+[data-theme="light"] .bg-white .btn-outline-primary:hover,
+[data-theme="light"] .bg-light .btn-outline-primary:hover,
+[data-theme="light"] .bg-white .btn-outline-primary:hover *,
+[data-theme="light"] .bg-light .btn-outline-primary:hover * {
+  color: #ffffff !important;
+  background: var(--accent) !important;
+}
+
+[data-theme="light"] .bg-white .btn-outline-secondary,
+[data-theme="light"] .bg-light .btn-outline-secondary,
+[data-theme="light"] .bg-white .btn-outline-secondary *,
+[data-theme="light"] .bg-light .btn-outline-secondary * {
+  color: #6b7280 !important;
+  border-color: #6b7280 !important;
+}
+
+[data-theme="light"] .bg-white .btn-outline-secondary:hover,
+[data-theme="light"] .bg-light .btn-outline-secondary:hover,
+[data-theme="light"] .bg-white .btn-outline-secondary:hover *,
+[data-theme="light"] .bg-light .btn-outline-secondary:hover * {
+  color: #ffffff !important;
+  background: #6b7280 !important;
+}
+
+/* ===========================================================
+   14. MODO CLARO: AJUSTES ESPECÍFICOS
+   =========================================================== */
+[data-theme="light"] body {
+  background-color: #eef2f7 !important;
+}
+
+/* Header claro */
+[data-theme="light"] .header {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Sidebar claro — mantenerlo oscuro para contraste */
+[data-theme="light"] .sidebar {
+  background: #1a2942 !important;
+}
+
+[data-theme="light"] .sidebar-nav .nav-link {
+  color: #b8c8de !important;
+}
+
+[data-theme="light"] .sidebar-nav .nav-link:hover {
+  color: #ffffff !important;
+}
+
+/* Cards en claro */
+[data-theme="light"] .card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07) !important;
+}
+
+/* Tablas en claro */
+[data-theme="light"] .table thead th,
+[data-theme="light"] table thead th {
+  background-color: rgba(230, 240, 248, 0.98) !important;
+  color: #111827 !important;
+}
+
+[data-theme="light"] .table tbody tr:nth-of-type(odd),
+[data-theme="light"] table tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.018) !important;
+}
+
+/* Inputs en claro */
+[data-theme="light"] input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+[data-theme="light"] select,
+[data-theme="light"] textarea,
+[data-theme="light"] .form-control,
+[data-theme="light"] .form-select {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  color: #1f2937 !important;
+}
+
+/* Modales en claro */
+[data-theme="light"] .modal-content,
+[data-theme="light"] .dropdown-menu {
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ===========================================================
+   15. PERFIL / AVATAR
+   =========================================================== */
+.header .logo img {
+  max-height: 48px;
+  max-width: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-right: 8px;
+  transition: opacity 0.3s ease;
+}
+
+.header .logo img[src=""] {
+  opacity: 0;
+}
+
+.header .logo span {
+  font-size: 1.05rem;
+}
+
+/* ===========================================================
+   16. TEXTOS ESPECIALES EN HEADER
+   =========================================================== */
+.text-light-muted {
+  color: #ced4da !important;
+}
+
+/* ===========================================================
+   17. SWEETALERT2 ADAPTATIVO (MODO OSCURO / CLARO)
+   =========================================================== */
+[data-theme="dark"] .swal2-popup {
+  background-color: #0f172a !important;
+  color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 16px !important;
+}
+
+[data-theme="dark"] .swal2-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .swal2-html-container,
+[data-theme="dark"] .swal2-content {
+  color: #e5e7eb !important;
+}
+
+[data-theme="dark"] .swal2-validation-message {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #f87171 !important;
+}
+
+/* ===========================================================
+   18. PROFORMAS (NUEVA PROFORMA) ADAPTATIVO
+   =========================================================== */
+/* Contenedores principales y estado */
+[data-theme="dark"] .proforma-container,
+[data-theme="dark"] .proforma-status-box {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-glass) !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .proforma-hdr-text h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .proforma-status-box .label {
+  color: #9ca3af !important;
+}
+
+/* Condiciones Comerciales */
+[data-theme="dark"] .commercial-conditions {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+  color: #fcd34d !important;
+}
+
+[data-theme="dark"] .commercial-conditions textarea {
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: #ffffff !important;
+}
+
+/* Autocomplete de Cliente y dropdowns */
+[data-theme="dark"] .autocomplete-input {
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .autocomplete-results {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .autocomplete-item {
+  background-color: #1e293b !important;
+  border-bottom: 1px solid #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .autocomplete-item:last-child {
+  border-bottom: none !important;
+}
+
+[data-theme="dark"] .autocomplete-item:hover {
+  background-color: var(--accent) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .autocomplete-item strong {
+  color: #ffffff !important;
+}
+
+/* Textos sin items */
+[data-theme="dark"] #no-items-msg {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  border: 1px dashed var(--border-glass) !important;
+  color: #9ca3af !important;
+}
+
+/* Textos en Totals Box siempre legibles (ignora regla global de modo claro) */
+.totals-dark-box,
+.totals-dark-box span,
+.totals-dark-box .value,
+.totals-dark-box .label {
+  color: #ffffff !important;
+}
+
+.totals-dark-box .text-muted {
+  color: #9ca3af !important;
+}
+
+/* ===========================================================
+   19. FIX GLOBAL PARA MENÚS DESPLEGABLES NATIVOS (<select> / <option>)
+   =========================================================== */
+select option,
+.form-select option {
+  font-weight: 500 !important;
+}
+
+[data-theme="dark"] select option,
+[data-theme="dark"] .form-select option {
+  background-color: #1e293b !important;
+  /* Fondo oscuro sólido */
+  color: #ffffff !important;
+  /* Texto blanco brillante */
+}
+
+[data-theme="light"] select option,
+[data-theme="light"] .form-select option {
+  background-color: #ffffff !important;
+  /* Fondo blanco sólido */
+  color: #1f2937 !important;
+  /* Texto gris muy oscuro */
+}
+
+/* ===========================================================
+   20. FIX GLOBAL PARA ICONO DE CALENDARIO NATIVO (Modo Oscuro)
+   =========================================================== */
+/* Fuerza a los navegadores a usar su paleta nativa oscura (ayuda con barras de desplazamiento y modales nativos) */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Invierte el color del ícono del calendario (negro -> blanco) en Modo Oscuro */
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="week"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(100%) !important;
+  opacity: 0.8 !important;
+  cursor: pointer !important;
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1 !important;
+}
+
+/* Fix específico para Firefox y navegadores adicionales en modo oscuro */
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="month"] {
+  color-scheme: dark !important;
+}
+
+/* ===========================================================
+   21. AJUSTES ESPECÍFICOS MÓDULO VENTAS (Modo Oscuro)
+   =========================================================== */
+/* Nro Comprobante Readonly Input (Máxima Prioridad) */
+[data-theme="dark"] input#nro_comprobante,
+[data-theme="dark"] input#nro_comprobante.bg-light.form-control,
+[data-theme="dark"] input.form-control[readonly].bg-light {
+  background-color: #0f172a !important;
+  /* Fondo negro azulado profundo */
+  border: 1px solid #00e5ff !important;
+  /* Borde cyan neón */
+  color: #00e5ff !important;
+  /* Texto cyan brillante */
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2) !important;
+}
+
+/* Cabecera P. Descuento y Cabeceras con color */
+[data-theme="dark"] th.columna-descuento,
+[data-theme="dark"] .table thead th.bg-warning {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fcd34d !important;
+  /* Texto amarillo claro y legible */
+}
+
+/* Aniquilar el bloque blanco del TFOOT y cualquier fila blanca rebelde (Incluye inline styles) */
+[data-theme="dark"] tfoot,
+[data-theme="dark"] tfoot[style],
+[data-theme="dark"] tfoot[style] tr,
+[data-theme="dark"] tfoot[style] td,
+[data-theme="dark"] tfoot[style] th,
+[data-theme="dark"] tfoot.table-light,
+[data-theme="dark"] .table>tfoot.table-light>tr>td,
+[data-theme="dark"] .table-light,
+[data-theme="dark"] tr.table-light,
+[data-theme="dark"] tr.table-light td,
+[data-theme="dark"] tr.table-light th {
+  --bs-table-bg: transparent !important;
+  background-color: var(--bg-surface) !important;
+  background: var(--bg-surface) !important;
+  color: #f8fafc !important;
+  border-color: var(--border-glass) !important;
+}
+
+[data-theme="dark"] tfoot td.text-success,
+[data-theme="dark"] tr.table-light td.text-success {
+  color: #4ade80 !important;
+  /* Verde brillante */
+}
+
+[data-theme="dark"] tfoot td.text-info,
+[data-theme="dark"] tr.table-light td.text-info {
+  color: #38bdf8 !important;
+  /* Celeste brillante */
+}
+
+/* ===========================================================
+   23. BLINDAJE ANTI-BLANCO PARA MODALES (AJAX / INLINE)
+   =========================================================== */
+[data-theme="dark"] .modal-content .bg-white,
+[data-theme="dark"] .modal-content .bg-light,
+[data-theme="dark"] .modal-content .bg-light-subtle,
+[data-theme="dark"] .modal-content [style*="background-color: white"],
+[data-theme="dark"] .modal-content [style*="background: white"],
+[data-theme="dark"] .modal-content [style*="background-color: #fff"],
+[data-theme="dark"] .modal-content [style*="background: #fff"],
+[data-theme="dark"] .modal-content [style*="background-color:#fff"],
+[data-theme="dark"] .modal-content [style*="background:#fff"],
+[data-theme="dark"] .modal-content [style*="background-color: #f8f9fa"],
+[data-theme="dark"] .modal-content [style*="background: #f8f9fa"] {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+/* Evitar filas blancas inyectadas por JS en la tabla de ventas vacía */
+[data-theme="dark"] #tbodyItems tr,
+[data-theme="dark"] #tbodyItems td,
+[data-theme="dark"] .table tbody tr[style*="background"],
+[data-theme="dark"] .table tbody tr[style*="background"] td,
+[data-theme="dark"] .table tbody tr.bg-white,
+[data-theme="dark"] .table tbody tr.bg-white td {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+}
+
+/* ===========================================================
+   22. CORRECCIONES DE UTILIDADES Y COMPONENTES (Modo Oscuro)
+   =========================================================== */
+/* Arreglo para input-group-text (la cajita del S/ y otros íconos) */
+[data-theme="dark"] .input-group-text {
+  background-color: var(--bg-input) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--border-glass) !important;
+}
+
+/* Forzar que la clase .text-dark sea blanca en Modo Oscuro (Ej: Saldo Capital) */
+[data-theme="dark"] .text-dark {
+  color: #f8fafc !important;
+  /* Blanco muy brillante y puro */
+}
+
+/* Stock: serie motor/chasis — <code class="text-dark"> + fondo claro de Bootstrap = texto invisible */
+[data-theme="dark"] .table code.serie-motor,
+[data-theme="dark"] .table code.serie-chasis,
+[data-theme="dark"] code.serie-motor,
+[data-theme="dark"] code.serie-chasis {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+  background-color: rgba(30, 41, 59, 0.95) !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  padding: 0.2rem 0.5rem !important;
+  border-radius: 0.35rem !important;
+}
+
+/* Stock / resúmenes: .card fuerza texto claro en todos los div/span; los alerts de Bootstrap
+   quedan con fondo tintado y letras blancas (sin contraste). Restaurar color del alert. */
+[data-theme="dark"] .card .card-body .alert.alert-primary {
+  background: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(96, 165, 250, 0.38) !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .card .card-body .alert.alert-success {
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] .card .card-body .alert.alert-info {
+  color: #7dd3fc !important;
+}
+
+[data-theme="dark"] .card .card-body .alert.alert-warning {
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .card .card-body .alert.alert-danger {
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .card .alert span:not(.badge),
+[data-theme="dark"] .card .alert .fw-bold {
+  color: inherit !important;
+}
+
+/* ===========================================================
+   23. FIX DETALLE DE VENTA MODO OSCURO
+   =========================================================== */
+[data-theme="dark"] body .table-footer-total {
+  background-color: var(--bg-surface) !important;
+  color: #f8fafc !important;
+  border-top-color: var(--border-glass) !important;
+}
+
+[data-theme="dark"] body .table-footer-total td,
+[data-theme="dark"] body .table-footer-total th {
+  background-color: transparent !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] body .product-name-detalle {
+  color: #f8fafc !important;
+}
+
+/* ===========================================================
+   24. FIX NUMEROS DE CUOTAS Y LOGO MODAL DETALLE
+   =========================================================== */
+[data-theme="dark"] body .cuota-id-circle {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+body .modal-header-teal .bg-white {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border: none !important;
+}
+
+/* ===========================================================
+   25. FIX MODAL COMPRAS MODO CLARO
+   =========================================================== */
+[data-theme="light"] body .badge.bg-dark,
+[data-theme="light"] body .bg-light .badge.bg-dark,
+[data-theme="light"] body .bg-white .badge.bg-dark {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] body .badge.bg-secondary,
+[data-theme="light"] body .bg-light .badge.bg-secondary,
+[data-theme="light"] body .bg-white .badge.bg-secondary {
+  background-color: #6c757d !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] body .btn-secondary,
+[data-theme="light"] body .modal-footer .btn-secondary {
+  background-color: #64748b !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="light"] body .btn-secondary:hover,
+[data-theme="light"] body .modal-footer .btn-secondary:hover {
+  background-color: #475569 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] body .btn-secondary i,
+[data-theme="light"] body .modal-footer .btn-secondary i {
+  color: #ffffff !important;
+}
+
+/* ===========================================================
+   26. FIX PROFORMAS (NUEVA PROFORMA)
+   =========================================================== */
+/* Hacer legible la caja de Totales oscurecida en el modo claro */
+[data-theme="light"] body .totals-dark-box,
+[data-theme="light"] body .totals-dark-box span:not(.badge),
+[data-theme="light"] body .totals-dark-box .value,
+[data-theme="light"] body .totals-dark-box .label,
+[data-theme="light"] body .totals-dark-box div {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] body .totals-dark-box .text-muted,
+[data-theme="light"] body .totals-dark-box .text-muted span:not(.badge) {
+  color: #9ca3af !important;
+}
+
+/* Hacer más brillantes y visibles los badges de "Vehiculo" y "Repuesto" en modo oscuro */
+[data-theme="dark"] body .badge.bg-primary-light {
+  background-color: rgba(13, 110, 253, 0.2) !important;
+  border: 1px solid rgba(13, 110, 253, 0.4) !important;
+}
+
+[data-theme="dark"] body .badge.bg-primary-light.text-primary {
+  color: #90bbf8 !important;
+  /* Azul más claro */
+}
+
+[data-theme="dark"] body .badge.bg-success-light {
+  background-color: rgba(25, 135, 84, 0.2) !important;
+  border: 1px solid rgba(25, 135, 84, 0.4) !important;
+}
+
+[data-theme="dark"] body .badge.bg-success-light.text-success {
+  color: #a3cfbb !important;
+  /* Verde más claro */
+}
+
+/* ===========================================================
+   27. FIX PRE-FINANCIAMIENTO (REGISTRAR)
+   =========================================================== */
+/* Fix filas de pago inicial que tenían fondo blanco por defecto */
+[data-theme="dark"] body .pago-row {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border-glass) !important;
+}
+
+[data-theme="light"] body .pago-row {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Fix hover y selección en tarjetas de vehículos para modo oscuro */
+[data-theme="dark"] body .vehiculo-card {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: transparent !important;
+}
+
+[data-theme="dark"] body .vehiculo-card:hover,
+[data-theme="dark"] body .vehiculo-card.selected {
+  border-color: var(--accent) !important;
+  background: rgba(0, 191, 165, 0.1) !important;
+}
+
+[data-theme="dark"] body .vehiculo-card .badge.bg-light {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  border-color: transparent !important;
+}
+
+/* Fix Autocomplete Dropdowns en modo oscuro */
+[data-theme="dark"] body .autocomplete-results {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-glass) !important;
+}
+
+[data-theme="dark"] body .autocomplete-item {
+  border-bottom-color: var(--border-glass) !important;
+  color: var(--text-base) !important;
+}
+
+[data-theme="dark"] body .autocomplete-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ===========================================================
+   28. FIX PAGO MÚLTIPLES CUOTAS (MODO OSCURO)
+   =========================================================== */
+/* Fix contenedores con fondo verde claro hardcoded (#e8f5e9) */
+[data-theme="dark"] body [style*="#e8f5e9"] {
+  background: rgba(46, 125, 50, 0.15) !important;
+  border-color: rgba(46, 125, 50, 0.4) !important;
+}
+
+/* Ajustar colores de texto dentro de esos contenedores verdes */
+[data-theme="dark"] body [style*="#e8f5e9"] .text-muted {
+  color: #a7f3d0 !important;
+  /* Verde pastel muy claro para subtitulos */
+}
+
+[data-theme="dark"] body [style*="#e8f5e9"] .text-success,
+[data-theme="dark"] body [style*="#e8f5e9"] .text-success span,
+[data-theme="dark"] body tfoot[style*="#e8f5e9"] td {
+  color: #34d399 !important;
+  /* Verde esmeralda brillante para montos */
+}
+
+/* Forzar legibilidad brillante en todos los labels del formulario de pago múltiple */
+[data-theme="dark"] body #formPagarMultiples label,
+[data-theme="dark"] body #formPagarMultiples .form-label {
+  color: var(--accent) !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+  /* extra legibilidad */
+}
+
+/* ===========================================================
+   29. FIX MODAL PAGAR TOTALIDAD DEL CRÉDITO
+   =========================================================== */
+/* Fix indicador "Suma de Pagos" en modo oscuro que tenía fondo claro por defecto de bootstrap */
+[data-theme="dark"] body #resumen-pagos-total.alert-secondary {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--border-glass) !important;
+  color: #f3f4f6 !important;
+}
+
+/* Asegurar que el texto indicativo ("Falta", "Excede", "Cuadra") contraste perfectamente */
+[data-theme="dark"] body #resumen-pagos-total .text-warning {
+  color: #fcd34d !important;
+  /* Amarillo brillante */
+}
+
+[data-theme="dark"] body #resumen-pagos-total .text-success {
+  color: #34d399 !important;
+  /* Verde esmeralda */
+}
+
+[data-theme="dark"] body #resumen-pagos-total .text-danger {
+  color: #f87171 !important;
+  /* Rojo claro */
+}
+
+/* ===========================================================
+   30. FIX CABECERAS MODALES OSCURAS Y AVATARES
+   =========================================================== */
+/* Forzar que los textos en cabeceras de modales oscuras se mantengan blancos 
+   (sobrescribe el !important global de títulos en modo claro) */
+.modal-header.bg-dark .modal-title,
+.modal-header.bg-dark h1,
+.modal-header.bg-dark h2,
+.modal-header.bg-dark h3,
+.modal-header.bg-dark h4,
+.modal-header.bg-dark h5,
+.modal-header.bg-dark h6 {
+  color: #ffffff !important;
+}
+
+/* Asegurar que el botón de cerrar en cabeceras oscuras se vea blanco */
+.modal-header.bg-dark .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+
+/* Forzar color blanco en la letra de los avatares circulares 
+   (Alta especificidad para vencer la regla global de textos oscuros en cards) */
+.card div:not(.card):not(.modal).avatar-circle,
+[data-theme="light"] body .avatar-circle,
+.avatar-circle {
+  color: #ffffff !important;
+}
+
+/* ===========================================================
+   31. FIX CONFIGURACIÓN DE EMPRESA (MODO OSCURO)
+   =========================================================== */
+/* Fix tarjetas pequeñas "Datos del Sistema" que mantenían fondo blanco */
+[data-theme="dark"] body .system-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--border-glass) !important;
+}
+
+[data-theme="dark"] body .system-card-header {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-bottom-color: var(--border-glass) !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] body .system-value {
+  color: #ffffff !important;
+}
+
+/* Suavizar lineas divisorias muy brillantes en la lista */
+[data-theme="dark"] body .config-item {
+  border-bottom-color: var(--border-glass) !important;
+}
+
+/* Fix fondos de logo para que no desentonen */
+[data-theme="dark"] body .company-logo-box,
+[data-theme="dark"] body .company-logo-placeholder-box {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--border-glass) !important;
+}
+
+/* ===========================================================
+   32. FIX TRANSFERENCIAS (MODO OSCURO)
+   =========================================================== */
+[data-theme="dark"] body .info-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Fix fondos de los íconos para que contrasten en modo oscuro */
+[data-theme="dark"] body .bg-warning-light {
+  background-color: rgba(255, 193, 7, 0.15) !important;
+  color: #ffc107 !important;
+}
+
+[data-theme="dark"] body .bg-primary-light {
+  background-color: rgba(13, 110, 253, 0.15) !important;
+  color: #6ea8fe !important;
+}
+
+[data-theme="dark"] body .bg-success-light {
+  background-color: rgba(25, 135, 84, 0.15) !important;
+  color: #75b798 !important;
+}
+
+[data-theme="dark"] body .bg-info-light {
+  background-color: rgba(13, 202, 240, 0.15) !important;
+  color: #6edff6 !important;
+}
+
+/* Dashboard (cpanel): iconos en círculos — NO usar inherit (hereda blanco del .card y desaparece sobre fondo pastel) */
+[data-theme="dark"] body .dashboard .sales-card .card-icon,
+[data-theme="dark"] body .dashboard .sales-card .card-icon i {
+  color: #93c5fd !important;
+  -webkit-text-fill-color: #93c5fd !important;
+  background: rgba(65, 84, 241, 0.22) !important;
+}
+
+[data-theme="dark"] body .dashboard .revenue-card .card-icon,
+[data-theme="dark"] body .dashboard .revenue-card .card-icon i {
+  color: #6ee7b7 !important;
+  -webkit-text-fill-color: #6ee7b7 !important;
+  background: rgba(46, 202, 106, 0.2) !important;
+}
+
+[data-theme="dark"] body .dashboard .customers-card .card-icon,
+[data-theme="dark"] body .dashboard .customers-card .card-icon i {
+  color: #fdba74 !important;
+  -webkit-text-fill-color: #fdba74 !important;
+  background: rgba(255, 119, 29, 0.22) !important;
+}
+
+/* ===========================================================
+   33. FIX TEXTOS form-text DENTRO DE MODALES SWAL2 (MODO OSCURO)
+   =========================================================== */
+/* Sobrescribir variables Bootstrap dentro del popup para que form-text sea legible */
+html[data-theme="dark"] .swal2-popup {
+  --bs-secondary-color: #d1d5db;
+  --bs-body-color: #f3f4f6;
+  --bs-body-color-rgb: 243, 244, 246;
+  --bs-emphasis-color: #ffffff;
+}
+
+/* Colores directos con máxima especificidad */
+html[data-theme="dark"] .swal2-popup .form-text,
+html[data-theme="dark"] .swal2-html-container .form-text {
+  color: #d1d5db !important;
+}
+
+html[data-theme="dark"] .swal2-popup .text-muted,
+html[data-theme="dark"] .swal2-html-container .text-muted {
+  color: #adb5bd !important;
+}
+
+html[data-theme="dark"] .swal2-popup .table td,
+html[data-theme="dark"] .swal2-popup .table th,
+html[data-theme="dark"] .swal2-html-container .table td,
+html[data-theme="dark"] .swal2-html-container .table th {
+  color: #f3f4f6 !important;
+}
+
+html[data-theme="dark"] .swal2-popup .form-label,
+html[data-theme="dark"] .swal2-html-container .form-label {
+  color: #e5e7eb !important;
+}
+
+/* ===========================================================
+   34. FIX INFO CARDS (MOVIMIENTOS DE CAJA Y OTROS) EN MODO OSCURO
+   =========================================================== */
+[data-theme="dark"] body .sales-card .card-icon,
+[data-theme="dark"] body .sales-card .card-icon i {
+  color: #6ee7b7 !important;
+  -webkit-text-fill-color: #6ee7b7 !important;
+  background: rgba(46, 202, 106, 0.2) !important;
+}
+
+[data-theme="dark"] body .revenue-card .card-icon,
+[data-theme="dark"] body .revenue-card .card-icon i {
+  color: #fdba74 !important;
+  -webkit-text-fill-color: #fdba74 !important;
+  background: rgba(255, 119, 29, 0.22) !important;
+}
+
+[data-theme="dark"] body .customers-card .card-icon,
+[data-theme="dark"] body .customers-card .card-icon i {
+  color: #fca5a5 !important;
+  -webkit-text-fill-color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.22) !important;
+}
+
+[data-theme="dark"] body .info-card:not(.sales-card):not(.revenue-card):not(.customers-card) .card-icon,
+[data-theme="dark"] body .info-card:not(.sales-card):not(.revenue-card):not(.customers-card) .card-icon i {
+  color: #93c5fd !important;
+  -webkit-text-fill-color: #93c5fd !important;
+  background: rgba(65, 84, 241, 0.22) !important;
+}
+
+/* ========================================
+   ⭐ PREVENIR SALTO DE LAYOUT EN MODALES
+   ======================================== */
+body.modal-open, 
+body.swal2-shown {
+    overflow-y: scroll !important;
+    padding-right: 0 !important;
+}
+
+.fixed-top, 
+.fixed-bottom, 
+.is-fixed,
+#header {
+    padding-right: 0 !important;
+}
+/* Evitar que el fondo se mueva al abrir modales */
+body.modal-open { padding-right: 0 !important; overflow-y: scroll !important; }

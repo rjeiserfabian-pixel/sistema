@@ -17,7 +17,8 @@ def index(request):
 def login(request):
     from software.utils.encryption_utils import EncryptionManager, PasswordManager
     
-    email = request.POST.get('email_1')
+    email_raw = request.POST.get('email_1')
+    email = email_raw.strip() if email_raw else None
     contrasena2 = request.POST.get('contrasena')
     
     if email and contrasena2:
@@ -27,19 +28,36 @@ def login(request):
         ).filter(estado=1)  # Solo usuarios activos
         
         usuario_encontrado = None
+        usuario_existe = False
         
-        # Buscar el usuario descifrando cada correo
+        # Buscar y validar el usuario
         for usuario in usuarios_todos:
             try:
-                correo_descifrado = EncryptionManager.decrypt_email(usuario.correo)
-                if correo_descifrado == email:
-                    # Verificar contraseña hasheada
-                    if PasswordManager.verify_password(contrasena2, usuario.contrasena):
-                        usuario_encontrado = usuario
-                        break
+                # Intentar descifrar el correo (flujo normal del sistema)
+                usuario_identificador = EncryptionManager.decrypt_data(usuario.correo)
+                if usuario_identificador is None:
+                    # Fallback: el correo está en texto plano (agregado manualmente a la BD)
+                    usuario_identificador = usuario.correo
             except Exception as e:
-                print(f"Error al descifrar correo del usuario {usuario.idusuario}: {e}")
-                continue
+                print(f"Error al descifrar datos: {e}")
+                # Fallback: comparar directamente en texto plano
+                usuario_identificador = usuario.correo
+
+            if usuario_identificador == email:
+                usuario_existe = True
+                # Verificar contraseña: primero intentar hash de Django
+                try:
+                    password_ok = PasswordManager.verify_password(contrasena2, usuario.contrasena)
+                except Exception:
+                    password_ok = False
+                
+                # Fallback: comparar en texto plano (contraseña ingresada directamente en BD)
+                if not password_ok:
+                    password_ok = (contrasena2 == usuario.contrasena)
+                
+                if password_ok:
+                    usuario_encontrado = usuario
+                    break
 
         if usuario_encontrado:
             # ✅ Login exitoso - Sin 2FA
@@ -69,13 +87,17 @@ def login(request):
             apertura_abierta = AperturaCierreCaja.objects.filter(
                 idusuario=usuario_encontrado,
                 estado__in=['abierta', 'reabierta']
-            ).first()
+            ).select_related('id_caja__id_sucursal', 'id_almacen').first()
             
             if apertura_abierta:
                 # Restaurar contexto de caja abierta
                 request.session['id_caja'] = apertura_abierta.id_caja.id_caja
                 if apertura_abierta.id_caja.id_sucursal:
                     request.session['id_sucursal'] = apertura_abierta.id_caja.id_sucursal.id_sucursal
+                # ✅ Restaurar almacén guardado en la apertura
+                if apertura_abierta.id_almacen_id:
+                    request.session['id_almacen'] = apertura_abierta.id_almacen_id
+                    print(f"✅ Almacén restaurado: {apertura_abierta.id_almacen}")
                 print(f"✅ Caja abierta restaurada: {apertura_abierta.id_caja.nombre_caja}")
             
             print(f"✅ Login exitoso: {usuario_encontrado.nombrecompleto} ({'Admin' if es_admin else 'Usuario'})")
@@ -85,7 +107,10 @@ def login(request):
             # Redirigir al dashboard o página principal
             return redirect('cpanel')  # Cambia esto por tu vista
         else:
-            error = "Correo o contraseña incorrecta"
+            if usuario_existe:
+                error = "La contraseña es incorrecta"
+            else:
+                error = "El usuario no existe"
             data = {"error": error}
             return render(request, 'index.html', data)
     else:
@@ -150,8 +175,23 @@ def cambiar_contexto(request):
             almacen = Almacenes.objects.get(id_almacen=id_almacen)
             request.session['id_almacen'] = almacen.id_almacen
             print(f"✅ Almacén seleccionado: {almacen.nombre_almacen}")
+            
+            # ✅ Persistir almacén en la apertura activa para restaurarlo al re-iniciar sesión
+            apertura_activa = AperturaCierreCaja.objects.filter(
+                idusuario_id=idusuario,
+                estado__in=['abierta', 'reabierta']
+            ).first()
+            if apertura_activa:
+                apertura_activa.id_almacen = almacen
+                apertura_activa.save(update_fields=['id_almacen'])
+                print(f"✅ Almacén guardado en apertura: {almacen.nombre_almacen}")
         else:
             request.session.pop('id_almacen', None)
+            # También limpiar de la apertura activa
+            AperturaCierreCaja.objects.filter(
+                idusuario_id=idusuario,
+                estado__in=['abierta', 'reabierta']
+            ).update(id_almacen=None)
         
         return JsonResponse({
             'success': True,
@@ -237,6 +277,11 @@ def obtener_datos_apertura(request):
                 for a in almacenes
             ]
     
+    # ✅ AGREGAR VALORES ACTUALES DE SESIÓN PARA PRE-SELECCIÓN
+    data['id_sucursal_actual'] = request.session.get('id_sucursal')
+    data['id_caja_actual'] = request.session.get('id_caja')
+    data['id_almacen_actual'] = request.session.get('id_almacen')
+    
     return JsonResponse(data)
 
 
@@ -297,8 +342,12 @@ def obtener_cajas_almacenes(request):
             'almacenes': [
                 {'id': a.id_almacen, 'nombre': a.nombre_almacen}
                 for a in almacenes
-            ]
+            ],
+            'id_sucursal_actual': request.session.get('id_sucursal'),
+            'id_caja_actual': request.session.get('id_caja'),
+            'id_almacen_actual': request.session.get('id_almacen')
         }
+        return JsonResponse(data)
         
         print(f"   ✅ Respuesta: {data}")
         
@@ -389,6 +438,14 @@ def abrir_caja(request):
         request.session['id_caja'] = caja.id_caja
         if id_almacen:
             request.session['id_almacen'] = int(id_almacen)
+            # ✅ Persistir almacén en la apertura para restaurarlo al re-iniciar sesión
+            try:
+                from software.models.almacenesModel import Almacenes
+                almacen_obj = Almacenes.objects.get(id_almacen=id_almacen)
+                apertura.id_almacen = almacen_obj
+                apertura.save(update_fields=['id_almacen'])
+            except Almacenes.DoesNotExist:
+                pass
         if caja.id_sucursal:
             request.session['id_sucursal'] = caja.id_sucursal.id_sucursal
         

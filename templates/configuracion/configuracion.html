@@ -29,16 +29,31 @@
             <div class="row">
               <!-- Logo -->
               <div class="col-3 text-center">
-                {% if empresa.logo %}
-                  <img src="/media/{{ empresa.logo }}" 
-                      alt="Logo {{ empresa.nombrecomercial }}" 
-                      class="company-logo-box"
-                      onerror="handleLogoError(this, '{{ empresa.logo }}')">
-                {% else %}
-                  <div class="company-logo-placeholder-box">
-                    <i class="bi bi-building"></i>
-                  </div>
-                {% endif %}
+                <div class="mb-2">
+                  <small class="text-muted fw-bold d-block mb-1">Logo Principal</small>
+                  {% if empresa.logo %}
+                    <img src="{{ empresa.logo }}" 
+                        alt="Logo {{ empresa.nombrecomercial }}" 
+                        class="company-logo-box">
+                  {% else %}
+                    <div class="company-logo-placeholder-box mx-auto">
+                      <i class="bi bi-building"></i>
+                    </div>
+                  {% endif %}
+                </div>
+                
+                <div class="mt-3">
+                  <small class="text-muted fw-bold d-block mb-1">Logo Ticket</small>
+                  {% if empresa.logo_ticket %}
+                    <img src="{{ empresa.logo_ticket }}" 
+                        alt="Logo Ticket {{ empresa.nombrecomercial }}" 
+                        class="company-logo-box">
+                  {% else %}
+                    <div class="company-logo-placeholder-box mx-auto" style="opacity: 0.5;">
+                      <i class="bi bi-receipt"></i>
+                    </div>
+                  {% endif %}
+                </div>
               </div>
               
               <!-- Información Principal -->
@@ -60,14 +75,32 @@
 
                 <div class="info-row-clean">
                   <i class="bi bi-envelope text-muted"></i>
-                  <span class="info-label-clean">Email</span>
+                  <span class="info-label-clean">Email (Usuario SUNAT)</span>
                   <span class="info-value-clean">{{ empresa.usersec|default:"MODDATOS" }}</span>
+                </div>
+
+                <div class="info-row-clean">
+                  <i class="bi bi-google text-muted"></i>
+                  <span class="info-label-clean">Gmail 1</span>
+                  <span class="info-value-clean">{{ empresa.gmail_1|default:"-" }}</span>
+                </div>
+
+                <div class="info-row-clean">
+                  <i class="bi bi-google text-muted"></i>
+                  <span class="info-label-clean">Gmail 2</span>
+                  <span class="info-value-clean">{{ empresa.gmail_2|default:"-" }}</span>
                 </div>
 
                 <div class="info-row-clean">
                   <i class="bi bi-telephone text-muted"></i>
                   <span class="info-label-clean">Teléfono</span>
                   <span class="info-value-clean">{{ empresa.telefono|default:"No especificado" }}</span>
+                </div>
+
+                <div class="info-row-clean">
+                  <i class="bi bi-phone text-muted"></i>
+                  <span class="info-label-clean">Cel. Gerente</span>
+                  <span class="info-value-clean">{{ empresa.celular_gerente|default:"-" }}</span>
                 </div>
 
                 <div class="info-row-clean">
@@ -96,10 +129,10 @@
             
             <!-- Badges de Parámetros Tributarios -->
             <div class="badges-container mb-4">
-              <span class="param-badge badge-cyan">IGV SUNAT: 18.00</span>
-              <span class="param-badge badge-red">ICBPER SUNAT: 0.00</span>
-              <span class="param-badge badge-yellow">ISC: 0.00</span>
-              <span class="param-badge badge-purple">Afectación general SUNAT: 20</span>
+              <span class="param-badge badge-cyan">IGV SUNAT: {{ empresa.igv|floatformat:2 }}</span>
+              <span class="param-badge badge-red">ICBPER SUNAT: {{ empresa.icbper|floatformat:2 }}</span>
+              <span class="param-badge badge-yellow">ISC: {{ empresa.isc|floatformat:2 }}</span>
+              <span class="param-badge badge-indigo">Mora: {{ empresa.interes_mora_base|floatformat:2 }}% (Día {{ empresa.dias_mora_inicio|default:4 }})</span>
             </div>
 
             <!-- Parámetros de Información -->
@@ -131,13 +164,19 @@
               <div class="param-item">
                 <i class="bi bi-emoji-smile text-muted"></i>
                 <span class="param-label">Agradecimiento:</span>
-                <span class="param-value">-</span>
+                <span class="param-value">{{ empresa.agradecimiento|default:"-" }}</span>
               </div>
 
               <div class="param-item">
                 <i class="bi bi-lock text-muted"></i>
                 <span class="param-label">Clave de seguridad empresa:</span>
-                <span class="param-value">{{ empresa.passwordsec|default:"MODDATOS" }}</span>
+                <span class="param-value">
+                  {% if empresa.passwordsec %}
+                  <span class="password-masked">••••••••</span>
+                  {% else %}
+                  MODDATOS
+                  {% endif %}
+                </span>
               </div>
             </div>
           </div>
@@ -298,14 +337,22 @@
             </div>
             
             <div class="row mb-3">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label fw-semibold">RUC <span class="text-danger">*</span></label>
                 <input type="text" name="ruc" id="ruc" class="form-control" value="{{ empresa.ruc }}" required maxlength="11" pattern="[0-9]{11}">
                 <small class="text-muted">11 dígitos numéricos</small>
               </div>
-              <div class="col-md-8">
+              <div class="col-md-4">
                 <label class="form-label fw-semibold">Razón Social <span class="text-danger">*</span></label>
                 <input type="text" name="razonSocial" class="form-control" value="{{ empresa.razonsocial }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-primary"><i class="bi bi-percent me-1"></i>Mora Base (%)</label>
+                <input type="number" step="0.01" name="interesMoraBase" class="form-control border-primary-subtle" value="{{ empresa.interes_mora_base|stringformat:".2f" }}" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label fw-semibold text-primary"><i class="bi bi-calendar3 me-1"></i>Día Inicio</label>
+                <input type="number" name="diasMoraInicio" class="form-control border-primary-subtle" value="{{ empresa.dias_mora_inicio|default:4 }}" required min="1">
               </div>
             </div>
 
@@ -336,8 +383,61 @@
                 <textarea name="publicidad" class="form-control" rows="3" placeholder="Ej: VENTA, MANTENIMIENTO Y REPARACIÓN">{{ empresa.publicidad }}</textarea>
               </div>
             </div>
+              
+              <!-- Representante Legal -->
+              <div class="row mb-3">
+                <div class="col-md-5">
+                  <label class="form-label fw-semibold text-primary"><i class="bi bi-person-badge"></i> Gerente General (Contrato)</label>
+                  <input name="gerenteGeneral" type="text" class="form-control" value="{{ empresa.gerente_general|default:'' }}" placeholder="Nombre del Representante Legal">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold text-primary">DNI Gerente</label>
+                  <input name="dniGerente" type="text" class="form-control" value="{{ empresa.dni_gerente|default:'' }}" maxlength="8">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-primary">Celular Gerente</label>
+                  <input name="celularGerente" type="text" class="form-control" value="{{ empresa.celular_gerente|default:'' }}" placeholder="Celular del gerente" maxlength="15">
+                </div>
+              </div>
 
-            <!-- Ubicación -->
+              <!-- Ubicación del Gerente -->
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-semibold text-primary"><i class="bi bi-geo-alt"></i> Dirección del Gerente</label>
+                  <input name="direccionGerente" type="text" class="form-control" value="{{ empresa.direccion_gerente|default:'' }}" placeholder="Dirección personal del gerente">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-primary">Departamento</label>
+                  <select name="idRegionGerente" id="idRegionGerente{{ empresa.idempresa }}" class="form-select select-region-gerente" data-id="{{ empresa.idempresa }}">
+                    <option value="">Seleccione...</option>
+                    {% for region in regiones %}
+                    <option value="{{ region.id_region }}" {% if region.id_region == empresa.id_region_gerente.id_region %}selected{% endif %}>{{ region.nombre_region }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-primary">Provincia</label>
+                  <select name="idProvinciaGerente" id="idProvinciaGerente{{ empresa.idempresa }}" class="form-select select-provincia-gerente" data-id="{{ empresa.idempresa }}">
+                    <option value="">Seleccione...</option>
+                    {% if empresa.id_provincia_gerente %}
+                    <option value="{{ empresa.id_provincia_gerente.id_provincia }}" selected>{{ empresa.id_provincia_gerente.nombre_provincia }}</option>
+                    {% endif %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-primary">Distrito</label>
+                  <select name="idDistritoGerente" id="idDistritoGerente{{ empresa.idempresa }}" class="form-select">
+                    <option value="">Seleccione...</option>
+                    {% if empresa.id_distrito_gerente %}
+                    <option value="{{ empresa.id_distrito_gerente.id_distrito }}" selected>{{ empresa.id_distrito_gerente.nombre_distrito }}</option>
+                    {% endif %}
+                  </select>
+                </div>
+              </div>
+
+              <!-- Ubicación -->
             <div class="section-divider">
               <i class="bi bi-geo-alt me-2"></i>Ubicación
             </div>
@@ -359,18 +459,67 @@
             </div>
 
             <div class="row mb-3">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label fw-semibold">Teléfono</label>
-                <input type="text" name="telefono" class="form-control" value="{{ empresa.telefono }}">
+                <input type="text" name="telefono" class="form-control" value="{{ empresa.telefono }}" maxlength="40">
               </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Gmail 1</label>
+                <input type="email" name="gmail_1" class="form-control" value="{{ empresa.gmail_1|default:'' }}" placeholder="ejemplo1@gmail.com">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Gmail 2</label>
+                <input type="email" name="gmail_2" class="form-control" value="{{ empresa.gmail_2|default:'' }}" placeholder="ejemplo2@gmail.com">
+              </div>
+            </div>
+            
+            <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Logo (Imagen)</label>
                 <input type="file" name="logo" id="logoInput" class="form-control" accept="image/*" onchange="previewLogo(event)">
                 <small class="text-muted">Formatos: JPG, PNG. Tamaño máximo: 2MB</small>
-                <!-- Preview del logo -->
-                <div id="logoPreviewContainer" class="mt-2" style="display: none;">
-                  <img id="logoPreview" src="" alt="Preview">
+                <div id="logoPreviewContainer" class="mt-2" style="display: none; text-align: center;">
+                  <img id="logoPreview" src="" alt="Preview" style="max-width: 100%; max-height: 150px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px; background: white;">
                 </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Logo para Ticket (Opcional)</label>
+                <input type="file" name="logo_ticket" id="logoTicketInput" class="form-control" accept="image/*" onchange="previewLogoTicket(event)">
+                <small class="text-muted">Si no se sube, se usa el logo principal. Max: 2MB</small>
+                <div id="logoTicketPreviewContainer" class="mt-2" style="display: none; text-align: center;">
+                  <img id="logoTicketPreview" src="" alt="Preview" style="max-width: 100%; max-height: 150px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px; background: white;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Parámetros del Sistema -->
+            <div class="section-divider">
+              <i class="bi bi-sliders me-2"></i>Parámetros del Sistema
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-info"><i class="bi bi-percent me-1"></i>IGV SUNAT (%)</label>
+                <input type="number" step="0.01" name="igv" class="form-control" value="{{ empresa.igv|stringformat:".2f" }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-danger"><i class="bi bi-cash-coin me-1"></i>ICBPER SUNAT</label>
+                <input type="number" step="0.01" name="icbper" class="form-control" value="{{ empresa.icbper|stringformat:".2f" }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-warning"><i class="bi bi-graph-up-arrow me-1"></i>ISC (%)</label>
+                <input type="number" step="0.01" name="isc" class="form-control" value="{{ empresa.isc|stringformat:".2f" }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-primary"><i class="bi bi-upc-scan me-1"></i>Afectación SUNAT</label>
+                <input type="number" name="afectacion_sunat" class="form-control" value="{{ empresa.afectacion_sunat }}" required>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">Mensaje de Agradecimiento</label>
+                <textarea name="agradecimiento" class="form-control" rows="2" placeholder="Ej: ¡Gracias por su compra! Vuelva pronto.">{{ empresa.agradecimiento }}</textarea>
               </div>
             </div>
 
@@ -395,6 +544,24 @@
               </div>
             </div>
 
+            <!-- WhatsApp API (UltraMsg) -->
+            <div class="section-divider">
+                <i class="fab fa-whatsapp me-2"></i>Configuración WhatsApp (UltraMsg)
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">UltraMsg Instance ID</label>
+                    <input type="text" name="ultramsg_instance" class="form-control" value="{{ empresa.ultramsg_instance|default:'' }}" placeholder="ej: instance12345">
+                    <small class="text-muted">ID de instancia obtenido de UltraMsg.com</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">UltraMsg Token</label>
+                    <input type="text" name="ultramsg_token" class="form-control" value="{{ empresa.ultramsg_token|default:'' }}" placeholder="ej: abcdef123456">
+                    <small class="text-muted">Token de autenticación obtenido de UltraMsg.com</small>
+                </div>
+            </div>
+
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
               <button type="submit" class="btn btn-primary">
@@ -409,6 +576,65 @@
   {% endfor %}
 
 </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar cambio de Departamento para el Gerente
+    document.querySelectorAll('.select-region-gerente').forEach(function(select) {
+        select.addEventListener('change', function() {
+            const idRegion = this.value;
+            const idEmpresa = this.dataset.id;
+            const provinciaSelect = document.getElementById('idProvinciaGerente' + idEmpresa);
+            const distritoSelect = document.getElementById('idDistritoGerente' + idEmpresa);
+            
+            // Limpiar selects
+            provinciaSelect.innerHTML = '<option value="">Cargando...</option>';
+            distritoSelect.innerHTML = '<option value="">Seleccione...</option>';
+            
+            if (!idRegion) {
+                provinciaSelect.innerHTML = '<option value="">Seleccione...</option>';
+                return;
+            }
+            
+            fetch(`/sucursales/obtener-provincias/?id_region=${idRegion}`)
+                .then(response => response.json())
+                .then(data => {
+                    let options = '<option value="">Seleccione...</option>';
+                    data.forEach(item => {
+                        options += `<option value="${item.id_provincia}">${item.nombre_provincia}</option>`;
+                    });
+                    provinciaSelect.innerHTML = options;
+                });
+        });
+    });
+
+    // Manejar cambio de Provincia para el Gerente
+    document.querySelectorAll('.select-provincia-gerente').forEach(function(select) {
+        select.addEventListener('change', function() {
+            const idProvincia = this.value;
+            const idEmpresa = this.dataset.id;
+            const distritoSelect = document.getElementById('idDistritoGerente' + idEmpresa);
+            
+            distritoSelect.innerHTML = '<option value="">Cargando...</option>';
+            
+            if (!idProvincia) {
+                distritoSelect.innerHTML = '<option value="">Seleccione...</option>';
+                return;
+            }
+            
+            fetch(`/sucursales/obtener-distritos/?id_provincia=${idProvincia}`)
+                .then(response => response.json())
+                .then(data => {
+                    let options = '<option value="">Seleccione...</option>';
+                    data.forEach(item => {
+                        options += `<option value="${item.id_distrito}">${item.nombre_distrito}</option>`;
+                    });
+                    distritoSelect.innerHTML = options;
+                });
+        });
+    });
+});
+</script>
 
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -578,6 +804,38 @@ function previewLogo(event) {
   }
 }
 
+// Preview del logo ticket al seleccionar
+function previewLogoTicket(event) {
+  const file = event.target.files[0];
+  const preview = document.getElementById('logoTicketPreview');
+  const container = document.getElementById('logoTicketPreviewContainer');
+  
+  if (file) {
+    // Validar tamaño
+    if (file.size > 2 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Archivo muy grande',
+        text: 'El logo de ticket no debe superar los 2MB',
+        confirmButtonColor: '#dc3545'
+      });
+      event.target.value = '';
+      container.style.display = 'none';
+      return;
+    }
+    
+    // Mostrar preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      container.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    container.style.display = 'none';
+  }
+}
+
 </script>
 
 <style>
@@ -662,8 +920,18 @@ function previewLogo(event) {
   color: #333;
 }
 
-.badge-purple {
-  background-color: #6f42c1;
+.badge-indigo {
+  background: linear-gradient(135deg, #6610f2 0%, #6f42c1 100%);
+  box-shadow: 0 2px 4px rgba(102, 16, 242, 0.2);
+}
+
+.border-primary-subtle {
+  border-color: #cfe2ff !important;
+}
+
+.form-control:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
 /* Lista de parámetros */

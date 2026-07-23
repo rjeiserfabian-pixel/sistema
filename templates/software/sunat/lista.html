@@ -1,0 +1,153 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<main id="main" class="main">
+    <!-- Encabezado -->
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+        <h1 class="fw-bold text-primary">
+            <i class="bi bi-receipt me-2"></i>{{ titulo }}
+        </h1>
+    </div>
+
+    <nav aria-label="breadcrumb" class="mt-2">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+            <li class="breadcrumb-item active">Facturación SUNAT</li>
+        </ol>
+    </nav>
+
+    <!-- Contenido -->
+    <section class="section mt-4">
+        <div class="row">
+            <div class="col-lg-12">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                            <i class="bi bi-info-circle me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body pt-3">
+                        <h5 class="card-title mb-3">Listado de Comprobantes SUNAT</h5>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle datatable" id="tabla_sunat">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th scope="col" style="width: 10%;">Fecha</th>
+                                        <th scope="col" style="width: 15%;">Comprobante</th>
+                                        <th scope="col">Cliente</th>
+                                        <th scope="col" style="width: 12%;">Total</th>
+                                        <th scope="col" class="text-center" style="width: 15%;">Estado SUNAT</th>
+                                        <th scope="col" class="text-center" style="width: 15%;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for v in ventas %}
+                                    <tr>
+                                        <td class="small">{{ v.fecha_venta|date:"d/m/Y" }}<br><small class="text-muted">{{ v.fecha_venta|date:"H:i" }}</small></td>
+                                        <td>
+                                            <span class="badge bg-primary text-uppercase">{{ v.idseriecomprobante.serie }}-{{ v.numero_comprobante }}</span>
+                                            <br><small class="text-muted">{{ v.idtipocomprobante.nombre }}</small>
+                                        </td>
+                                        <td class="text-uppercase fw-semibold" style="font-size: 0.9rem;">
+                                            {{ v.idcliente.razonsocial }}
+                                        </td>
+                                        <td class="fw-bold text-dark">S/ {{ v.total_venta|floatformat:2 }}</td>
+                                        <td class="text-center">
+                                            {% if v.sunat_estado == 1 %}
+                                                <span class="badge rounded-pill bg-success px-3">
+                                                    <i class="bi bi-check-circle me-1"></i> Aceptado
+                                                </span>
+                                            {% elif v.sunat_estado == 2 %}
+                                                <span class="badge rounded-pill bg-danger px-3 shadow-none" title="{{ v.sunat_error }}" data-bs-toggle="tooltip">
+                                                    <i class="bi bi-x-circle me-1"></i> Rechazado
+                                                </span>
+                                            {% elif v.sunat_estado == 3 %}
+                                                <span class="badge rounded-pill bg-warning text-dark px-3" title="{{ v.sunat_error }}" data-bs-toggle="tooltip">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i> Error
+                                                </span>
+                                            {% else %}
+                                                <span class="badge rounded-pill bg-secondary px-3">
+                                                    <i class="bi bi-clock me-1"></i> Pendiente
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <!-- Ticket Interno -->
+                                                <a href="{% url 'imprimir_comprobante' v.idventa %}" class="btn btn-sm btn-info text-white" target="_blank" title="Imprimir Ticket">
+                                                    <i class="bi bi-printer"></i>
+                                                </a>
+                                                
+                                                <!-- PDF SUNAT -->
+                                                {% if v.sunat_estado == 1 and v.sunat_pdf %}
+                                                    <a href="{{ v.sunat_pdf }}" class="btn btn-sm btn-success" target="_blank" title="Ver PDF SUNAT">
+                                                        <i class="bi bi-file-earmark-pdf"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <button type="button" class="btn btn-sm btn-secondary" disabled title="PDF no disponible">
+                                                        <i class="bi bi-file-earmark-pdf"></i>
+                                                    </button>
+                                                {% endif %}
+                                                
+                                                <!-- Enviar -->
+                                                {% if v.sunat_estado != 1 %}
+                                                    <a href="{% url 'enviar_sunat_manual' v.idventa %}" class="btn btn-sm btn-primary" title="Enviar a SUNAT">
+                                                        <i class="bi bi-send-fill"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <button type="button" class="btn btn-sm btn-secondary" disabled title="Ya enviado">
+                                                        <i class="bi bi-send-check"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <div class="text-muted">
+                                                <i class="bi bi-info-circle fs-4"></i><br>
+                                                No se encontraron comprobantes para procesar.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    $(document).ready(function() {
+        // Inicializar DataTable con idioma español si no está inicializado
+        if (!$.fn.DataTable.isDataTable('#tabla_sunat')) {
+            $('#tabla_sunat').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json"
+                },
+                "order": [[ 0, "desc" ]],
+                "pageLength": 10
+            });
+        }
+        
+        // Inicializar tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
+{% endblock %}

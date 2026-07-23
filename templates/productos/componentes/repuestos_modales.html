@@ -1,0 +1,299 @@
+<!-- MODAL AGREGAR REPUESTO -->
+<div class="modal fade" id="modalAgregarRepuesto" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-circle-plus me-2"></i>Registrar Repuesto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formAgregarRepuesto">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <!-- SECCION 1: Información del Repuesto -->
+          <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">
+            <i class="fa-solid fa-circle-info me-1"></i> Información del Repuesto
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Código Interno</label>
+              <input type="text" name="codigo_interno" class="form-control" placeholder="Ej: REP-001">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Nombre del Repuesto <span class="text-danger">*</span></label>
+              <input type="text" name="nombre" class="form-control" required placeholder="Ej: FILTRO DE ACEITE">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Categoría</label>
+              <div class="d-flex gap-2 align-items-start">
+                <div class="autocomplete-wrapper flex-grow-1">
+                  <input type="text"
+                         id="categoria_rep_search_add"
+                         class="form-control autocomplete-input autocomplete-with-arrow"
+                         placeholder="— Seleccionar —"
+                         autocomplete="off">
+                  <button type="button"
+                          class="autocomplete-arrow"
+                          onclick="toggleAutocomplete('categoria_rep_search_add', 'categoria_rep_results_add', categoriasRepData, 'categoria_rep_id_add')">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="categoria" id="categoria_rep_id_add" class="select-add">
+                  <div class="autocomplete-results" id="categoria_rep_results_add"></div>
+                </div>
+                <button type="button" class="btn btn-warning text-dark px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Categoría" data-bs-toggle="modal" data-bs-target="#miniModalCategoriaRep">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Marca</label>
+              <div class="d-flex gap-2 align-items-start">
+                <div class="autocomplete-wrapper flex-grow-1">
+                  <input type="text"
+                         id="marca_rep_search_add"
+                         class="form-control autocomplete-input autocomplete-with-arrow"
+                         placeholder="— Seleccionar —"
+                         autocomplete="off">
+                  <button type="button"
+                          class="autocomplete-arrow"
+                          onclick="toggleAutocomplete('marca_rep_search_add', 'marca_rep_results_add', marcasRepData, 'marca_rep_id_add')">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="marca" id="marca_rep_id_add" class="select-add">
+                  <div class="autocomplete-results" id="marca_rep_results_add"></div>
+                </div>
+                <button type="button" class="btn btn-warning text-dark px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Marca" data-bs-toggle="modal" data-bs-target="#miniModalMarcaRep">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Unidad de Medida <span class="text-danger">*</span></label>
+              <div class="d-flex gap-2 align-items-start">
+                <div class="autocomplete-wrapper flex-grow-1">
+                  <input type="text"
+                         id="unidad_rep_search_add"
+                         class="form-control autocomplete-input autocomplete-with-arrow"
+                         placeholder="— Seleccionar —"
+                         autocomplete="off" required>
+                  <button type="button"
+                          class="autocomplete-arrow"
+                          onclick="toggleAutocomplete('unidad_rep_search_add', 'unidad_rep_results_add', unidadesData, 'unidad_rep_id_add')">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="unidad" id="unidad_rep_id_add" class="select-add" required>
+                  <div class="autocomplete-results" id="unidad_rep_results_add"></div>
+                </div>
+                <button type="button" class="btn btn-warning text-dark px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Unidad" data-bs-toggle="modal" data-bs-target="#miniModalUnidadRep">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Modelo / Referencia</label>
+              <input type="text" name="modelo_referencia" class="form-control" placeholder="Ej: W 712/52">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Código de Barras</label>
+              <input type="text" name="codigo_barras" class="form-control" placeholder="Ej: 7894561230012">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Compatibilidad</label>
+              <textarea name="compatibilidad" class="form-control" rows="2" placeholder="Vehículos o repuestos compatibles..."></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Descripción</label>
+              <textarea name="descripcion" class="form-control" rows="2" placeholder="Descripción breve del repuesto..."></textarea>
+            </div>
+          </div>
+
+          <!-- SECCION 2: Información de Inventario -->
+          <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">
+            <i class="fa-solid fa-boxes-stacked me-1"></i> Información de Inventario y Precios
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Stock Mínimo</label>
+              <input type="number" name="stock_minimo" class="form-control" value="0" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Stock Máximo</label>
+              <input type="number" name="stock_maximo" class="form-control" value="0" min="0">
+            </div>
+            <div class="col-md-4"></div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Costo Unitario (S/)</label>
+              <input type="number" name="costo_unitario" class="form-control" value="0.00" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Precio x Mayor (S/)</label>
+              <input type="number" name="precio_minimo" class="form-control" value="0.00" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Precio x Menor (S/)</label>
+              <input type="number" name="precio_sugerido" class="form-control" value="0.00" min="0" step="0.01">
+            </div>
+          </div>
+
+          <!-- SECCION 3: Información Adicional -->
+          <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">
+            <i class="fa-solid fa-circle-dot me-1"></i> Información Adicional
+          </h6>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Garantía</label>
+              <div class="d-flex gap-2 align-items-start">
+                <div class="autocomplete-wrapper flex-grow-1">
+                  <input type="text"
+                         id="garantia_rep_search_add"
+                         class="form-control autocomplete-input autocomplete-with-arrow"
+                         placeholder="— Sin garantía —"
+                         autocomplete="off">
+                  <button type="button"
+                          class="autocomplete-arrow"
+                          onclick="toggleAutocomplete('garantia_rep_search_add', 'garantia_rep_results_add', garantiasRepData, 'garantia_rep_id_add')">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="garantia" id="garantia_rep_id_add" class="select-add">
+                  <div class="autocomplete-results" id="garantia_rep_results_add"></div>
+                </div>
+                <button type="button" class="btn btn-warning text-dark px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Garantía" data-bs-toggle="modal" data-bs-target="#miniModalGarantiaRep">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Observaciones</label>
+              <textarea name="observaciones" class="form-control" rows="2" placeholder="Observaciones internas..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+            <i class="fa-solid fa-xmark me-1"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Repuesto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR REPUESTO (Dinámico vía JS) -->
+<div class="modal fade" id="modalEditarRepuesto" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Repuesto</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formEditarRepuesto">
+        {% csrf_token %}
+        <input type="hidden" name="id_repuesto" id="edit_repuesto_id">
+        <div class="modal-body p-4">
+          <h6 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="fa-solid fa-circle-info me-1"></i> Información del Repuesto</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Código Interno</label>
+              <input type="text" name="codigo_interno2" id="edit_rep_codigo" class="form-control">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Nombre del Repuesto <span class="text-danger">*</span></label>
+              <input type="text" name="nombre2" id="edit_rep_nombre" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Categoría</label>
+              <select name="categoria2" id="edit_rep_categoria" class="form-select">
+                <option value="">— Seleccionar —</option>
+                {% for cat in categorias_rep %}
+                <option value="{{ cat.idcategoria_repuesto }}">{{ cat.nomcategoria }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Marca</label>
+              <select name="marca2" id="edit_rep_marca" class="form-select">
+                <option value="">— Seleccionar —</option>
+                {% for m in marcas_rep %}
+                <option value="{{ m.idmarca_repuesto }}">{{ m.nombremarca }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Unidad de Medida <span class="text-danger">*</span></label>
+              <select name="unidad2" id="edit_rep_unidad" class="form-select" required>
+                <option value="">— Seleccionar —</option>
+                {% for u in unidades %}
+                <option value="{{ u.idunidad }}">{{ u.abrunidad }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Modelo / Referencia</label>
+              <input type="text" name="modelo_referencia2" id="edit_rep_modelo" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Código de Barras</label>
+              <input type="text" name="codigo_barras2" id="edit_rep_barras" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Compatibilidad</label>
+              <textarea name="compatibilidad2" id="edit_rep_comp" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Descripción</label>
+              <textarea name="descripcion2" id="edit_rep_desc" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <h6 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="fa-solid fa-boxes-stacked me-1"></i> Inventario y Precios</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Stock Mínimo</label>
+              <input type="number" name="stock_minimo2" id="edit_rep_stmin" class="form-control" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Stock Máximo</label>
+              <input type="number" name="stock_maximo2" id="edit_rep_stmax" class="form-control" min="0">
+            </div>
+            <div class="col-md-4"></div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Costo Unitario (S/)</label>
+              <input type="number" name="costo_unitario2" id="edit_rep_costo" class="form-control" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Precio x Mayor (S/)</label>
+              <input type="number" name="precio_minimo2" id="edit_rep_pmin" class="form-control" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Precio x Menor (S/)</label>
+              <input type="number" name="precio_sugerido2" id="edit_rep_psug" class="form-control" min="0" step="0.01">
+            </div>
+          </div>
+          <h6 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="fa-solid fa-circle-dot me-1"></i> Información Adicional</h6>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Garantía</label>
+              <select name="garantia2" id="edit_rep_garantia" class="form-select">
+                <option value="">— Sin garantía —</option>
+                {% for g in garantias_rep %}
+                <option value="{{ g.id_garantia_repuesto }}">{{ g.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Observaciones</label>
+              <textarea name="observaciones2" id="edit_rep_obs" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

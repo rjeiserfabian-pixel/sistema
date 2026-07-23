@@ -1,0 +1,219 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="fw-bold text-primary"><i class="fas fa-truck-moving me-2"></i>Vehículos de Transporte</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'index' %}">Inicio</a></li>
+          <li class="breadcrumb-item">Transporte</li>
+          <li class="breadcrumb-item active">Vehículos</li>
+        </ol>
+      </nav>
+    </div>
+    <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVehiculo">
+      <i class="bi bi-plus-lg me-2"></i>Nuevo Vehículo
+    </button>
+  </div>
+
+  <section class="section">
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-body p-4">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle custom-table">
+                <thead>
+                  <tr>
+                    <th>Placa</th>
+                    <th>Marca / Modelo</th>
+                    <th>Tipo</th>
+                    <th>Capacidad</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for v in vehiculos %}
+                  <tr>
+                    <td><span class="fw-bold text-primary">{{ v.placa }}</span></td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ v.marca }}</span>
+                        <small class="text-muted">{{ v.modelo }}</small>
+                      </div>
+                    </td>
+                    <td>{{ v.get_tipo_display|default:v.tipo }}</td>
+                    <td>{{ v.capacidad|default:"-" }}</td>
+                    <td class="text-center">
+                      {% if v.estado == 'disponible' %}
+                        <span class="badge bg-success-light text-success rounded-pill px-3">Disponible</span>
+                      {% elif v.estado == 'en_uso' %}
+                        <span class="badge bg-warning-light text-warning rounded-pill px-3">En Uso</span>
+                      {% else %}
+                        <span class="badge bg-danger-light text-danger rounded-pill px-3">{{ v.estado }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-center">
+                      <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-outline-primary rounded-circle" 
+                                onclick="editarVehiculo('{{ v.id_transporte_vehiculo }}', '{{ v.placa }}', '{{ v.marca }}', '{{ v.modelo }}', '{{ v.tipo }}', '{{ v.capacidad }}', '{{ v.estado }}')"
+                                title="Editar">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <a href="{% url 'eliminar_vehiculo_transporte' v.id_transporte_vehiculo %}" 
+                           class="btn btn-sm btn-outline-danger rounded-circle btn-delete" 
+                           title="Eliminar">
+                          <i class="bi bi-trash"></i>
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No hay vehículos registrados</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL VEHICULO -->
+  <div class="modal fade" id="modalVehiculo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title fw-bold" id="modalTitle">Nuevo Vehículo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formVehiculo" method="post" action="{% url 'agregar_vehiculo_transporte' %}">
+          {% csrf_token %}
+          <input type="hidden" name="id_transporte_vehiculo" id="id_transporte_vehiculo">
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Placa <span class="text-danger">*</span></label>
+                <input type="text" name="placa" id="placa" class="form-control" placeholder="ABC-123" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
+                <select name="tipo" id="tipo" class="form-select" required>
+                  <option value="camion">Camión</option>
+                  <option value="furgon">Furgón</option>
+                  <option value="moto">Moto</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Marca</label>
+                <input type="text" name="marca" id="marca" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Modelo</label>
+                <input type="text" name="modelo" id="modelo" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Capacidad</label>
+                <input type="text" name="capacidad" id="capacidad" class="form-control" placeholder="Ej: 5 Ton">
+              </div>
+              <div class="col-md-6" id="divEstado" style="display:none;">
+                <label class="form-label fw-semibold">Estado</label>
+                <select name="estado" id="estado" class="form-select">
+                  <option value="disponible">Disponible</option>
+                  <option value="en_uso">En Uso</option>
+                  <option value="mantenimiento">Mantenimiento</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-0 p-4">
+            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">Guardar Vehículo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function editarVehiculo(id, placa, marca, modelo, tipo, capacidad, estado) {
+    $('#modalTitle').text('Editar Vehículo');
+    $('#formVehiculo').attr('action', '{% url "editar_vehiculo_transporte" %}');
+    $('#id_transporte_vehiculo').val(id);
+    $('#placa').val(placa);
+    $('#marca').val(marca);
+    $('#modelo').val(modelo);
+    $('#tipo').val(tipo);
+    $('#capacidad').val(capacidad);
+    $('#estado').val(estado);
+    $('#divEstado').show();
+    $('#modalVehiculo').modal('show');
+}
+
+// Limpiar modal al cerrar
+$('#modalVehiculo').on('hidden.bs.modal', function () {
+    $('#modalTitle').text('Nuevo Vehículo');
+    $('#formVehiculo').attr('action', '{% url "agregar_vehiculo_transporte" %}');
+    $('#id_transporte_vehiculo').val('');
+    $('#formVehiculo')[0].reset();
+    $('#divEstado').hide();
+});
+
+// DETECTAR MENSAJES DE DJANGO Y MOSTRAR SWEETALERT
+{% if messages %}
+  {% for message in messages %}
+    Swal.fire({
+      icon: '{% if message.tags == "error" %}error{% else %}success{% endif %}',
+      title: '{% if message.tags == "error" %}¡Error!{% else %}¡Logrado!{% endif %}',
+      text: '{{ message }}',
+      timer: 3000,
+      showConfirmButton: false
+    });
+  {% endfor %}
+{% endif %}
+
+$('.btn-delete').click(function(e) {
+    e.preventDefault();
+    const url = $(this).attr('href');
+    Swal.fire({
+        title: '¿Eliminar vehículo?',
+        text: "Esta acción no se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = url;
+        }
+    });
+});
+</script>
+<style>
+  .bg-success-light { background-color: rgba(40, 167, 69, 0.1); }
+  .bg-warning-light { background-color: rgba(255, 193, 7, 0.1); }
+  .bg-danger-light { background-color: rgba(220, 53, 69, 0.1); }
+  .custom-table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+  }
+</style>
+{% endblock %}

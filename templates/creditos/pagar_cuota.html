@@ -41,7 +41,7 @@
                                 <p class="mb-2"><strong>Comprobante:</strong> {{ credito.idventa.numero_comprobante }}</p>
                                 <p class="mb-2"><strong>Monto Total:</strong> S/ {{ credito.monto_total|floatformat:2 }}</p>
                                 <p class="mb-0"><strong>Saldo Pendiente:</strong> 
-                                    <span class="text-danger fw-bold">S/ {{ credito.saldo_pendiente|floatformat:2 }}</span>
+                                    <span class="text-danger fw-bold">S/ {{ total_pendiente|floatformat:2 }}</span>
                                 </p>
                             </div>
                         </div>
@@ -66,10 +66,29 @@
                                 <h4 class="text-primary mb-0">S/ {{ cuota.total|floatformat:2 }}</h4>
                             </div>
                             <div class="col-md-4 text-center">
-                                <p class="mb-1"><strong>Saldo</strong></p>
-                                <h4 class="text-danger mb-0">S/ {{ cuota.saldo_cuota|floatformat:2 }}</h4>
+                                <p class="mb-1"><strong>Saldo Capital</strong></p>
+                                <h4 class="text-dark mb-0">S/ {{ cuota.saldo_cuota|floatformat:2 }}</h4>
                             </div>
                         </div>
+
+                        {% if interes_mora > 0 %}
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="alert alert-danger border-0 mb-0 py-2 d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        Interés por Mora ({{ dias_mora }} días - {{ tasa_mora }}%):
+                                    </span>
+                                    <span class="fw-bold h5 mb-0">+ S/ {{ interes_mora|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12 text-end">
+                                <h4 class="fw-bold text-danger">TOTAL A PAGAR: S/ {{ total_pendiente_cuota|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                        {% endif %}
                         
                         {% if cuota.monto_pagado > 0 %}
                         <div class="mt-3 pt-3 border-top">
@@ -90,63 +109,79 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <form id="formPagarCuota" method="POST">
+                        <form id="formPagarCuota" method="POST" novalidate>
                             {% csrf_token %}
+                            <!-- Campo para Fecha Manual -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-calendar-event"></i> Fecha de Pago
+                                </label>
+                                <input type="date" class="form-control form-control-lg" name="fecha_pago" id="fecha_pago" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}" required>
+                                <small class="form-text text-muted">Por defecto es la fecha actual. Modifíquelo solo para pagos retroactivos.</small>
+                            </div>
                             
-                            <div class="mb-4">
-                                <label for="monto_pago" class="form-label fw-bold">
-                                    <i class="bi bi-currency-dollar"></i> Monto a Pagar <span class="text-danger">*</span>
+                            <!-- Campo oculto para el total (calculado por JS desde los métodos de pago) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-currency-dollar"></i> Total a Pagar
                                 </label>
                                 <div class="input-group input-group-lg">
                                     <span class="input-group-text">S/</span>
                                     <input type="number" 
-                                           class="form-control" 
+                                           class="form-control fw-bold text-success" 
                                            id="monto_pago" 
                                            name="monto_pago"
-                                           step="0.01" 
-                                           min="0.01"
-                                           required>
+                                           readonly
+                                           step="0.01">
                                 </div>
-                                <small class="form-text text-muted" id="textoMaximo">
-                                    Máximo: S/ {{ cuota.saldo_cuota|floatformat:2 }}
+                                <small class="form-text text-muted">
+                                    Máximo: S/ {{ total_pendiente_cuota|floatformat:2 }}
                                 </small>
                                 <!-- ⭐ ALERTA DE VALIDACIÓN -->
-                                <div id="alertaMonto" class="alert alert-warning mt-2" style="display: none;">
+                                <div id="alertaMonto" class="alert alert-danger mt-2" style="display: none;">
                                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
                                     <span id="mensajeAlerta"></span>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnPagarTodo">
-                                    Pagar Saldo Completo
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 rounded-pill" id="btnPagarTodo">
+                                    <i class="bi bi-lightning-fill me-1"></i>Pagar Saldo Completo
                                 </button>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="id_tipo_pago" class="form-label fw-bold">
-                                            <i class="bi bi-credit-card"></i> Tipo de Pago <span class="text-danger">*</span>
-                                        </label>
-                                        <select class="form-select" id="id_tipo_pago" name="id_tipo_pago" required>
-                                            <option value="">Seleccione...</option>
-                                            {% for tipo in tipos_pago %}
-                                            <option value="{{ tipo.id_tipo_pago }}">{{ tipo.nombre }}</option>
-                                            {% endfor %}
-                                        </select>
+                            <!-- SECCIÓN DE PAGOS MIXTOS -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-wallet2"></i> Métodos de Pago <span class="text-danger">*</span>
+                                </label>
+                                <div id="pagos-container">
+                                    <div class="pago-row row g-2 mb-2 align-items-end" id="pago-row-1">
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Tipo de Pago</label>
+                                            <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago" required>
+                                                <option value="">Seleccione...</option>
+                                                {% for tipo in tipos_pago %}
+                                                <option value="{{ tipo.id_tipo_pago }}">{{ tipo.nombre }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 nro-operacion-container d-none">
+                                            <label class="form-label small mb-1">N° Operación <span class="text-danger">*</span></label>
+                                            <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="Ej: 123456">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Monto (S/)</label>
+                                            <input type="number" name="monto_pago_item[]" class="form-control form-control-sm monto-item-input" 
+                                                   step="0.01" min="0.01" required>
+                                        </div>
+                                        <div class="col-md-1 text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-pago" disabled>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="numero_operacion" class="form-label fw-bold">
-                                            <i class="bi bi-hash"></i> N° Operación / Referencia
-                                        </label>
-                                        <input type="text" 
-                                               class="form-control" 
-                                               id="numero_operacion" 
-                                               name="numero_operacion"
-                                               placeholder="Opcional">
-                                    </div>
-                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2 rounded-pill" id="btnAgregarPago">
+                                    <i class="bi bi-plus-circle me-1"></i>Agregar otro método
+                                </button>
                             </div>
 
                             <div class="mb-4">
@@ -156,7 +191,7 @@
                                 <textarea class="form-control" 
                                           id="observaciones" 
                                           name="observaciones" 
-                                          rows="3" 
+                                          rows="2" 
                                           placeholder="Información adicional (opcional)"></textarea>
                             </div>
 
@@ -188,88 +223,164 @@
 $(document).ready(function() {
     
     // ⭐ CONVERTIR VALOR CON FORMATO EUROPEO (coma) A FORMATO US (punto)
-    const saldoCuotaStr = '{{ cuota.saldo_cuota|floatformat:2 }}';
+    const saldoCuotaStr = '{{ total_pendiente_cuota|floatformat:2 }}';
     const saldoCuotaOriginal = parseFloat(saldoCuotaStr.replace(',', '.'));
     
-    console.log('💰 VALORES INICIALES:');
-    console.log('   Saldo de cuota (string):', saldoCuotaStr);
-    console.log('   Saldo de cuota (number):', saldoCuotaOriginal);
+    // Establecer valor inicial del primer input de monto
+    $('.monto-item-input').val(saldoCuotaOriginal.toFixed(2));
     
-    // Establecer valor inicial y máximo del input
-    $('#monto_pago').attr('max', saldoCuotaOriginal);
-    $('#monto_pago').val(saldoCuotaOriginal.toFixed(2));
-    
-    // ⭐ VALIDACIÓN EN TIEMPO REAL AL ESCRIBIR
-    $('#monto_pago').on('input change', function() {
-        const montoPago = parseFloat($(this).val()) || 0;
-        const $alerta = $('#alertaMonto');
-        const $input = $(this);
-        
-        if (montoPago > saldoCuotaOriginal) {
-            // Mostrar alerta
-            $('#mensajeAlerta').text('El valor debe ser menor de o igual a S/ ' + saldoCuotaOriginal.toFixed(2));
-            $alerta.removeClass('alert-warning').addClass('alert-danger').show();
-            $input.addClass('is-invalid');
-        } else if (montoPago < 0.01 && montoPago > 0) {
-            // Monto muy pequeño
-            $('#mensajeAlerta').text('El monto debe ser mayor a S/ 0.01');
-            $alerta.removeClass('alert-danger').addClass('alert-warning').show();
-            $input.addClass('is-invalid');
+    // --- LÓGICA DE PAGOS MIXTOS ---
+
+    // Función para mostrar/ocultar N° Operación según tipo de pago (igual que pre-financiamiento)
+    function toggleOperacion(select) {
+        const row = $(select).closest('.pago-row');
+        const container = row.find('.nro-operacion-container');
+        const input = container.find('input');
+        const selectedText = $(select).find('option:selected').text().toLowerCase();
+
+        if (selectedText && !selectedText.includes('efectivo') && selectedText !== 'seleccione...') {
+            container.removeClass('d-none');
         } else {
-            // Válido
-            $alerta.hide();
-            $input.removeClass('is-invalid');
+            container.addClass('d-none');
+            input.val('');
         }
+    }
+
+    // Aplicar toggle al primer select y a los que se agreguen dinámicamente
+    $(document).on('change', '.select-tipo-pago', function() {
+        toggleOperacion(this);
     });
+
+    const tiposPagoHtml = `{% for tipo in tipos_pago %}<option value="{{ tipo.id_tipo_pago }}">{{ tipo.nombre }}</option>{% endfor %}`;
     
+    function actualizarBotonesEliminar() {
+        const filas = $('.pago-row').length;
+        $('.btn-remove-pago').prop('disabled', filas === 1);
+    }
+
+    $('#btnAgregarPago').click(function() {
+        const id = Date.now();
+        
+        let sumaActual = 0;
+        $('.monto-item-input').each(function() { sumaActual += parseFloat($(this).val()) || 0; });
+        let restante = saldoCuotaOriginal - sumaActual;
+        if (restante < 0) restante = 0;
+
+        const nuevaFila = `
+            <div class="pago-row row g-2 mb-2 align-items-end" id="pago-row-${id}">
+                <div class="col-md-4">
+                    <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago" required>
+                        <option value="">Seleccione...</option>
+                        ${tiposPagoHtml}
+                    </select>
+                </div>
+                <div class="col-md-3 nro-operacion-container d-none">
+                    <label class="form-label small mb-1">N° Operación <span class="text-danger">*</span></label>
+                    <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="Ej: 123456">
+                </div>
+                <div class="col-md-4">
+                    <input type="number" name="monto_pago_item[]" class="form-control form-control-sm monto-item-input" 
+                           step="0.01" min="0.01" value="${restante > 0 ? restante.toFixed(2) : ''}" required>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-pago">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+        $('#pagos-container').append(nuevaFila);
+        actualizarBotonesEliminar();
+        calcularTotalMixto();
+    });
+
+    $(document).on('click', '.btn-remove-pago', function() {
+        $(this).closest('.pago-row').remove();
+        actualizarBotonesEliminar();
+        calcularTotalMixto();
+    });
+
+    function calcularTotalMixto() {
+        let total = 0;
+        $('.monto-item-input').each(function() {
+            total += parseFloat($(this).val()) || 0;
+        });
+        $('#monto_pago').val(total.toFixed(2));
+        
+        // Validación visual
+        const $alerta = $('#alertaMonto');
+        if (total > saldoCuotaOriginal + 0.01) { // Pequeño margen para redondeo
+            $('#mensajeAlerta').text('El total excede el saldo de la cuota (S/ ' + saldoCuotaOriginal.toFixed(2) + ')');
+            $alerta.show();
+            $('#monto_pago').addClass('is-invalid');
+        } else {
+            $alerta.hide();
+            $('#monto_pago').removeClass('is-invalid');
+        }
+        return total;
+    }
+
+    $(document).on('input', '.monto-item-input', function() {
+        calcularTotalMixto();
+    });
+
     // Botón para pagar saldo completo
     $('#btnPagarTodo').click(function() {
-        $('#monto_pago').val(saldoCuotaOriginal.toFixed(2));
-        $('#alertaMonto').hide();
-        $('#monto_pago').removeClass('is-invalid');
+        // Limpiar filas extras
+        $('.pago-row').not(':first').remove();
+        $('.monto-item-input').val(saldoCuotaOriginal.toFixed(2));
+        actualizarBotonesEliminar();
+        calcularTotalMixto();
     });
 
     // Enviar formulario
     $('#formPagarCuota').submit(function(e) {
         e.preventDefault();
         
-        const montoPago = parseFloat($('#monto_pago').val()) || 0;
+        const totalPagado = calcularTotalMixto();
         const saldoCuota = saldoCuotaOriginal;
         
-        console.log('💰 DEBUG VALIDACIÓN:');
-        console.log('   Monto a pagar:', montoPago);
-        console.log('   Saldo de cuota:', saldoCuota);
-        
-        // Validaciones
-        if (montoPago <= 0) {
-            Swal.fire('Error', 'El monto debe ser mayor a 0', 'error');
+        // VALIDACIONES
+        if (totalPagado <= 0) {
+            Swal.fire({ icon: 'error', title: 'Monto inválido', text: 'El monto total debe ser mayor a 0', confirmButtonColor: '#dc3545' });
             return;
         }
         
-        if (montoPago > saldoCuota) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'El monto no puede ser mayor al saldo de la cuota (S/ ' + saldoCuota.toFixed(2) + ')',
-                confirmButtonColor: '#dc3545'
-            });
+        if (totalPagado > saldoCuota + 0.01) {
+            Swal.fire({ icon: 'error', title: 'Saldo excedido', text: 'El monto no puede ser mayor al saldo de la cuota (S/ ' + saldoCuota.toFixed(2) + ')', confirmButtonColor: '#dc3545' });
+            return;
+        }
+
+        let faltanDatos = false;
+        let faltaNroOp = false;
+        $('.pago-row').each(function() {
+            const tipoPagoVal = $(this).find('.select-tipo-pago').val();
+            if (!tipoPagoVal) { faltanDatos = true; }
+
+            const tipoPagoText = $(this).find('.select-tipo-pago option:selected').text().toLowerCase();
+            const nroOpContainer = $(this).find('.nro-operacion-container');
+            const nroOpVal = nroOpContainer.find('input').val().trim();
+
+            if (!nroOpContainer.hasClass('d-none') && !nroOpVal) {
+                faltaNroOp = true;
+            }
+        });
+
+        if (faltanDatos) {
+            Swal.fire({ icon: 'warning', title: 'Falta información', text: 'Debe seleccionar el tipo de pago para todos los métodos', confirmButtonColor: '#f8bb86' });
+            return;
+        }
+
+        if (faltaNroOp) {
+            Swal.fire({ icon: 'warning', title: 'N° de Operación requerido', text: 'Ingrese el N° de operación para los métodos que no son Efectivo.', confirmButtonColor: '#f8bb86' });
             return;
         }
         
-        if (!$('#id_tipo_pago').val()) {
-            Swal.fire('Error', 'Debe seleccionar el tipo de pago', 'error');
-            return;
-        }
-        
-        // Guardar referencia al formulario
         const $form = $(this);
         
-        // Confirmar
         Swal.fire({
             title: '¿Confirmar pago?',
-            html: '<p>Se registrará un pago de <strong>S/ ' + montoPago.toFixed(2) + '</strong></p>' +
-                  '<p>Para la Cuota N° <strong>{{ cuota.numero_cuota }}</strong></p>' +
-                  '<p class="text-muted mb-0">Saldo actual: <strong>S/ ' + saldoCuota.toFixed(2) + '</strong></p>',
+            html: `<p>Se registrará un pago total de <strong>S/ ${totalPagado.toFixed(2)}</strong></p>
+                  <p>Para la Cuota N° <strong>{{ cuota.numero_cuota }}</strong></p>`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#198754',
@@ -284,23 +395,17 @@ $(document).ready(function() {
                     url: '{% url "pagar_cuota" cuota.idcuotaventa %}',
                     type: 'POST',
                     data: $form.serialize(),
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
                     success: function(response) {
-                        console.log('✅ Respuesta exitosa:', response);
-                        
                         if (response.ok) {
-                            // ⭐ ABRIR RECIBO AUTOMÁTICAMENTE
                             const urlRecibo = `/creditos/recibo-pago/${response.idpago}/`;
                             window.open(urlRecibo, '_blank');
                             
                             Swal.fire({
                                 icon: 'success',
                                 title: '¡Pago registrado!',
-                                html: '<p>' + response.message + '</p>' +
-                                      '<p class="text-success mb-0"><strong>Nuevo saldo:</strong> S/ ' + response.nuevo_saldo.toFixed(2) + '</p>' +
-                                      '<p class="mt-2"><small>El recibo se abrirá en una nueva ventana...</small></p>',
+                                html: `<p>${response.message}</p>
+                                      <p class="text-success mb-0"><strong>Nuevo saldo:</strong> S/ ${response.nuevo_saldo.toFixed(2)}</p>`,
                                 confirmButtonColor: '#198754'
                             }).then(() => {
                                 window.location.href = '{% url "detalle_credito" credito.idcredito %}';
@@ -310,16 +415,8 @@ $(document).ready(function() {
                             $('#btnGuardarPago').prop('disabled', false).html('<i class="bi bi-save me-2"></i>Registrar Pago');
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('❌ Error AJAX:', xhr, status, error);
-                        
-                        let errorMsg = 'Error desconocido';
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                            errorMsg = xhr.responseJSON.error;
-                        } else if (xhr.responseText) {
-                            errorMsg = xhr.responseText;
-                        }
-                        
+                    error: function(xhr) {
+                        let errorMsg = xhr.responseJSON?.error || 'Error de conexión';
                         Swal.fire('Error', errorMsg, 'error');
                         $('#btnGuardarPago').prop('disabled', false).html('<i class="bi bi-save me-2"></i>Registrar Pago');
                     }

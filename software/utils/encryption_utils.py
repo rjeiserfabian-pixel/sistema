@@ -29,46 +29,56 @@ class EncryptionManager:
         return key
     
     @staticmethod
-    def encrypt_email(email):
+    def encrypt_data(data):
         """
-        Cifra un correo electrónico
+        Cifra datos genéricos (como correos o nombres de usuario)
         Args:
-            email (str): Correo electrónico en texto plano
+            data (str): Dato en texto plano
         Returns:
-            str: Correo cifrado en base64
+            str: Dato cifrado en base64
         """
-        if not email:
+        if not data:
             return None
             
         try:
             key = EncryptionManager.get_encryption_key()
             fernet = Fernet(key)
-            encrypted_email = fernet.encrypt(email.encode())
-            return encrypted_email.decode()
+            encrypted_data = fernet.encrypt(data.encode())
+            return encrypted_data.decode()
         except Exception as e:
-            print(f"Error al cifrar email: {e}")
+            print(f"Error al cifrar datos: {e}")
+            return None
+    
+
+
+    @staticmethod
+    def encrypt_email(email):
+        return EncryptionManager.encrypt_data(email)
+    
+    @staticmethod
+    def decrypt_data(encrypted_data):
+        """
+        Descifra datos genéricos (como correos o nombres de usuario)
+        Args:
+            encrypted_data (str): Dato cifrado en base64
+        Returns:
+            str: Dato en texto plano
+        """
+        if not encrypted_data:
+            return None
+            
+        try:
+            key = EncryptionManager.get_encryption_key()
+            fernet = Fernet(key)
+            decrypted_data = fernet.decrypt(encrypted_data.encode())
+            return decrypted_data.decode()
+        except Exception as e:
+            print(f"Error al descifrar datos: {e}")
             return None
     
     @staticmethod
     def decrypt_email(encrypted_email):
-        """
-        Descifra un correo electrónico
-        Args:
-            encrypted_email (str): Correo cifrado en base64
-        Returns:
-            str: Correo en texto plano
-        """
-        if not encrypted_email:
-            return None
-            
-        try:
-            key = EncryptionManager.get_encryption_key()
-            fernet = Fernet(key)
-            decrypted_email = fernet.decrypt(encrypted_email.encode())
-            return decrypted_email.decode()
-        except Exception as e:
-            print(f"Error al descifrar email: {e}")
-            return None
+        return EncryptionManager.decrypt_data(encrypted_email)
 
 
 class PasswordManager:

@@ -61,118 +61,173 @@
                                     </div>
                                 </td>
                             </tr>
-
-                            <!-- Modal Editar -->
-                            <div class="modal fade" id="myModal2{{ permisos2.0.idtipousuario.idtipousuario }}" tabindex="-1">
-                                <div class="modal-dialog modal-dialog-centered modal-lg">
-                                    <div class="modal-content rounded-3 shadow-lg">
-                                        <div class="modal-header bg-primary text-white">
-                                            <h5 class="modal-title">
-                                                <i class="fa-solid fa-user-shield me-2"></i>Editar Permisos: {{ tipo_usuario }}
-                                            </h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <form id="formEditarPermiso{{ permisos2.0.idtipousuario.idtipousuario }}" action="{% url 'editarPermiso' %}" method="post">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="idTipoUsuario" value="{{ permisos2.0.idtipousuario.idtipousuario }}">
-                                                
-                                                <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
-                                                    <i class="fa-solid fa-info-circle me-3 fs-4"></i>
-                                                    <div>
-                                                        <strong>Tipo de Usuario:</strong> {{ tipo_usuario }}
-                                                    </div>
-                                                </div>
-
-                                                <h6 class="fw-bold mb-3">Seleccione los módulos permitidos:</h6>
-                                                
-                                                <div class="row px-3">
-                                                    {% for modulo in modulos %}
-                                                    <div class="col-md-6 mb-2">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" value="{{ modulo.idmodulo }}" 
-                                                                   id="editModulo{{ permisos2.0.idtipousuario.idtipousuario }}_{{ modulo.idmodulo }}" 
-                                                                   name="permisosEdit[idmodulo][]"
-                                                                   {% for permiso in permisos2 %}
-                                                                       {% if permiso.idmodulo.idmodulo == modulo.idmodulo %}checked{% endif %}
-                                                                   {% endfor %}>
-                                                            <label class="form-check-label" for="editModulo{{ permisos2.0.idtipousuario.idtipousuario }}_{{ modulo.idmodulo }}">
-                                                                <i class="fa-solid fa-cube me-1"></i>{{ modulo.nombremodulo }}
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    {% endfor %}
-                                                </div>
-
-                                                <div class="modal-footer border-0 mt-4">
-                                                    <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar-permiso" data-form-id="formEditarPermiso{{ permisos2.0.idtipousuario.idtipousuario }}">
-                                                        <i class="fa-solid fa-save me-2"></i>Guardar Cambios
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Modales de Edición -->
+    {% for tipo_usuario, permisos2 in permisos_por_tipo_usuario %}
+    <div class="modal fade" id="myModal2{{ permisos2.0.idtipousuario.idtipousuario }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content rounded-3 shadow-lg">
+                <div class="modal-header bg-primary text-white py-3">
+                    <h5 class="modal-title">
+                        <i class="fa-solid fa-user-shield me-2"></i>Editar Permisos: {{ tipo_usuario }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <form id="formEditarPermiso{{ permisos2.0.idtipousuario.idtipousuario }}" action="{% url 'editarPermiso' %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="idTipoUsuario" value="{{ permisos2.0.idtipousuario.idtipousuario }}">
+                        
+                        <div class="alert alert-info d-flex align-items-center mb-4 py-2" role="alert">
+                            <i class="fa-solid fa-info-circle me-3 fs-5"></i>
+                            <div><strong>Tipo de Usuario:</strong> {{ tipo_usuario }}</div>
+                        </div>
+
+                        <h6 class="fw-bold mb-3 text-muted small text-uppercase">
+                            <i class="fa-solid fa-list-check me-2 text-primary"></i>Seleccione los módulos permitidos
+                        </h6>
+
+                        <div class="row g-3">
+                            {% for grupo in todos_modulos_organizados %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="modulo-card border rounded-3 p-3 h-100">
+                                    <!-- Módulo Padre -->
+                                    <div class="d-flex align-items-center mb-2 pb-2 border-bottom border-primary border-opacity-25">
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input permiso-padre-editar" type="checkbox"
+                                                   value="{{ grupo.padre.idmodulo }}"
+                                                   id="editPadre{{ permisos2.0.idtipousuario.idtipousuario }}_{{ grupo.padre.idmodulo }}"
+                                                   name="permisosEdit[idmodulo][]"
+                                                   data-grupo="editGrupo{{ permisos2.0.idtipousuario.idtipousuario }}_{{ grupo.padre.idmodulo }}"
+                                                   {% for permiso in permisos2 %}{% if permiso.idmodulo.idmodulo == grupo.padre.idmodulo %}checked{% endif %}{% endfor %}>
+                                            <label class="form-check-label fw-bold text-primary" for="editPadre{{ permisos2.0.idtipousuario.idtipousuario }}_{{ grupo.padre.idmodulo }}">
+                                                <i class="fa-solid fa-folder-open me-1"></i>{{ grupo.padre.nombremodulo }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- Módulos Hijos -->
+                                    {% if grupo.hijos %}
+                                    <div class="ps-3" id="editGrupo{{ permisos2.0.idtipousuario.idtipousuario }}_{{ grupo.padre.idmodulo }}">
+                                        {% for hijo in grupo.hijos %}
+                                        <div class="form-check mb-1 modulo-hijo">
+                                            <input class="form-check-input permiso-hijo-editar" type="checkbox"
+                                                   value="{{ hijo.idmodulo }}"
+                                                   id="editHijo{{ permisos2.0.idtipousuario.idtipousuario }}_{{ hijo.idmodulo }}"
+                                                   name="permisosEdit[idmodulo][]"
+                                                   data-padre="editPadre{{ permisos2.0.idtipousuario.idtipousuario }}_{{ grupo.padre.idmodulo }}"
+                                                   {% for permiso in permisos2 %}{% if permiso.idmodulo.idmodulo == hijo.idmodulo %}checked{% endif %}{% endfor %}>
+                                            <label class="form-check-label small" for="editHijo{{ permisos2.0.idtipousuario.idtipousuario }}_{{ hijo.idmodulo }}">
+                                                <i class="fa-solid fa-angle-right me-1 text-muted" style="font-size:0.7rem;"></i>{{ hijo.nombremodulo }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                                <i class="fa-solid fa-times me-2"></i>Cerrar
+                            </button>
+                            <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar-permiso" data-form-id="formEditarPermiso{{ permisos2.0.idtipousuario.idtipousuario }}">
+                                <i class="fa-solid fa-save me-2"></i>Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endfor %}
 </main>
 
 <!-- Modal Agregar -->
 <div class="modal fade" id="myModaAgregar" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content rounded-3 shadow-lg">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-success text-white py-3">
                 <h5 class="modal-title">
                     <i class="fa-solid fa-shield-halved me-2"></i>Crear Nuevo Permiso
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body px-4 py-3">
                 <form id="formAgregarPermiso" action="{% url 'agregaPermiso' %}" method="post">
                     {% csrf_token %}
                     
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">
-                            <i class="fa-solid fa-users me-2"></i>Tipo de Usuario
+                        <label class="form-label fw-semibold text-muted small text-uppercase letter-spacing-1">
+                            <i class="fa-solid fa-users me-2 text-success"></i>Tipo de Usuario
                         </label>
-                        <select name="tipoUsuario" id="tipoUsuario" class="form-select rounded-pill" required>
-                            <option value="">Seleccione el tipo de usuario</option>
+                        <select name="tipoUsuario" id="tipoUsuario" class="form-select" required>
+                            <option value="">Selecciona el tipo de usuario</option>
                             {% for tipoUsuario in tipoUsuarios %}
                             <option value="{{ tipoUsuario.idtipousuario }}">{{ tipoUsuario.nombretipousuario }}</option>
                             {% endfor %}
                         </select>
                     </div>
 
-                    <h6 class="fw-bold mb-3">
-                        <i class="fa-solid fa-list-check me-2"></i>Seleccione los permisos
+                    <h6 class="fw-bold mb-3 text-muted small text-uppercase">
+                        <i class="fa-solid fa-list-check me-2 text-success"></i>Seleccione los permisos
                     </h6>
 
-                    <div class="row px-3">
-                        {% for modulo in modulos %}
-                        <div class="col-md-6 mb-2">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="{{ modulo.idmodulo }}" 
-                                       id="modulo{{ modulo.idmodulo }}" name="permisosTu[idmodulo][]">
-                                <label class="form-check-label" for="modulo{{ modulo.idmodulo }}">
-                                    <i class="fa-solid fa-cube me-1"></i>{{ modulo.nombremodulo }}
-                                </label>
+                    <div class="row g-3">
+                        {% for grupo in todos_modulos_organizados %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="modulo-card border rounded-3 p-3 h-100">
+                                <!-- Módulo Padre -->
+                                <div class="d-flex align-items-center mb-2 pb-2 border-bottom border-success border-opacity-25">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input permiso-padre-agregar" type="checkbox"
+                                               value="{{ grupo.padre.idmodulo }}"
+                                               id="agrPadre_{{ grupo.padre.idmodulo }}"
+                                               name="permisosTu[idmodulo][]"
+                                               data-grupo="agrGrupo_{{ grupo.padre.idmodulo }}">
+                                        <label class="form-check-label fw-bold text-success" for="agrPadre_{{ grupo.padre.idmodulo }}">
+                                            <i class="fa-solid fa-folder-open me-1"></i>{{ grupo.padre.nombremodulo }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- Módulos Hijos -->
+                                {% if grupo.hijos %}
+                                <div class="ps-3" id="agrGrupo_{{ grupo.padre.idmodulo }}">
+                                    {% for hijo in grupo.hijos %}
+                                    <div class="form-check mb-1 modulo-hijo">
+                                        <input class="form-check-input permiso-hijo-agregar" type="checkbox"
+                                               value="{{ hijo.idmodulo }}"
+                                               id="agrHijo_{{ hijo.idmodulo }}"
+                                               name="permisosTu[idmodulo][]"
+                                               data-padre="agrPadre_{{ grupo.padre.idmodulo }}">
+                                        <label class="form-check-label small" for="agrHijo_{{ hijo.idmodulo }}">
+                                            <i class="fa-solid fa-angle-right me-1 text-muted" style="font-size:0.7rem;"></i>{{ hijo.nombremodulo }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
                     </div>
 
-                    <div class="modal-footer border-0 mt-4">
-                        <button type="button" class="btn btn-success rounded-pill px-4" id="btnAgregarPermiso">
-                            <i class="fa-solid fa-plus-circle me-2"></i>Agregar Permiso
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-times me-2"></i>Cancelar
                         </button>
-                        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-success rounded-pill px-4" id="btnAgregarPermiso">
+                            <i class="fa-solid fa-shield-halved me-2"></i>Guardar Permiso
+                        </button>
                     </div>
                 </form>
             </div>
@@ -267,6 +322,123 @@
         .badge {
             font-size: 0.7rem;
         }
+    }
+
+    /* === Tarjetas Jerárquicas de Módulos — Modo OSCURO (por defecto) === */
+    [data-theme="dark"] .modulo-card,
+    .modulo-card {
+        background: #12192c !important;
+        border: 1px solid rgba(32, 201, 151, 0.22) !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    [data-theme="dark"] .modulo-card:hover,
+    .modulo-card:hover {
+        border-color: rgba(32, 201, 151, 0.65) !important;
+        box-shadow: 0 0 0 1px rgba(32, 201, 151, 0.20), 0 4px 16px rgba(0,0,0,0.45);
+        background: #162235 !important;
+    }
+
+    /* Padre en modo oscuro */
+    [data-theme="dark"] .modulo-card .form-check-label.fw-bold,
+    .modulo-card .form-check-label.fw-bold {
+        color: #20c997 !important;
+        font-size: 0.88rem;
+    }
+
+    /* Hijos en modo oscuro */
+    [data-theme="dark"] .modulo-card .modulo-hijo .form-check-label,
+    .modulo-card .modulo-hijo .form-check-label {
+        color: #9eb3c4 !important;
+        font-size: 0.84rem;
+    }
+    [data-theme="dark"] .modulo-card .modulo-hijo .form-check-label:hover,
+    .modulo-card .modulo-hijo .form-check-label:hover {
+        color: #20c997 !important;
+    }
+
+    /* Checkboxes en modo oscuro */
+    [data-theme="dark"] .modulo-card .form-check-input,
+    .modulo-card .form-check-input {
+        background-color: #1e2d40;
+        border-color: rgba(32, 201, 151, 0.35);
+    }
+
+    /* === Modo CLARO === */
+    [data-theme="light"] .modulo-card {
+        background: #f4f6f9 !important;
+        border: 1px solid #d0d8e4 !important;
+    }
+    [data-theme="light"] .modulo-card:hover {
+        border-color: #20c997 !important;
+        box-shadow: 0 0 0 1px rgba(32, 201, 151, 0.18), 0 4px 12px rgba(0,0,0,0.08);
+        background: #eaf9f5 !important;
+    }
+    [data-theme="light"] .modulo-card .form-check-label.fw-bold {
+        color: #0e8f6a !important;
+    }
+    [data-theme="light"] .modulo-card .modulo-hijo .form-check-label {
+        color: #3d4e5c !important;
+    }
+    [data-theme="light"] .modulo-card .modulo-hijo .form-check-label:hover {
+        color: #0e8f6a !important;
+    }
+    [data-theme="light"] .modulo-card .form-check-input {
+        background-color: #fff;
+        border-color: #adb5bd;
+    }
+    [data-theme="light"] .modulo-card .border-bottom {
+        border-color: rgba(14, 143, 106, 0.20) !important;
+    }
+    [data-theme="light"] .modulo-hijo::before {
+        background: rgba(14, 143, 106, 0.20);
+    }
+
+    /* Compartido: checkboxes marcados y foco */
+    .modulo-card .form-check-input:checked {
+        background-color: #20c997;
+        border-color: #20c997;
+    }
+    .modulo-card .form-check-input:focus {
+        border-color: #20c997;
+        box-shadow: 0 0 0 0.2rem rgba(32, 201, 151, 0.25);
+    }
+    .modulo-card .form-check-input:checked + .form-check-label {
+        color: #20c997 !important;
+        font-weight: 600;
+    }
+
+    /* Separador oscuro (por defecto) */
+    .modulo-card .border-bottom {
+        border-color: rgba(32, 201, 151, 0.22) !important;
+    }
+
+    /* Línea vertical hijos — eliminada */
+    .modulo-hijo {
+        position: relative;
+        padding-left: 0.25rem;
+    }
+    .modulo-hijo::before {
+        display: none;
+    }
+    [data-theme="light"] .modulo-hijo::before {
+        display: none;
+    }
+
+    /* Ícono flecha */
+    .modulo-hijo .fa-angle-right {
+        color: rgba(32, 201, 151, 0.45) !important;
+    }
+
+    /* Ancho máximo scrollable para modal-xl */
+    .modal-xl .modal-body {
+        max-height: 72vh;
+        overflow-y: auto;
+    }
+
+    /* Borde sutil del modal */
+    #myModaAgregar .modal-content,
+    [id^="myModal2"] .modal-content {
+        border: 1px solid rgba(32, 201, 151, 0.18);
     }
 </style>
 

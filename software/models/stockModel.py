@@ -29,15 +29,28 @@ class Stock(models.Model):
         return f"Stock #{self.id_stock}"
     
     def agregar_stock(self, cantidad):
-        """Incrementa el stock"""
-        self.cantidad_disponible += cantidad
-        self.save()
-    
+        """Incrementa el stock de forma atómica (sin race conditions)."""
+        from django.db.models import F
+        Stock.objects.filter(pk=self.pk).update(
+            cantidad_disponible=F('cantidad_disponible') + cantidad
+        )
+        self.refresh_from_db(fields=['cantidad_disponible'])
+
     def descontar_stock(self, cantidad):
-        """Decrementa el stock (con validación)"""
-        if self.cantidad_disponible >= cantidad:
-            self.cantidad_disponible -= cantidad
-            self.save()
+        """
+        Decrementa el stock de forma atómica (sin race conditions).
+        El UPDATE solo se ejecuta si hay suficiente stock en ese instante,
+        evitando que dos requests simultáneos resten el mismo stock.
+        Retorna True si el descuento fue exitoso, False si no hay stock suficiente.
+        """
+        from django.db.models import F
+        filas_actualizadas = Stock.objects.filter(
+            pk=self.pk,
+            cantidad_disponible__gte=cantidad  # Condición atómica en la DB
+        ).update(cantidad_disponible=F('cantidad_disponible') - cantidad)
+
+        if filas_actualizadas:
+            self.refresh_from_db(fields=['cantidad_disponible'])
             return True
         return False
     

@@ -1,316 +1,1833 @@
 {% extends 'plantilla/base.html' %}
-
 {% block main %}
-<main id="main" class="main">
+  <main id="main" class="main">
+    <!-- Encabezado -->
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="fw-bold text-primary">
+          <i class="fas fa-car-side me-2"></i>Gestión Vehicular
+        </h1>
+        <nav aria-label="breadcrumb" class="mt-1">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="{% url 'cpanel' %}">Home</a>
+            </li>
+            <li class="breadcrumb-item active">Gestión Vehicular</li>
+          </ol>
+        </nav>
+      </div>
+      <div id="btn-nuevo-vehiculo">
+        <button type="button"
+                class="btn btn-success rounded-pill shadow-sm px-4"
+                data-bs-toggle="modal"
+                data-bs-target="#modalAgregar">
+          <i class="fa-solid fa-circle-plus me-2"></i>Nuevo Vehículo
+        </button>
+      </div>
+      <div id="btn-nuevo-repuesto" style="display:none;">
+        <button type="button"
+                class="btn btn-warning rounded-pill shadow-sm px-4 text-dark"
+                data-bs-toggle="modal"
+                data-bs-target="#modalAgregarRepuesto">
+          <i class="fa-solid fa-circle-plus me-2"></i>Nuevo Repuesto
+        </button>
+      </div>
+      <div id="btn-nuevo-servicio" style="display:none;">
+        <button type="button"
+                class="btn btn-success rounded-pill shadow-sm px-4"
+                data-bs-toggle="modal"
+                data-bs-target="#modalAgregarServicio">
+          <i class="fa-solid fa-circle-plus me-2"></i>Nuevo Servicio
+        </button>
+      </div>
+    </div>
 
-  <div class="pagetitle">
-    <h1>Vehículos</h1>
-    <nav>
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
-        <li class="breadcrumb-item active">Vehículos</li>
-      </ol>
-    </nav>
-  </div>
+    <!-- PESTAÑAS -->
+    <ul class="nav nav-tabs nav-tabs-bordered mt-3" id="vehiculosTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="vehiculos-tab" data-bs-toggle="tab"
+          data-bs-target="#tab-vehiculos" type="button" role="tab" aria-selected="true">
+          <i class="fas fa-car-side me-1"></i> Vehículos
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="repuestos-tab" data-bs-toggle="tab"
+          data-bs-target="#tab-repuestos" type="button" role="tab" aria-selected="false">
+          <i class="fa-solid fa-gears me-1"></i> Repuestos
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="servicios-tab" data-bs-toggle="tab"
+          data-bs-target="#tab-servicios" type="button" role="tab" aria-selected="false">
+          <i class="fa-solid fa-file-invoice-dollar me-1"></i> Servicios/Trámites
+        </button>
+      </li>
+    </ul>
+    <div class="tab-content" id="vehiculosTabsContent">
 
-  <section class="section dashboard">
-    <div class="row">
-      <div class="col-lg-12">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Vehículos</h5>
-
-            <a type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAgregar">
-              Agregar vehículos
-            </a>
-
-            <!-- Modal AGREGAR -->
-            <div class="modal" id="modalAgregar">
-              <div class="modal-dialog">
-                <div class="modal-content">
-
-                  <div class="modal-header">
-                    <h4 class="modal-title">Nuevo vehículo</h4>
-                    <button type="button" class="close" data-bs-dismiss="modal">&times;</button>
-                  </div>
-
-                  <div class="modal-body">
-                    <form id="formAgregar" action="{% url 'productosAgregar' %}" method="post">
-                      {% csrf_token %}
-
-                      <label for="categoria">Tipo de vehículo</label>
-                      <select class="form-select" name="categoria" required>
-                        <option value="" disabled selected>Seleccione un tipo de vehículo</option>
-                        {% for categoria in categorias %}
-                          <option value="{{ categoria.idcategoria }}">{{ categoria.nomcategoria }}</option>
-                        {% endfor %}
-                      </select>
-
-                      <label for="cilindrada">Cilindrada</label>
-                      <select class="form-select" name="cilindrada" required>
-                        <option value="" disabled selected>Seleccione la cilindrada</option>
-                        {% for cilindrada in cilindrada %}
-                          <option value="{{ cilindrada.idcilindrada }}">{{ cilindrada.cilindrada_cc }}</option>
-                        {% endfor %}
-                      </select>
-
-                      <label for="marca">Marca</label>
-                      <select class="form-select" name="marca" required>
-                        <option value="" disabled selected>Seleccione una marca</option>
-                        {% for marca in marcas %}
-                          <option value="{{ marca.idmarca }}">{{ marca.nombremarca }}</option>
-                        {% endfor %}
-                      </select>
-
-                      <label for="color">Color</label>
-                      <select class="form-select" name="color" required>
-                        <option value="" disabled selected>Seleccione un color</option>
-                        {% for color in color %}
-                          <option value="{{ color.idcolor }}">{{ color.nombrecolor }}</option>
-                        {% endfor %}
-                      </select>
-
-                      <label for="unidad">Unidad</label>
-                      <select class="form-select" name="unidad" required>
-                        <option value="" disabled selected>Seleccione una unidad</option>
-                        {% for unidad in unidades %}
-                          <option value="{{ unidad.idunidad }}">{{ unidad.abrunidad }}</option>
-                        {% endfor %}
-                      </select>
-
-                      <label for="nombreProducto">Nombre</label>
-                      <input type="text" name="nombreProducto" id="nombreProducto" class="form-control" readonly>
-
-                      <!-- imagenprod es un varchar en BD; si no usarás imagen, puedes dejarlo vacío 
-                      <label for="imagenprod" class="mt-2">Imagen (URL o ruta)</label>
-                      <input type="text" name="imagenprod" id="imagenprod" class="form-control">-->
-
-                      <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Agregar</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                      </div>
-                    </form>
-                  </div>
-
-                </div>
-              </div>
+    <!-- ====== TAB 1: VEHÍCULOS ====== -->
+    <div class="tab-pane fade show active" id="tab-vehiculos" role="tabpanel" aria-labelledby="vehiculos-tab">
+    <section class="section dashboard mt-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title">Listado de vehículos registrados</h5>
+          
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <input type="text" id="buscarVehiculo" class="form-control" placeholder="Buscar por nombre, código, marca, modelo...">
             </div>
-            <!-- /Modal AGREGAR -->
-
-            <!-- Tabla -->
-            <table class="table datatable mt-3">
-              <thead>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" style="width:100%;" id="tablaVehiculos">
+              <thead class="table-dark">
                 <tr>
-                  <th>#</th>
-                  <th>Producto</th>
-                  <th>Tipo de vehículo</th>
-                  <th>Unidad</th>
-                  <th>Marca</th>
-                  <th>Cilindrada</th>
-                  <th>Color</th>
-                  <th>Acciones</th>
+                  <th class="text-center" style="width:5%;">#</th>
+                  <th style="width:10%;">Código</th>
+                  <th style="width:23%;">Nombre del Vehículo</th>
+                  <th style="width:12%;">Marca</th>
+                  <th style="width:12%;">Modelo</th>
+                  <th style="width:12%;">Tipo</th>
+                  <th style="width:10%;">Cilindrada</th>
+                  <th style="width:10%;">Color</th>
+                  <th style="width:8%;">Unidad</th>
+                  <th class="text-center" style="width:10%;">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
-                {% for producto in productos %}
-                <tr>
-                  <td>{{ forloop.counter }}</td>
-                  <td>{{ producto.nomproducto }}</td>
-                  <td>{{ producto.idcategoria.nomcategoria }}</td>
-                  <td>{{ producto.idunidad.abrunidad }}</td>
-                  <td>{{ producto.idmarca.nombremarca }}</td>
-                  <td>{{ producto.idcilindrada.cilindrada_cc }}</td>
-                  <td>{{ producto.idcolor.nombrecolor }}</td>
-                  <td class="d-flex gap-2">
-                    <a class="btn" data-bs-toggle="modal" data-bs-target="#modalEditar{{producto.idproducto}}">
-                      <i class="fa-solid fa-pen-to-square" style="color:#005eff;font-size:1.5rem;"></i>
-                    </a>
-                    <a href="{% url 'eliminarProducto' idproducto=producto.idproducto %}"
-                       class="eliminar" onclick="return confirmarEliminar('{{ producto.idproducto }}', this)">
-                      <i class="fa-solid fa-trash" style="color:#f71b02;font-size:1.5rem;"></i>
-                    </a>
-                  </td>
-                </tr>
-
-                <!-- Modal EDITAR -->
-                <div class="modal" id="modalEditar{{producto.idproducto}}">
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-
-                      <div class="modal-header">
-                        <h4 class="modal-title">Editar producto</h4>
-                        <button type="button" class="close" data-bs-dismiss="modal">&times;</button>
-                      </div>
-
-                      <div class="modal-body">
-                        <form class="formEditar" action="{% url 'productosEditado' %}" method="post">
-                          {% csrf_token %}
-
-                          <input type="hidden" name="idproducto2" value="{{ producto.idproducto }}">
-
-                          <label>Tipo de vehículo</label>
-                          <select class="form-select" name="categoria2">
-                            <option value="{{ producto.idcategoria.idcategoria }}" selected>
-                              {{ producto.idcategoria.nomcategoria }}
-                            </option>
-                            {% for categoria in categorias %}
-                              <option value="{{ categoria.idcategoria }}">{{ categoria.nomcategoria }}</option>
-                            {% endfor %}
-                          </select>
-
-                          <label>Unidad</label>
-                          <select class="form-select" name="unidad2">
-                            <option value="{{ producto.idunidad.idunidad }}" selected>
-                              {{ producto.idunidad.abrunidad }}
-                            </option>
-                            {% for unidad in unidades %}
-                              <option value="{{ unidad.idunidad }}">{{ unidad.abrunidad }}</option>
-                            {% endfor %}
-                          </select>
-
-                          <label>Marca</label>
-                          <select class="form-select" name="marca2">
-                            <option value="{{ producto.idmarca.idmarca }}" selected>
-                              {{ producto.idmarca.nombremarca }}
-                            </option>
-                            {% for marca in marcas %}
-                              <option value="{{ marca.idmarca }}">{{ marca.nombremarca }}</option>
-                            {% endfor %}
-                          </select>
-
-                          <label>Cilindrada</label>
-                          <select class="form-select" name="cilindrada2">
-                            <option value="{{ producto.idcilindrada.idcilindrada }}" selected>
-                              {{ producto.idcilindrada.cilindrada_cc }}
-                            </option>
-                            {% for cil in cilindrada %}
-                              <option value="{{ cil.idcilindrada }}">{{ cil.cilindrada_cc }}</option>
-                            {% endfor %}
-                          </select>
-
-                          <label>Color</label>
-                          <select class="form-select" name="color2">
-                            <option value="{{ producto.idcolor.idcolor }}" selected>
-                              {{ producto.idcolor.nombrecolor }}
-                            </option>
-                            {% for c in color %}
-                              <option value="{{ c.idcolor }}">{{ c.nombrecolor }}</option>
-                            {% endfor %}
-                          </select>
-
-                          <label>Nombre</label>
-                          <input type="text" name="nombreProducto2" id="nombreProducto2_{{producto.idproducto}}"
-                                 value="{{ producto.nomproducto }}" class="form-control">
-
-                          <label class="mt-2">Imagen (URL o ruta)</label>
-                          <input type="text" name="imagenprod2" id="imagenprod2_{{producto.idproducto}}"
-                                 value="{{ producto.imagenprod }}" class="form-control">
-
-                          <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Editar</button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                          </div>
-                        </form>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-                <!-- /Modal EDITAR -->
-                {% endfor %}
+              <tbody id="tbodyVehiculos">
+                <tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>
               </tbody>
             </table>
+          </div>
+          
+          <!-- Paginación Vehículos -->
+          <div id="paginacionVehiculos" class="d-flex justify-content-between align-items-center mt-3">
+          </div>
+        </div>
+      </div>
+    </section>
+    </div><!-- Fin tab vehículos -->
+    <!-- ====== TAB 2: REPUESTOS ====== -->
+    {% include 'productos/componentes/repuestos_tab.html' %}
+    <!-- Fin tab repuestos -->
+    <!-- ====== TAB 3: SERVICIOS ====== -->
+    {% include 'productos/componentes/servicios_tab.html' %}
+    <!-- Fin tab servicios -->
+    </div> <!-- Fin tab-content -->
 
+    <div class="modal fade"
+           id="modalEditarVehiculo"
+           tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+          <div class="modal-content rounded-3 shadow-lg border-0">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title fw-bold">
+                <i class="fa-solid fa-pen-to-square me-2"></i>Editar Vehículo
+              </h5>
+              <button type="button"
+                      class="btn-close btn-close-white"
+                      data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+              <form class="formEditarVehiculo" id="formEditarVehiculo_dinamico">
+                <input type="hidden" id="edit_vehiculo_id" name="idproducto">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                      Tipo de Vehículo <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select rounded-pill" name="categoria" id="edit_v_categoria">
+                      {% for cat in categorias %}
+                          <option value="{{ cat.idcategoria }}">{{ cat.nomcategoria }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                      Marca <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select rounded-pill" name="marca" id="edit_v_marca">
+                      {% for m in marcas %}
+                          <option value="{{ m.idmarca }}">{{ m.nombremarca }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">Modelo</label>
+                    <select class="form-select rounded-pill" name="modelo" id="edit_v_modelo">
+                      <option value="">Modelo</option>
+                      {% for mod in modelos %}
+                          <option value="{{ mod.idmodelo }}">{{ mod.nombremodelo }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">Configuración Vehicular</label>
+                    <select class="form-select rounded-pill" name="id_configuracion" id="edit_v_configuracion">
+                      <option value="">Seleccione...</option>
+                      {% for config in configuraciones %}
+                          <option value="{{ config.id_configuracion }}">{{ config.nombre }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                      Cilindrada <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select rounded-pill" name="cilindrada" id="edit_v_cilindrada">
+                      {% for cil in cilindrada %}
+                          <option value="{{ cil.idcilindrada }}">{{ cil.cilindrada_cc }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                      Color <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select rounded-pill" name="color" id="edit_v_color">
+                      {% for c in color %}
+                          <option value="{{ c.idcolor }}">{{ c.nombrecolor }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                      Detalle de Color
+                      <span class="badge bg-secondary ms-1" style="font-size:0.7rem;">Opcional</span>
+                    </label>
+                    <select class="form-select rounded-pill" name="id_detalle_color" id="edit_v_detalle_color">
+                      <option value="">Seleccione detalle...</option>
+                      {% for dc in detalles_color %}
+                          <option value="{{ dc.iddetalle_color }}">{{ dc.nombre }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                      Unidad <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select rounded-pill" name="unidad" id="edit_v_unidad">
+                      {% for u in unidades %}
+                          <option value="{{ u.idunidad }}">{{ u.abrunidad }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-12 mt-2">
+                    <div class="p-3 bg-light rounded-3 border">
+                      <label class="form-label fw-bold text-primary mb-1">
+                        <i class="fa-solid fa-tag me-1"></i>Nombre del Vehículo
+                      </label>
+                      <input type="text"
+                             id="edit_v_nombreProducto"
+                             name="nombreProducto"
+                             class="form-control border-0 bg-transparent fw-bold fs-6 p-0"
+                             placeholder="Nombre del vehículo...">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Código Interno</label>
+                    <input type="text"
+                           name="codigo_interno"
+                           id="edit_v_codigo_interno"
+                           class="form-control rounded-pill"
+                           placeholder="Ej: VH-001">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">URL de Imagen (Opcional)</label>
+                    <input type="text"
+                           name="imagenprod"
+                           id="edit_v_imagenprod"
+                           class="form-control rounded-pill"
+                           placeholder="https://...">
+                  </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                  <button type="button"
+                          class="btn btn-outline-secondary rounded-pill px-4"
+                          data-bs-dismiss="modal">Cerrar</button>
+                  <button type="button"
+                          class="btn btn-primary rounded-pill px-4"
+                          id="btn-guardar-edicion-vehiculo">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Cambios
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    <!-- Modal Agregar -->
+    <div class="modal fade" id="modalAgregar" tabindex="-1">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content rounded-3 shadow-lg border-0">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-circle-plus me-2"></i>Registrar Nuevo Vehículo
+            </h5>
+            <button type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form id="formNuevoVehiculo">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">
+                    Tipo de Vehículo <span class="text-danger">*</span>
+                  </label>
+                  <select class="form-select rounded-pill select-add" name="categoria">
+                    <option value="" disabled selected>Seleccione tipo...</option>
+                    {% for cat in categorias %}<option value="{{ cat.idcategoria }}">{{ cat.nomcategoria }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">
+                    Marca <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="marca_search_add"
+                             class="form-control rounded-pill autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione marca..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('marca_search_add', 'marca_results_add', marcasData, 'marca_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="marca" id="marca_id_add" class="select-add">
+                      <div class="autocomplete-results" id="marca_results_add"></div>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nueva Marca" data-bs-toggle="modal" data-bs-target="#miniModalMarca">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <!-- Fila 2: Modelo | Configuración Vehicular | Cilindrada -->
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Modelo</label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="modelo_search_add"
+                             class="form-control rounded-pill autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione modelo..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('modelo_search_add', 'modelo_results_add', modelosData, 'modelo_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="modelo" id="modelo_id_add" class="select-add">
+                      <div class="autocomplete-results" id="modelo_results_add"></div>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nuevo Modelo" data-bs-toggle="modal" data-bs-target="#miniModalModelo">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Configuración Vehicular <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <select class="form-select rounded-pill select-add flex-grow-1"
+                            id="id_configuracion_select"
+                            name="id_configuracion"
+                            required>
+                      <option value="" disabled selected>Seleccione configuración...</option>
+                      {% for config in configuraciones %}
+                        <option value="{{ config.id_configuracion }}">{{ config.nombre }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nueva Configuración" data-bs-toggle="modal" data-bs-target="#miniModalConfig">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Cilindrada <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="cilindrada_search_add"
+                             class="form-control rounded-pill autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione cilindrada..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('cilindrada_search_add', 'cilindrada_results_add', cilindradasData, 'cilindrada_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden"
+                             name="cilindrada"
+                             id="cilindrada_id_add"
+                             class="select-add">
+                      <div class="autocomplete-results" id="cilindrada_results_add"></div>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nueva Cilindrada" data-bs-toggle="modal" data-bs-target="#miniModalCilindrada">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <!-- Fila 3: Color | Detalle de Color | Unidad -->
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Color <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="color_search_add"
+                             class="form-control rounded-pill autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione color..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('color_search_add', 'color_results_add', coloresData, 'color_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="color" id="color_id_add" class="select-add">
+                      <div class="autocomplete-results" id="color_results_add"></div>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nuevo Color" data-bs-toggle="modal" data-bs-target="#miniModalColor">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <!-- Detalle de Color (OPCIONAL) - col central fila 3 -->
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Detalle de Color
+                    <span class="badge bg-secondary ms-1" style="font-size:0.7rem;">Opcional</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="detalle_color_search_add"
+                             class="form-control rounded-pill autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione detalle..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('detalle_color_search_add', 'detalle_color_results_add', detallesColorData, 'detalle_color_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="id_detalle_color" id="detalle_color_id_add" class="select-add">
+                      <div class="autocomplete-results" id="detalle_color_results_add"></div>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nuevo Detalle de Color" data-bs-toggle="modal" data-bs-target="#miniModalDetalleColor">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Unidad <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <select class="form-select rounded-pill select-add flex-grow-1" id="unidad_select" name="unidad">
+                      <option value="" disabled selected>Seleccione unidad...</option>
+                      {% for u in unidades %}<option value="{{ u.idunidad }}">{{ u.abrunidad }}</option>{% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-success rounded-pill px-2 py-2 flex-shrink-0" style="height:42px;width:42px;" title="Nueva Unidad" data-bs-toggle="modal" data-bs-target="#miniModalUnidad">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="col-12 mt-2">
+                  <div class="p-3 bg-light rounded-3 border">
+                    <label class="form-label fw-bold text-success mb-1">
+                      <i class="fa-solid fa-tag me-1"></i>Nombre del Vehículo
+                    </label>
+                    <input type="text"
+                           id="nombreAdd"
+                           name="nombreProducto"
+                           class="form-control border-0 bg-transparent fw-bold fs-6 p-0"
+                           placeholder="Se autogenera, puedes editarlo...">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Código Interno</label>
+                  <input type="text"
+                         name="codigo_interno"
+                         class="form-control rounded-pill"
+                         placeholder="Ej: VH-001">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">URL de Imagen (Opcional)</label>
+                  <input type="text"
+                         name="imagenprod"
+                         class="form-control rounded-pill"
+                         placeholder="https://ejemplo.com/foto.jpg">
+                </div>
+              </div>
+              <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                <button type="button"
+                        class="btn btn-outline-secondary rounded-pill px-4"
+                        data-bs-dismiss="modal">Cerrar</button>
+                <button type="button"
+                        class="btn btn-success rounded-pill px-4"
+                        id="btnGuardarNuevo">
+                  <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Vehículo
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
     </div>
-  </section>
-</main>
+  </main>
 
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<script>
-  // Confirmar eliminación
-  function confirmarEliminar(idproducto, enlace) {
-    let urlEliminar = $(enlace).attr("href");
-    Swal.fire({
-      title: '¿Seguro que quieres eliminar este producto?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        $.ajax({
-          type: "GET",
-          url: urlEliminar,
-          data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
-          success: function () {
-            window.location.href = "{% url 'productos' %}";
-          }
-        });
-      }
-    });
-    return false;
+  <!-- ===================== MINI-MODALES REGISTRO RÁPIDO ===================== -->
+
+  <!-- MINI-MODAL: NUEVA MARCA -->
+  <div class="modal fade" id="miniModalMarca" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Marca</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre de la Marca</label>
+          <input type="text" id="input_nueva_marca" class="form-control rounded-pill" placeholder="Ej: Honda">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_marca_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVO MODELO -->
+  <div class="modal fade" id="miniModalModelo" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nuevo Modelo</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre del Modelo</label>
+          <input type="text" id="input_nuevo_modelo" class="form-control rounded-pill" placeholder="Ej: CBF 150">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_modelo_rapido">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA CONFIGURACIÓN VEHICULAR -->
+  <div class="modal fade" id="miniModalConfig" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Configuración</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre de la Configuración</label>
+          <input type="text" id="input_nueva_config" class="form-control rounded-pill" placeholder="Ej: TRIMOTO PASAJEROS">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_config_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA CILINDRADA -->
+  <div class="modal fade" id="miniModalCilindrada" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Cilindrada</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Cilindrada (cc)</label>
+          <input type="text" id="input_nueva_cilindrada" class="form-control rounded-pill" placeholder="Ej: 150cc">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_cilindrada_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVO COLOR -->
+  <div class="modal fade" id="miniModalColor" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nuevo Color</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre del Color</label>
+          <input type="text" id="input_nuevo_color" class="form-control rounded-pill" placeholder="Ej: Azul Marino">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_color_rapido">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVO DETALLE DE COLOR -->
+  <div class="modal fade" id="miniModalDetalleColor" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nuevo Detalle Color</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre del Detalle</label>
+          <input type="text" id="input_nuevo_detalle_color" class="form-control rounded-pill" placeholder="Ej: Especial">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_detalle_color_rapido">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA UNIDAD -->
+  <div class="modal fade" id="miniModalUnidad" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Unidad</h6>
+          <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Código SUNAT</label>
+          <input type="text" id="input_nueva_unidad_codigo" class="form-control rounded-pill mb-2" placeholder="Ej: NIU">
+          <label class="form-label fw-semibold">Abreviación</label>
+          <input type="text" id="input_nueva_unidad_nombre" class="form-control rounded-pill" placeholder="Ej: Unidad">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill" id="btn_guardar_unidad_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA CATEGORÍA REPUESTO -->
+  <div class="modal fade" id="miniModalCategoriaRep" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-warning text-dark py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Categoría</h6>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre de la Categoría</label>
+          <input type="text" id="input_nueva_categoria_rep" class="form-control rounded-pill" placeholder="Ej: Filtros">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning text-dark btn-sm rounded-pill" id="btn_guardar_categoria_rep_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA MARCA REPUESTO -->
+  <div class="modal fade" id="miniModalMarcaRep" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-warning text-dark py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Marca</h6>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre de la Marca</label>
+          <input type="text" id="input_nueva_marca_rep" class="form-control rounded-pill" placeholder="Ej: Bosch">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning text-dark btn-sm rounded-pill" id="btn_guardar_marca_rep_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA GARANTÍA REPUESTO -->
+  <div class="modal fade" id="miniModalGarantiaRep" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-warning text-dark py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Garantía</h6>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Nombre / Tiempo</label>
+          <input type="text" id="input_nueva_garantia_rep" class="form-control rounded-pill" placeholder="Ej: 6 Meses">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning text-dark btn-sm rounded-pill" id="btn_guardar_garantia_rep_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: NUEVA UNIDAD REPUESTO -->
+  <div class="modal fade" id="miniModalUnidadRep" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-3 shadow border-0">
+        <div class="modal-header bg-warning text-dark py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Unidad</h6>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Código SUNAT</label>
+          <input type="text" id="input_nueva_unidad_codigo_rep" class="form-control rounded-pill mb-2" placeholder="Ej: NIU">
+          <label class="form-label fw-semibold">Abreviación</label>
+          <input type="text" id="input_nueva_unidad_nombre_rep" class="form-control rounded-pill" placeholder="Ej: Unidad">
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning text-dark btn-sm rounded-pill" id="btn_guardar_unidad_rep_rapida">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================== -->
+  <!-- MODALES DE REPUESTOS                                          -->
+  <!-- =========================================================== -->
+  {% include 'productos/componentes/repuestos_modales.html' %}
+  
+  <!-- =========================================================== -->
+  <!-- MODALES DE SERVICIOS                                          -->
+  <!-- =========================================================== -->
+  {% include 'productos/componentes/servicios_modales.html' %}
+
+  <style>
+  .datatable thead th {
+    background-color: #212529 !important;
+    color: #fff !important;
+    font-weight: 600;
+    vertical-align: middle;
+    border: none;
+    padding: 12px 8px;
   }
 
-  // Construir nombre automáticamente (modal AGREGAR)
-  function actualizarNombreNuevo() {
-    const tipoVehiculo = document.querySelector('#modalAgregar select[name="categoria"] option:checked')?.text || '';
-    const cil = document.querySelector('#modalAgregar select[name="cilindrada"] option:checked')?.text || '';
-    const marca = document.querySelector('#modalAgregar select[name="marca"] option:checked')?.text || '';
-    const color = document.querySelector('#modalAgregar select[name="color"] option:checked')?.text || '';
-    document.getElementById('nombreProducto').value = `${tipoVehiculo} ${cil} ${marca} ${color}`.trim();
+  .datatable tbody td {
+    vertical-align: middle;
+    padding: 10px 8px;
+    font-size: 0.875rem;
   }
-  document.addEventListener('change', function(e){
-    if (e.target.closest('#modalAgregar')) actualizarNombreNuevo();
-  });
-  document.addEventListener('DOMContentLoaded', actualizarNombreNuevo);
+
+  .datatable tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  .badge {
+    font-weight: 500;
+    font-size: 0.78rem;
+  }
+
+  .modal-content {
+    overflow: hidden;
+  }
+
+  .form-select,
+  .form-control {
+    padding: 0.6rem 1.2rem;
+  }
+
+  .form-select:focus,
+  .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, .15);
+  }
+
+  .btn-outline-primary:hover,
+  .btn-outline-danger:hover {
+    transform: scale(1.1);
+    transition: transform .15s ease;
+  }
+
+  /* ========================================
+   ⭐ AUTOCOMPLETE MODERNO
+   ======================================== */
+  .autocomplete-wrapper {
+    position: relative;
+  }
+
+  .autocomplete-input {
+    width: 100%;
+  }
+
+  .autocomplete-with-arrow {
+    padding-right: 40px;
+  }
+
+  .autocomplete-arrow {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px 8px;
+    color: #6c757d;
+    transition: 0.2s ease;
+    z-index: 10;
+  }
+
+  .autocomplete-arrow:hover {
+    color: #495057;
+  }
+
+  .autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 250px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: none;
+  }
+
+  .autocomplete-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: 0.2s ease;
+  }
+
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+
+  .autocomplete-item:hover {
+    background-color: #e9f5ff;
+  }
+
+  .autocomplete-item.no-results {
+    color: #6c757d;
+    cursor: default;
+    font-style: italic;
+  }
+  </style>
+{% endblock %}
+{% block extra_scripts %}
+  <script>
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'productosAgregar' %}";
+  var URL_EDITAR = "{% url 'productosEditado' %}";
+  var URL_LISTA = "{% url 'productos' %}";
+
+  // ====== AUTOCOMPLETE JS ======
+  const marcasData = [
+    {% for m in marcas %}
+    { id: {{ m.idmarca }}, text: "{{ m.nombremarca|escapejs }}" },
+    {% endfor %}
+  ];
+  const modelosData = [
+    {% for mod in modelos %}
+    { id: {{ mod.idmodelo }}, text: "{{ mod.nombremodelo|escapejs }}" },
+    {% endfor %}
+  ];
+  const cilindradasData = [
+    {% for cil in cilindrada %}
+    { id: {{ cil.idcilindrada }}, text: "{{ cil.cilindrada_cc|escapejs }}" },
+    {% endfor %}
+  ];
+  const coloresData = [
+    {% for c in color %}
+    { id: {{ c.idcolor }}, text: "{{ c.nombrecolor|escapejs }}" },
+    {% endfor %}
+  ];
+  const detallesColorData = [
+    {% for dc in detalles_color %}
+    { id: {{ dc.iddetalle_color }}, text: "{{ dc.nombre|escapejs }}" },
+    {% endfor %}
+  ];
+
+  // ====== AUTOCOMPLETE JS REPUESTOS ======
+  const categoriasRepData = [
+    {% for cat in categorias_rep %}
+    { id: {{ cat.idcategoria_repuesto }}, text: "{{ cat.nomcategoria|escapejs }}" },
+    {% endfor %}
+  ];
+  const marcasRepData = [
+    {% for m in marcas_rep %}
+    { id: {{ m.idmarca_repuesto }}, text: "{{ m.nombremarca|escapejs }}" },
+    {% endfor %}
+  ];
+  const unidadesData = [
+    {% for u in unidades %}
+    { id: {{ u.idunidad }}, text: "{{ u.abrunidad|escapejs }}" },
+    {% endfor %}
+  ];
+  const garantiasRepData = [
+    {% for g in garantias_rep %}
+    { id: {{ g.id_garantia_repuesto }}, text: "{{ g.nombre|escapejs }}" },
+    {% endfor %}
+  ];
 
 
-  // Confirmación para AGREGAR
-  document.addEventListener('DOMContentLoaded', function () {
-    const formAgregar = document.getElementById('formAgregar');
-    if (formAgregar) {
-      formAgregar.addEventListener('submit', function (e) {
-        e.preventDefault();
-        Swal.fire({
-          title: '¿Guardar producto?',
-          text: 'Se registrará el producto con los datos ingresados.',
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: 'Sí, guardar',
-          cancelButtonText: 'Cancelar'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            formAgregar.submit(); // POST normal a tu view
-          }
+  $(function () {
+    // Mantener la pestaña activa si viene en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'repuestos') {
+      setTimeout(function() {
+        $('#repuestos-tab').click();
+      }, 100);
+    } else if (urlParams.get('tab') === 'servicios') {
+      setTimeout(function() {
+        $('#servicios-tab').click();
+      }, 100);
+    }
+
+    function setupAutocomplete(inputId, resultsId, data, hiddenId) {
+      const input = document.getElementById(inputId);
+      const results = document.getElementById(resultsId);
+      const hidden = document.getElementById(hiddenId);
+
+      if (!input) return;
+
+      input.addEventListener('input', function () {
+        const value = this.value.toLowerCase();
+        results.innerHTML = '';
+
+        if (value.length < 1) {
+          results.style.display = 'none';
+          hidden.value = '';
+          $(hidden).trigger('change');
+          return;
+        }
+
+        const filtered = data.filter(item =>
+          item.text.toLowerCase().includes(value)
+        );
+
+        if (filtered.length === 0) {
+          results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron resultados</div>';
+          results.style.display = 'block';
+          return;
+        }
+
+        filtered.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'autocomplete-item';
+          div.textContent = item.text;
+          div.addEventListener('click', function () {
+            input.value = item.text;
+            hidden.value = item.id;
+            results.style.display = 'none';
+            $(hidden).trigger('change');
+          });
+          results.appendChild(div);
         });
+
+        results.style.display = 'block';
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+          const arrow = input.parentElement.querySelector('.autocomplete-arrow');
+          if (arrow && !arrow.contains(e.target)) {
+            results.style.display = 'none';
+          }
+        }
+      });
+
+      input.addEventListener('focus', function () {
+        if (this.value && !hidden.value) {
+          this.value = '';
+        }
       });
     }
 
-    // Confirmación para EDITAR (varios formularios)
-    const formsEditar = document.querySelectorAll('form.formEditar');
-    formsEditar.forEach((form) => {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        Swal.fire({
-          title: '¿Actualizar producto?',
-          text: 'Se guardarán los cambios del producto.',
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: 'Sí, actualizar',
-          cancelButtonText: 'Cancelar'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            form.submit(); // POST normal a tu view
-          }
+    window.toggleAutocomplete = function(inputId, resultsId, data, hiddenId) {
+      const input = document.getElementById(inputId);
+      const results = document.getElementById(resultsId);
+
+      if (results.style.display === 'block') {
+        results.style.display = 'none';
+        return;
+      }
+
+      results.innerHTML = '';
+      data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item.text;
+        div.addEventListener('click', function (e) {
+          e.stopPropagation();
+          input.value = item.text;
+          document.getElementById(hiddenId).value = item.id;
+          results.style.display = 'none';
+          $('#' + hiddenId).trigger('change');
         });
+        results.appendChild(div);
+      });
+
+      results.style.display = 'block';
+      input.focus();
+    };
+
+    // Initialize the autocompletes
+    setupAutocomplete('marca_search_add', 'marca_results_add', marcasData, 'marca_id_add');
+    setupAutocomplete('modelo_search_add', 'modelo_results_add', modelosData, 'modelo_id_add');
+    setupAutocomplete('cilindrada_search_add', 'cilindrada_results_add', cilindradasData, 'cilindrada_id_add');
+    setupAutocomplete('color_search_add', 'color_results_add', coloresData, 'color_id_add');
+    setupAutocomplete('detalle_color_search_add', 'detalle_color_results_add', detallesColorData, 'detalle_color_id_add');
+
+    // Autocompletes para Repuestos
+    setupAutocomplete('categoria_rep_search_add', 'categoria_rep_results_add', categoriasRepData, 'categoria_rep_id_add');
+    setupAutocomplete('marca_rep_search_add', 'marca_rep_results_add', marcasRepData, 'marca_rep_id_add');
+    setupAutocomplete('unidad_rep_search_add', 'unidad_rep_results_add', unidadesData, 'unidad_rep_id_add');
+    setupAutocomplete('garantia_rep_search_add', 'garantia_rep_results_add', garantiasRepData, 'garantia_rep_id_add');
+
+    // ====== GENERACIÓN AUTOMÁTICA DE NOMBRE ======
+    // El detalle de color es OPCIONAL y se añade siempre al FINAL del nombre.
+    function actualizarNombreAgregar() {
+      var parts = [];
+      var elements = $('#modalAgregar .select-add').not('[name="unidad"], [name="cilindrada"], #cilindrada_id_add, #detalle_color_id_add');
+
+      elements.each(function () {
+        var txt = '';
+        if ($(this).is('select')) {
+          txt = $(this).find('option:selected').text().trim();
+        } else if ($(this).is('input[type="hidden"]')) {
+          var visibleInput = $(this).siblings('.autocomplete-input');
+          if (visibleInput.length) txt = visibleInput.val().trim();
+        }
+        if (txt && txt.indexOf('Seleccione') === -1) parts.push(txt);
+      });
+
+      // Detalle de color va siempre AL FINAL (opcional)
+      var detalleColor = $('#detalle_color_search_add').val().trim();
+      if (detalleColor && detalleColor.indexOf('Seleccione') === -1) {
+        parts.push(detalleColor);
+      }
+
+      $('#nombreAdd').val(parts.join(' '));
+    }
+
+    function actualizarNombreEditar(id) {
+      var parts = [];
+      var elements = $('#modalEditar' + id + ' .select-edit').not('[name="unidad"], [name="cilindrada"], [name="id_detalle_color"]');
+
+      elements.each(function () {
+        var txt = '';
+        if ($(this).is('select')) {
+          txt = $(this).find('option:selected').text().trim();
+        } else if ($(this).is('input[type="hidden"]')) {
+          var visibleInput = $(this).siblings('.autocomplete-input');
+          if (visibleInput.length) txt = visibleInput.val().trim();
+        }
+        if (txt && txt.indexOf('Seleccione') === -1) parts.push(txt);
+      });
+
+      // Detalle de color va siempre AL FINAL (opcional)
+      var detalleColor = $('#modalEditar' + id + ' [name="id_detalle_color"] option:selected').text().trim();
+      if (detalleColor && detalleColor.indexOf('Seleccione') === -1) {
+        parts.push(detalleColor);
+      }
+
+      $('#nombreEdit' + id).val(parts.join(' '));
+    }
+
+    // Trigger update when autocomplete hidden inputs change
+    $('.select-add').on('change', function () {
+      actualizarNombreAgregar();
+    });
+
+    $(document).on('change', '.select-edit', function () {
+      var id = $(this).data('id');
+      actualizarNombreEditar(id);
+    });
+
+    // ====== AGREGAR ======
+    $('#btnGuardarNuevo').on('click', function () {
+      var cat = $('[name="categoria"]', '#modalAgregar').val();
+      var mar = $('[name="marca"]', '#modalAgregar').val();
+      var cil = $('[name="cilindrada"]', '#modalAgregar').val();
+      var col = $('[name="color"]', '#modalAgregar').val();
+      var uni = $('[name="unidad"]', '#modalAgregar').val();
+      var nombre = $('#nombreAdd').val().trim();
+
+      if (!cat || !mar || !cil || !col || !uni) {
+        Swal.fire({ title: 'Campos obligatorios', text: 'Por favor complete todos los campos.', icon: 'warning' });
+        return;
+      }
+      if (!nombre) {
+        Swal.fire({ title: 'Atención', text: 'El nombre generado está vacío.', icon: 'warning' });
+        return;
+      }
+
+      $.post(URL_AGREGAR, $('#formNuevoVehiculo').serialize() + '&csrfmiddlewaretoken=' + CSRF_TOKEN)
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Guardado!', text: 'El vehículo fue registrado correctamente.', icon: 'success' })
+              .then(function () { window.location.href = URL_LISTA; });
+          } else {
+            Swal.fire({ title: 'Error', text: res.error, icon: 'error' });
+          }
+        })
+        .fail(function (xhr) {
+          var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error en la petición.';
+          Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+        });
+    });
+
+    // =====================================================================
+    // FLAG: Evita que el reset del modal principal se dispare al abrir mini-modales
+    // =====================================================================
+    var miniModalActive = false;
+
+    // Interceptar los botones + antes de que Bootstrap oculte el modal principal
+    document.querySelectorAll('[data-bs-target^="#miniModal"]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        miniModalActive = true;
+      }, true); // fase de captura: se ejecuta ANTES que Bootstrap
+    });
+
+    $('#modalAgregar').on('hidden.bs.modal', function () {
+      if (miniModalActive) return; // No limpiar si fue por abrir un mini-modal
+      $('#formNuevoVehiculo')[0].reset();
+      $('#nombreAdd').val('');
+      // Reset autocomplete fields
+      $('#marca_search_add, #modelo_search_add, #cilindrada_search_add, #color_search_add, #detalle_color_search_add').val('');
+      // Reset hidden IDs for autocomplete fields
+      $('#marca_id_add, #modelo_id_add, #cilindrada_id_add, #color_id_add, #detalle_color_id_add').val('');
+    });
+
+    // =====================================================================
+    // REGISTRO RÁPIDO AJAX - Funciones para los 6 mini-modales
+    // Sin N+1: cada acción ejecuta exactamente 1 INSERT y devuelve id+nombre
+    // =====================================================================
+
+    function guardarRapidoAutoComplete(url, datos, inputBusquedaId, hiddenId, resultsId, dataArray, miniModalId, limpiarFn) {
+      $.ajax({
+        url: url,
+        type: 'POST',
+        data: Object.assign({ csrfmiddlewaretoken: CSRF_TOKEN }, datos),
+        success: function(res) {
+          if (res.ok) {
+            // 1. Añadir al array de datos del autocomplete
+            dataArray.push({ id: res.id, text: res.nombre });
+            // 2. Auto-seleccionar en el input visible y el hidden
+            document.getElementById(inputBusquedaId).value = res.nombre;
+            document.getElementById(hiddenId).value = res.id;
+            // 3. Disparar cambio para actualizar nombre automático
+            $('#' + hiddenId).trigger('change');
+            // 4. Cerrar mini-modal y limpiar input
+            bootstrap.Modal.getInstance(document.getElementById(miniModalId)).hide();
+            if (limpiarFn) limpiarFn();
+            Swal.fire({ icon: 'success', title: '¡Guardado!', text: '"' + res.nombre + '" fue creado y seleccionado.', timer: 1800, showConfirmButton: false });
+          } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: res.error || 'No se pudo guardar.' });
+          }
+        },
+        error: function(xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error en la petición.';
+          var iconType = (xhr.status === 400) ? 'warning' : 'error';
+          Swal.fire({ icon: iconType, title: 'Atención', text: msg });
+        }
+      });
+    }
+
+    function guardarRapidoSelect(url, datos, selectId, miniModalId, limpiarFn) {
+      $.ajax({
+        url: url,
+        type: 'POST',
+        data: Object.assign({ csrfmiddlewaretoken: CSRF_TOKEN }, datos),
+        success: function(res) {
+          if (res.ok) {
+            // 1. Inyectar nueva opción en el select y seleccionarla
+            var $select = $('#' + selectId);
+            $select.append('<option value="' + res.id + '">' + res.nombre + '</option>');
+            $select.val(res.id);
+            // 2. Disparar cambio para actualizar nombre automático
+            $select.trigger('change');
+            // 3. Cerrar mini-modal y limpiar
+            bootstrap.Modal.getInstance(document.getElementById(miniModalId)).hide();
+            if (limpiarFn) limpiarFn();
+            Swal.fire({ icon: 'success', title: '¡Guardado!', text: '"' + res.nombre + '" fue creado y seleccionado.', timer: 1800, showConfirmButton: false });
+          } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: res.error || 'No se pudo guardar.' });
+          }
+        },
+        error: function(xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error en la petición.';
+          var iconType = (xhr.status === 400) ? 'warning' : 'error';
+          Swal.fire({ icon: iconType, title: 'Atención', text: msg });
+        }
+      });
+    }
+
+    // --- MARCA ---
+    $('#btn_guardar_marca_rapida').on('click', function() {
+      var nombre = $('#input_nueva_marca').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre de la marca no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'agregarMarcas' %}",
+        { nameMarcaAgregar: nombre },
+        'marca_search_add', 'marca_id_add', 'marca_results_add', marcasData,
+        'miniModalMarca', function() { $('#input_nueva_marca').val(''); }
+      );
+    });
+
+    // --- MODELO ---
+    $('#btn_guardar_modelo_rapido').on('click', function() {
+      var nombre = $('#input_nuevo_modelo').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre del modelo no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'agregarModelos' %}",
+        { nameModeloAgregar: nombre },
+        'modelo_search_add', 'modelo_id_add', 'modelo_results_add', modelosData,
+        'miniModalModelo', function() { $('#input_nuevo_modelo').val(''); }
+      );
+    });
+
+    // --- CONFIGURACIÓN VEHICULAR ---
+    $('#btn_guardar_config_rapida').on('click', function() {
+      var nombre = $('#input_nueva_config').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre de la configuración no puede estar vacío.' }); return; }
+      guardarRapidoSelect(
+        "{% url 'agregar_configuracion' %}",
+        { nombre: nombre },
+        'id_configuracion_select',
+        'miniModalConfig', function() { $('#input_nueva_config').val(''); }
+      );
+    });
+
+    // --- CILINDRADA ---
+    $('#btn_guardar_cilindrada_rapida').on('click', function() {
+      var nombre = $('#input_nueva_cilindrada').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'La cilindrada no puede estar vacía.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'agregarCilindradas' %}",
+        { nameCilindradaAgregar: nombre },
+        'cilindrada_search_add', 'cilindrada_id_add', 'cilindrada_results_add', cilindradasData,
+        'miniModalCilindrada', function() { $('#input_nueva_cilindrada').val(''); }
+      );
+    });
+
+    // --- COLOR ---
+    $('#btn_guardar_color_rapido').on('click', function() {
+      var nombre = $('#input_nuevo_color').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre del color no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'agregarColores' %}",
+        { nameColorAgregar: nombre },
+        'color_search_add', 'color_id_add', 'color_results_add', coloresData,
+        'miniModalColor', function() { $('#input_nuevo_color').val(''); }
+      );
+    });
+
+    // --- DETALLE DE COLOR ---
+    $('#btn_guardar_detalle_color_rapido').on('click', function() {
+      var nombre = $('#input_nuevo_detalle_color').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre del detalle no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'guardarDetalleColor' %}",
+        { nombre: nombre },
+        'detalle_color_search_add', 'detalle_color_id_add', 'detalle_color_results_add', detallesColorData,
+        'miniModalDetalleColor', function() { $('#input_nuevo_detalle_color').val(''); }
+      );
+    });
+
+    // --- UNIDAD ---
+    $('#btn_guardar_unidad_rapida').on('click', function() {
+      var codigo = $('#input_nueva_unidad_codigo').val().trim();
+      var nombre = $('#input_nueva_unidad_nombre').val().trim();
+      if (!codigo || !nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El código y la abreviación son obligatorios.' }); return; }
+      guardarRapidoSelect(
+        "{% url 'unidadesAgregar' %}",
+        { codigo_sunat: codigo, abrunidad: nombre },
+        'unidad_select',
+        'miniModalUnidad', function() { $('#input_nueva_unidad_codigo, #input_nueva_unidad_nombre').val(''); }
+      );
+    });
+
+    // ==========================================
+    // JS HANDLERS PARA REPUESTOS
+    // ==========================================
+
+    // --- CATEGORÍA REPUESTO ---
+    $('#btn_guardar_categoria_rep_rapida').on('click', function() {
+      var nombre = $('#input_nueva_categoria_rep').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre de la categoría no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'guardar_categoria_repuesto' %}",
+        { nomcategoria: nombre },
+        'categoria_rep_search_add', 'categoria_rep_id_add', 'categoria_rep_results_add', categoriasRepData,
+        'miniModalCategoriaRep', function() { $('#input_nueva_categoria_rep').val(''); }
+      );
+    });
+
+    // --- MARCA REPUESTO ---
+    $('#btn_guardar_marca_rep_rapida').on('click', function() {
+      var nombre = $('#input_nueva_marca_rep').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre de la marca no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'guardar_marca_repuesto' %}",
+        { nombremarca: nombre },
+        'marca_rep_search_add', 'marca_rep_id_add', 'marca_rep_results_add', marcasRepData,
+        'miniModalMarcaRep', function() { $('#input_nueva_marca_rep').val(''); }
+      );
+    });
+
+    // --- UNIDAD REPUESTO (AUTOCOMPLETE) ---
+    $('#btn_guardar_unidad_rep_rapida').on('click', function() {
+      var codigo = $('#input_nueva_unidad_codigo_rep').val().trim();
+      var nombre = $('#input_nueva_unidad_nombre_rep').val().trim();
+      if (!codigo || !nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El código y la abreviación son obligatorios.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'unidadesAgregar' %}",
+        { codigo_sunat: codigo, abrunidad: nombre },
+        'unidad_rep_search_add', 'unidad_rep_id_add', 'unidad_rep_results_add', unidadesData,
+        'miniModalUnidadRep', function() { $('#input_nueva_unidad_codigo_rep, #input_nueva_unidad_nombre_rep').val(''); }
+      );
+    });
+
+    // --- GARANTÍA REPUESTO ---
+    $('#btn_guardar_garantia_rep_rapida').on('click', function() {
+      var nombre = $('#input_nueva_garantia_rep').val().trim();
+      if (!nombre) { Swal.fire({ icon: 'warning', title: 'Atención', text: 'El nombre/tiempo de garantía no puede estar vacío.' }); return; }
+      guardarRapidoAutoComplete(
+        "{% url 'guardar_garantia_repuesto' %}",
+        { nombre: nombre },
+        'garantia_rep_search_add', 'garantia_rep_id_add', 'garantia_rep_results_add', garantiasRepData,
+        'miniModalGarantiaRep', function() { $('#input_nueva_garantia_rep').val(''); }
+      );
+    });
+
+    // Al cerrarse cualquier mini-modal: resetear el flag y re-abrir el modal principal
+    ['miniModalMarca','miniModalModelo','miniModalConfig','miniModalCilindrada','miniModalColor','miniModalDetalleColor','miniModalUnidad',
+     'miniModalCategoriaRep','miniModalMarcaRep','miniModalUnidadRep','miniModalGarantiaRep'].forEach(function(id) {
+      document.getElementById(id)?.addEventListener('hidden.bs.modal', function() {
+        miniModalActive = false;
+        
+        // Tratamos de abrir modalAgregar si fue un registro de Vehiculo
+        // Si fue de Repuesto, tratamos de abrir modalAgregarRepuesto
+        var mainModalEl = null;
+        if (id.includes('Rep')) {
+          mainModalEl = document.getElementById('modalAgregarRepuesto');
+        } else {
+          mainModalEl = document.getElementById('modalAgregar');
+        }
+
+        if (mainModalEl) {
+          var mainModal = bootstrap.Modal.getInstance(mainModalEl);
+          if (!mainModal) {
+            new bootstrap.Modal(mainModalEl).show();
+          } else {
+            mainModal.show();
+          }
+        }
       });
     });
+
+
+
+    // ==========================================
+    // LOGICA SERVER-SIDE: VEHICULOS (TAB 1)
+    // ==========================================
+    let currentPageVehiculos = 1;
+    let timerVehiculos;
+    
+    function cargarVehiculos(page = 1) {
+        currentPageVehiculos = page;
+        const body = document.getElementById('tbodyVehiculos');
+        body.innerHTML = `<tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>`;
+        
+        const busqueda = document.getElementById('buscarVehiculo').value;
+        const params = new URLSearchParams({ page: page, busqueda: busqueda });
+        
+        fetch(`/productos/api/vehiculos/?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    renderizarTablaVehiculos(data.vehiculos);
+                    renderizarPaginacion(data.pagination, data.stats.total_registros, 'Vehiculos', cargarVehiculos);
+                } else {
+                    body.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">Error: ${data.error}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                body.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">Error de conexión</td></tr>`;
+            });
+    }
+
+    function renderizarTablaVehiculos(vehiculos) {
+        const body = document.getElementById('tbodyVehiculos');
+        if (vehiculos.length === 0) {
+            body.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No hay vehículos registrados.</td></tr>`;
+            return;
+        }
+        let html = '';
+        vehiculos.forEach((v, index) => {
+            let modeloHtml = v.modelo ? `<span class="badge bg-info text-dark border shadow-sm">${v.modelo}</span>` : `<span class="text-muted">—</span>`;
+            html += `
+            <tr>
+              <td class="fw-semibold text-center">${(currentPageVehiculos - 1) * 10 + index + 1}</td>
+              <td><span class="badge bg-secondary">${v.codigo_interno || '---'}</span></td>
+              <td><span class="badge bg-primary me-2"><i class="fa-solid fa-car"></i></span>${v.nomproducto}</td>
+              <td><span class="badge bg-light text-dark border shadow-sm">${v.marca}</span></td>
+              <td>${modeloHtml}</td>
+              <td>${v.categoria}</td>
+              <td><span class="fw-bold text-muted">${v.cilindrada}</span></td>
+              <td><span class="badge bg-secondary me-1"><i class="fa-solid fa-droplet"></i></span>${v.color}</td>
+              <td>${v.unidad}</td>
+              <td class="text-center">
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary shadow-sm" style="border-radius:8px; width:36px; height:36px"
+                    data-id="${v.idproducto}" data-nombre="${v.nomproducto}" data-codigo="${v.codigo_interno}"
+                    data-categoria="${v.idcategoria}" data-marca="${v.idmarca}" data-modelo="${v.idmodelo}"
+                    data-configuracion="${v.id_configuracion}" data-cilindrada="${v.idcilindrada}"
+                    data-color="${v.idcolor}" data-detalle="${v.id_detalle_color}" data-unidad="${v.idunidad}" data-img="${v.imagenprod}"
+                    onclick="abrirModalEditarVehiculo(this)" title="Editar">
+                    <i class="fa-solid fa-pen-to-square" style="font-size:1rem;"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger shadow-sm btn-eliminar-prod" style="border-radius:8px; width:36px; height:36px"
+                    data-id="${v.idproducto}" title="Eliminar">
+                    <i class="fa-solid fa-trash" style="font-size:1rem;"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>`;
+        });
+        body.innerHTML = html;
+    }
+
+    window.abrirModalEditarVehiculo = function(btn) {
+        $('#edit_vehiculo_id').val($(btn).data('id'));
+        $('#edit_v_categoria').val($(btn).data('categoria'));
+        $('#edit_v_marca').val($(btn).data('marca'));
+        $('#edit_v_modelo').val($(btn).data('modelo'));
+        $('#edit_v_configuracion').val($(btn).data('configuracion'));
+        $('#edit_v_cilindrada').val($(btn).data('cilindrada'));
+        $('#edit_v_color').val($(btn).data('color'));
+        $('#edit_v_detalle_color').val($(btn).data('detalle'));
+        $('#edit_v_unidad').val($(btn).data('unidad'));
+        $('#edit_v_nombreProducto').val($(btn).data('nombre'));
+        $('#edit_v_codigo_interno').val($(btn).data('codigo'));
+        $('#edit_v_imagenprod').val($(btn).data('img'));
+        new bootstrap.Modal(document.getElementById('modalEditarVehiculo')).show();
+    };
+
+    $('#buscarVehiculo').on('keyup', function() {
+        clearTimeout(timerVehiculos);
+        timerVehiculos = setTimeout(() => cargarVehiculos(1), 500);
+    });
+
+    $('#btn-guardar-edicion-vehiculo').click(function () {
+      var form = $('#formEditarVehiculo_dinamico');
+      var nombre = $('#edit_v_nombreProducto').val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Atención', text: 'El nombre no puede estar vacío.', icon: 'warning' });
+        return;
+      }
+      var data = [
+        { name: 'idproducto2', value: $('#edit_vehiculo_id').val() },
+        { name: 'nombreProducto2', value: nombre },
+        { name: 'categoria2', value: $('#edit_v_categoria').val() },
+        { name: 'unidad2', value: $('#edit_v_unidad').val() },
+        { name: 'marca2', value: $('#edit_v_marca').val() },
+        { name: 'modelo2', value: $('#edit_v_modelo').val() },
+        { name: 'cilindrada2', value: $('#edit_v_cilindrada').val() },
+        { name: 'color2', value: $('#edit_v_color').val() },
+        { name: 'id_detalle_color2', value: $('#edit_v_detalle_color').val() },
+        { name: 'id_configuracion2', value: $('#edit_v_configuracion').val() },
+        { name: 'imagenprod2', value: $('#edit_v_imagenprod').val() },
+        { name: 'codigo_interno2', value: $('#edit_v_codigo_interno').val() },
+        { name: 'csrfmiddlewaretoken', value: CSRF_TOKEN }
+      ];
+      $.post(URL_EDITAR, $.param(data))
+        .done(function (res) {
+          if (res.ok) {
+            $('#modalEditarVehiculo').modal('hide');
+            Swal.fire({ title: '¡Actualizado!', text: 'Los cambios se guardaron correctamente.', icon: 'success' });
+            cargarVehiculos(currentPageVehiculos);
+          } else { Swal.fire({ title: 'Error', text: res.error, icon: 'error' }); }
+        })
+        .fail(function (xhr) {
+          var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error al actualizar.';
+          Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+        });
+    });
+
+    $(document).on('click', '.btn-eliminar-prod', function () {
+      var id = $(this).data('id');
+      Swal.fire({
+        title: '¿Eliminar este vehículo?', text: 'El vehículo quedará inactivo en el sistema.',
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          $.post('/productos/eliminarProducto/' + id, { csrfmiddlewaretoken: CSRF_TOKEN }, function(res) {
+            if (res.ok) {
+              Swal.fire('Eliminado', 'El vehículo fue desactivado.', 'success');
+              cargarVehiculos(currentPageVehiculos);
+            } else { Swal.fire('Error', res.error || 'No se pudo eliminar.', 'error'); }
+          });
+        }
+      });
+    });
+
+    // ==========================================
+    // LOGICA SERVER-SIDE: REPUESTOS (TAB 2)
+    // ==========================================
+    let currentPageRepuestos = 1;
+    let timerRepuestos;
+    
+    function cargarRepuestos(page = 1) {
+        currentPageRepuestos = page;
+        const body = document.getElementById('tbodyRepuestos');
+        body.innerHTML = `<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>`;
+        
+        const busqueda = document.getElementById('buscarRepuesto').value;
+        const params = new URLSearchParams({ page: page, busqueda: busqueda });
+        
+        fetch(`/productos/api/repuestos/?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    renderizarTablaRepuestos(data.repuestos);
+                    renderizarPaginacion(data.pagination, data.stats.total_registros, 'Repuestos', cargarRepuestos);
+                } else { body.innerHTML = `<tr><td colspan="11" class="text-center text-danger">Error: ${data.error}</td></tr>`; }
+            }).catch(err => { body.innerHTML = `<tr><td colspan="11" class="text-center text-danger">Error de conexión</td></tr>`; });
+    }
+
+    function renderizarTablaRepuestos(repuestos) {
+        const body = document.getElementById('tbodyRepuestos');
+        if (repuestos.length === 0) {
+            body.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No hay repuestos registrados.</td></tr>`;
+            return;
+        }
+        let html = '';
+        repuestos.forEach((r, index) => {
+            html += `
+            <tr>
+              <td class="fw-semibold text-center">${(currentPageRepuestos - 1) * 10 + index + 1}</td>
+              <td class="text-center"><span class="badge bg-secondary">${r.codigo_interno || r.codigo_barras || '---'}</span></td>
+              <td><span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-gears"></i></span>${r.nombre}</td>
+              <td class="fw-semibold">${r.compatibilidad || '—'}</td>
+              <td><span class="badge bg-light text-dark border">${r.categoria}</span></td>
+              <td><span class="badge bg-light text-dark border">${r.marca}</span></td>
+              <td><span class="badge bg-info text-dark">${r.unidad}</span></td>
+              <td class="fw-semibold">S/ ${r.costo_unitario || '0.00'}</td>
+              <td class="fw-semibold text-success">S/ ${r.precio_minimo || '0.00'}</td>
+              <td class="text-center"><span class="badge bg-secondary">${r.stock_minimo || '0'}</span></td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1 btn-editar-rep"
+                  data-id="${r.id_repuesto}" data-nombre="${r.nombre}" data-codigo="${r.codigo_interno || ''}"
+                  data-categoria="${r.id_categoria}" data-marca="${r.idmarca}" data-unidad="${r.idunidad}"
+                  data-modelo="${r.modelo_referencia || ''}" data-barras="${r.codigo_barras || ''}"
+                  data-descripcion="${r.descripcion || ''}" data-compatibilidad="${r.compatibilidad || ''}"
+                  data-stmin="${r.stock_minimo || 0}" data-stmax="${r.stock_maximo || 0}"
+                  data-costo="${r.costo_unitario || 0}" data-pmin="${r.precio_minimo || 0}" data-psug="${r.precio_sugerido || 0}"
+                  data-garantia="${r.id_garantia}" data-obs="${r.observaciones || ''}" title="Editar">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-eliminar-rep" data-id="${r.id_repuesto}" title="Eliminar">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>`;
+        });
+        body.innerHTML = html;
+    }
+
+    $('#buscarRepuesto').on('keyup', function() {
+        clearTimeout(timerRepuestos);
+        timerRepuestos = setTimeout(() => cargarRepuestos(1), 500);
+    });
+
+    // ── GUARDAR NUEVO REPUESTO ──
+    var URL_AGREGAR_REP = "{% url 'agregarRepuesto' %}";
+    $('#formAgregarRepuesto').submit(function (e) {
+      e.preventDefault();
+      var data = $(this).serialize() + '&csrfmiddlewaretoken=' + CSRF_TOKEN;
+      $.post(URL_AGREGAR_REP, data)
+        .done(function (res) {
+          if (res.ok) {
+            $('#modalAgregarRepuesto').modal('hide');
+            $('#formAgregarRepuesto')[0].reset();
+            Swal.fire('¡Registrado!', 'Repuesto guardado correctamente.', 'success');
+            cargarRepuestos(1);
+          } else { Swal.fire('Error', res.error, 'error'); }
+        })
+        .fail(function (xhr) { Swal.fire('Error', 'Error interno del servidor', 'error'); });
+    });
+
+    // ── GUARDAR EDICION REPUESTO ──
+    var URL_EDITAR_REP  = "{% url 'editarRepuesto' %}";
+    $('#formEditarRepuesto').submit(function (e) {
+      e.preventDefault();
+      var data = $(this).serialize() + '&csrfmiddlewaretoken=' + CSRF_TOKEN;
+      $.post(URL_EDITAR_REP, data)
+        .done(function (res) {
+          if (res.ok) {
+            $('#modalEditarRepuesto').modal('hide');
+            Swal.fire('¡Actualizado!', 'Repuesto actualizado correctamente.', 'success');
+            cargarRepuestos(currentPageRepuestos);
+          } else { Swal.fire('Error', res.error, 'error'); }
+        })
+        .fail(function (xhr) { Swal.fire('Error', 'Error interno del servidor', 'error'); });
+    });
+
+    $(document).on('click', '.btn-eliminar-rep', function () {
+      var id = $(this).data('id');
+      Swal.fire({
+        title: '¿Eliminar repuesto?', text: 'El registro pasará a estado inactivo.',
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          $.get('/repuestos/eliminar/' + id)
+            .done(function (res) {
+              if (res.ok) {
+                Swal.fire('¡Eliminado!', 'El repuesto fue eliminado.', 'success');
+                cargarRepuestos(currentPageRepuestos);
+              } else { Swal.fire('Error', res.error, 'error'); }
+            });
+        }
+      });
+    });
+    
+    // CARGAR MODAL EDITAR REPUESTO
+    $(document).on('click', '.btn-editar-rep', function() {
+      $('#edit_repuesto_id').val($(this).data('id'));
+      $('#edit_rep_codigo').val($(this).data('codigo'));
+      $('#edit_rep_nombre').val($(this).data('nombre'));
+      $('#edit_rep_categoria').val($(this).data('categoria'));
+      $('#edit_rep_marca').val($(this).data('marca'));
+      $('#edit_rep_unidad').val($(this).data('unidad'));
+      $('#edit_rep_modelo').val($(this).data('modelo'));
+      $('#edit_rep_barras').val($(this).data('barras'));
+      $('#edit_rep_desc').val($(this).data('descripcion'));
+      $('#edit_rep_comp').val($(this).data('compatibilidad'));
+      $('#edit_rep_stmin').val($(this).data('stmin'));
+      $('#edit_rep_stmax').val($(this).data('stmax'));
+      var costo = String($(this).data('costo') || '0').replace(',', '.');
+      var pmin = String($(this).data('pmin') || '0').replace(',', '.');
+      var psug = String($(this).data('psug') || '0').replace(',', '.');
+      $('#edit_rep_costo').val(parseFloat(costo));
+      $('#edit_rep_pmin').val(parseFloat(pmin));
+      $('#edit_rep_psug').val(parseFloat(psug));
+      $('#edit_rep_garantia').val($(this).data('garantia'));
+      $('#edit_rep_obs').val($(this).data('obs'));
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarRepuesto')).show();
+    });
+
+    // ==========================================
+    // LOGICA SERVER-SIDE: SERVICIOS (TAB 3)
+    // ==========================================
+    let currentPageServicios = 1;
+    let timerServicios;
+    
+    function cargarServicios(page = 1) {
+        currentPageServicios = page;
+        const body = document.getElementById('tbodyServicios');
+        body.innerHTML = `<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>`;
+        
+        const busqueda = document.getElementById('buscarServicio').value;
+        const params = new URLSearchParams({ page: page, busqueda: busqueda });
+        
+        fetch(`/productos/api/servicios/?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    renderizarTablaServicios(data.servicios);
+                    renderizarPaginacion(data.pagination, data.stats.total_registros, 'Servicios', cargarServicios);
+                } else { body.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error: ${data.error}</td></tr>`; }
+            }).catch(err => { body.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error de conexión</td></tr>`; });
+    }
+
+    function renderizarTablaServicios(servicios) {
+        const body = document.getElementById('tbodyServicios');
+        if (servicios.length === 0) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No hay servicios registrados.</td></tr>`;
+            return;
+        }
+        let html = '';
+        servicios.forEach((s, index) => {
+            html += `
+            <tr>
+              <td class="fw-semibold text-center">${(currentPageServicios - 1) * 10 + index + 1}</td>
+              <td><span class="badge bg-success me-2"><i class="fa-solid fa-file-invoice-dollar"></i></span><span class="fw-semibold">${s.nombre}</span></td>
+              <td class="text-end fw-bold text-success fs-6">S/ ${s.precio || '0.00'}</td>
+              <td class="text-muted">${s.descripcion || '---'}</td>
+              <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-primary me-1 btn-editar-serv"
+                  data-id="${s.id_servicio}" data-nombre="${s.nombre}" data-precio="${s.precio || '0.00'}" data-desc="${s.descripcion || ''}" title="Editar">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-serv" data-id="${s.id_servicio}" title="Eliminar">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>`;
+        });
+        body.innerHTML = html;
+    }
+
+    $('#buscarServicio').on('keyup', function() {
+        clearTimeout(timerServicios);
+        timerServicios = setTimeout(() => cargarServicios(1), 500);
+    });
+
+    var URL_AGREGAR_SERV = "{% url 'servicios_agregar' %}";
+    var URL_EDITAR_SERV  = "{% url 'servicios_editar' %}";
+
+    // ── GUARDAR NUEVO SERVICIO ──
+    $('#formAgregarServicio').submit(function (e) {
+      e.preventDefault();
+      var data = $(this).serialize() + '&csrfmiddlewaretoken=' + CSRF_TOKEN;
+      $.post(URL_AGREGAR_SERV, data)
+        .done(function (res) {
+          if (res.ok) {
+            $('#modalAgregarServicio').modal('hide');
+            $('#formAgregarServicio')[0].reset();
+            Swal.fire('¡Registrado!', 'Servicio guardado correctamente.', 'success');
+            cargarServicios(1);
+          } else { Swal.fire('Error', res.error, 'error'); }
+        })
+        .fail(function (xhr) { Swal.fire('Error', 'Error interno del servidor', 'error'); });
+    });
+
+    // ── GUARDAR EDICION SERVICIO ──
+    $('#formEditarServicio').submit(function (e) {
+      e.preventDefault();
+      var data = $(this).serialize() + '&csrfmiddlewaretoken=' + CSRF_TOKEN;
+      $.post(URL_EDITAR_SERV, data)
+        .done(function (res) {
+          if (res.ok) {
+            $('#modalEditarServicio').modal('hide');
+            Swal.fire('¡Actualizado!', 'Servicio actualizado correctamente.', 'success');
+            cargarServicios(currentPageServicios);
+          } else { Swal.fire('Error', res.error, 'error'); }
+        })
+        .fail(function (xhr) { Swal.fire('Error', 'Error interno del servidor', 'error'); });
+    });
+
+    // ── ELIMINAR SERVICIO ──
+    $(document).on('click', '.btn-eliminar-serv', function () {
+      var id = $(this).data('id');
+      Swal.fire({
+        title: '¿Eliminar servicio?', text: 'El servicio quedará inactivo.',
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          $.get('/gestion/servicios/eliminar/' + id + '/')
+            .done(function (res) {
+              Swal.fire('¡Eliminado!', 'El servicio fue eliminado.', 'success');
+              cargarServicios(currentPageServicios);
+            }).fail(function (xhr) {
+              Swal.fire('¡Eliminado!', 'El servicio fue eliminado.', 'success');
+              cargarServicios(currentPageServicios);
+            });
+        }
+      });
+    });
+    
+    $(document).on('click', '.btn-editar-serv', function() {
+      $('#edit_serv_id').val($(this).data('id'));
+      $('#edit_serv_nombre').val($(this).data('nombre'));
+      $('#edit_serv_precio').val($(this).data('precio'));
+      $('#edit_serv_desc').val($(this).data('desc'));
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarServicio')).show();
+    });
+
+    // ==========================================
+    // UTILIDAD PAGINADOR GENERICA
+    // ==========================================
+    function renderizarPaginacion(pag, total, tabName, reloadFn) {
+        const pagDiv = document.getElementById('paginacion' + tabName);
+        if (!pagDiv) return;
+        let html = `<div class="text-muted small">Mostrando registros ${pag.start_index} al ${pag.end_index} de ${total}</div>`;
+        if (pag.num_pages > 1) {
+            window['cambiarPagina' + tabName] = function(page) { reloadFn(page); };
+            html += `<ul class="pagination pagination-sm mb-0">`;
+            if (pag.has_previous) {
+                html += `<li class="page-item"><button class="page-link" onclick="cambiarPagina${tabName}(${pag.previous_page_number})">Anterior</button></li>`;
+            } else { html += `<li class="page-item disabled"><span class="page-link">Anterior</span></li>`; }
+            
+            html += `<li class="page-item active"><span class="page-link">${pag.current_page} de ${pag.num_pages}</span></li>`;
+            
+            if (pag.has_next) {
+                html += `<li class="page-item"><button class="page-link" onclick="cambiarPagina${tabName}(${pag.next_page_number})">Siguiente</button></li>`;
+            } else { html += `<li class="page-item disabled"><span class="page-link">Siguiente</span></li>`; }
+            html += `</ul>`;
+        }
+        pagDiv.innerHTML = html;
+    }
+
+    // ==========================================
+    // LOGICA DE TABS Y BOTONES Y RECARGA 
+    // ==========================================
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+      var target = $(e.target).attr("data-bs-target");
+      if (target === "#tab-vehiculos") {
+        $('#btn-nuevo-vehiculo').show(); $('#btn-nuevo-repuesto').hide(); $('#btn-nuevo-servicio').hide();
+        if ($('#tbodyVehiculos').children().length <= 1) cargarVehiculos(1);
+      } else if (target === "#tab-repuestos") {
+        $('#btn-nuevo-vehiculo').hide(); $('#btn-nuevo-repuesto').show(); $('#btn-nuevo-servicio').hide();
+        if ($('#tbodyRepuestos').children().length <= 1) cargarRepuestos(1);
+      } else if (target === "#tab-servicios") {
+        $('#btn-nuevo-vehiculo').hide(); $('#btn-nuevo-repuesto').hide(); $('#btn-nuevo-servicio').show();
+        if ($('#tbodyServicios').children().length <= 1) cargarServicios(1);
+      }
+    });
+
+    // Cargar Vehiculos por defecto al inicio
+    cargarVehiculos(1);
+
   });
-  
-</script>
+  </script>
 {% endblock %}

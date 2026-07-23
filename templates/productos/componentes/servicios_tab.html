@@ -1,0 +1,37 @@
+    <div class="tab-pane fade" id="tab-servicios" role="tabpanel" aria-labelledby="servicios-tab">
+    <section class="section dashboard mt-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+          <h6 class="m-0 fw-bold text-success"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Catálogo de Servicios / Trámites</h6>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <input type="text" id="buscarServicio" class="form-control" placeholder="Buscar servicio por nombre...">
+            </div>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" style="width: 100%;" id="tablaServicios">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col" style="width: 5%;">#</th>
+                  <th scope="col" style="width: 35%;">Nombre del Servicio</th>
+                  <th scope="col" class="text-end" style="width: 15%;">Precio Base</th>
+                  <th scope="col" style="width: 35%;">Descripción</th>
+                  <th scope="col" class="text-center" style="width: 10%;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyServicios">
+                <tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Paginación Servicios -->
+          <div id="paginacionServicios" class="d-flex justify-content-between align-items-center mt-3">
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>

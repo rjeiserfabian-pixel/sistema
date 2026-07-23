@@ -3,6 +3,7 @@ from software.models.cajaModel import Caja
 from software.models.UsuarioModel import Usuario
 from software.models.VentasModel import Ventas
 from software.models.AperturaCierreCajaModel import AperturaCierreCaja
+from software.models.comprasModel import Compras
 
 
 class MovimientoCaja(models.Model):
@@ -19,17 +20,27 @@ class MovimientoCaja(models.Model):
     # Relación opcional con venta (para ingresos por venta)
     idventa = models.ForeignKey(Ventas, on_delete=models.SET_NULL, db_column='idventa', related_name='movimientos_caja', null=True, blank=True)
     
-    tipo_movimiento = models.CharField(max_length=10, choices=TIPOS_MOVIMIENTO, db_column='tipo_movimiento')
+    # Relación opcional con compra (para egresos por compra)
+    idcompra = models.ForeignKey(Compras, on_delete=models.SET_NULL, db_column='idcompra', related_name='movimientos_caja', null=True, blank=True)
+    
+    tipo_movimiento = models.CharField(max_length=10, choices=TIPOS_MOVIMIENTO, db_column='tipo_movimiento', db_index=True)
     monto = models.DecimalField(max_digits=10, decimal_places=2, db_column='monto')
     descripcion = models.TextField(db_column='descripcion', null=True, blank=True)
     
-    fecha_movimiento = models.DateTimeField(auto_now_add=True, db_column='fecha_movimiento')
-    estado = models.IntegerField(default=1, db_column='estado')
+    fecha_movimiento = models.DateTimeField(auto_now_add=True, db_column='fecha_movimiento', db_index=True)
+    estado = models.IntegerField(default=1, db_column='estado', db_index=True)
     
     class Meta:
         managed = True
         db_table = 'movimientos_caja'
         ordering = ['-fecha_movimiento']
+        indexes = [
+            # Índice compuesto para el filtro más común del Reporte de Caja:
+            # WHERE fecha_movimiento BETWEEN x AND y AND tipo_movimiento = z
+            models.Index(fields=['fecha_movimiento', 'tipo_movimiento'], name='idx_caja_fecha_tipo'),
+            # Índice compuesto para filtrar por caja + fecha (historial de cajas)
+            models.Index(fields=['id_caja', 'fecha_movimiento'], name='idx_caja_id_fecha'),
+        ]
     
     def __str__(self):
         return f"{self.tipo_movimiento.upper()} - S/ {self.monto} - {self.fecha_movimiento.strftime('%d/%m/%Y %H:%M')}"

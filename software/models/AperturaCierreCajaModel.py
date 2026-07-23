@@ -1,6 +1,7 @@
 from django.db import models
 from software.models.cajaModel import Caja
 from software.models.UsuarioModel import Usuario
+from software.models.almacenesModel import Almacenes
 
 class AperturaCierreCaja(models.Model):
     id_movimiento = models.AutoField(primary_key=True)
@@ -13,6 +14,7 @@ class AperturaCierreCaja(models.Model):
     hora_apertura = models.TimeField(blank=True, null=True)
     hora_cierre = models.TimeField(blank=True, null=True)
     estado = models.CharField(max_length=10, blank=True, null=True)  # 'abierta', 'cerrada', 'reabierta'
+    id_almacen = models.ForeignKey(Almacenes, models.SET_NULL, db_column='id_almacen', null=True, blank=True)
     
     class Meta:
         managed = True

@@ -1,0 +1,170 @@
+<!-- Modal de Autorización por WhatsApp -->
+<div class="modal fade" id="modalAutorizacionWhatsApp" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-user-shield me-2"></i>Autorización Requerida
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="display-1 text-warning mb-3">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <p class="text-muted">Esta acción requiere autorización del gerente. Se enviará un código a su WhatsApp.</p>
+                </div>
+                
+                <div id="sectionSolicitarAuth">
+                    <button type="button" class="btn btn-warning w-100 fw-bold py-3 mb-3 shadow-sm" id="btnSolicitarCodigo">
+                        <i class="fas fa-paper-plane me-2"></i>SOLICITAR CÓDIGO AL GERENTE
+                    </button>
+                </div>
+
+                <div id="sectionIngresarAuth" style="display: none;">
+                    <div class="form-group mb-4">
+                        <label class="form-label fw-bold text-uppercase small text-muted">Ingresa el código recibido:</label>
+                        <input type="text" id="inputCodigoAuth" class="form-control form-control-lg text-center fw-bold" 
+                               placeholder="000000" maxlength="6" style="letter-spacing: 10px; font-size: 2rem; height: 70px; border: 2px solid #ffc107;">
+                    </div>
+                    <button type="button" class="btn btn-success w-100 fw-bold py-3 shadow-sm" id="btnValidarCodigo">
+                        <i class="fas fa-check-circle me-2"></i>CONFIRMAR ACCIÓN
+                    </button>
+                    <button type="button" class="btn btn-link btn-sm mt-3 text-muted" id="btnReintentarSolicitud">
+                        No recibí el código, solicitar de nuevo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * Lógica global de autorización por WhatsApp
+ */
+const AuthWhatsApp = {
+    callbackSuccess: null,
+    currentData: {
+        tipo: '',
+        modulo: '',
+        id: ''
+    },
+
+    init(tipo, modulo, id, callback) {
+        this.currentData = { tipo, modulo, id };
+        this.callbackSuccess = callback;
+        
+        // Reiniciar modal
+        document.getElementById('sectionSolicitarAuth').style.display = 'block';
+        document.getElementById('sectionIngresarAuth').style.display = 'none';
+        document.getElementById('inputCodigoAuth').value = '';
+        
+        const modalElement = document.getElementById('modalAutorizacionWhatsApp');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        modal.show();
+    },
+
+    solicitar() {
+        const btn = document.getElementById('btnSolicitarCodigo');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+
+        fetch('/autorizaciones/solicitar/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(this.currentData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Código Enviado',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                document.getElementById('sectionSolicitarAuth').style.display = 'none';
+                document.getElementById('sectionIngresarAuth').style.display = 'block';
+            } else {
+                Swal.fire('Error', data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+    },
+
+    validar() {
+        const codigo = document.getElementById('inputCodigoAuth').value;
+        if (codigo.length < 4) {
+            Swal.fire('Atención', 'Ingresa un código válido', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnValidarCodigo');
+        btn.disabled = true;
+
+        fetch('/autorizaciones/validar/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                ...this.currentData,
+                codigo: codigo
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalAutorizacionWhatsApp'));
+                modal.hide();
+                
+                if (this.callbackSuccess) {
+                    this.callbackSuccess();
+                }
+            } else {
+                Swal.fire('Código Inválido', data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire('Error', 'Error en la validación', 'error');
+        })
+        .finally(() => {
+            btn.disabled = false;
+        });
+    }
+};
+
+// Event listeners
+document.getElementById('btnSolicitarCodigo').addEventListener('click', () => AuthWhatsApp.solicitar());
+document.getElementById('btnValidarCodigo').addEventListener('click', () => AuthWhatsApp.validar());
+document.getElementById('btnReintentarSolicitud').addEventListener('click', () => AuthWhatsApp.solicitar());
+</script>
+
+<style>
+#modalAutorizacionWhatsApp .modal-content {
+    border-radius: 15px;
+}
+#modalAutorizacionWhatsApp .display-1 {
+    filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.4));
+}
+#inputCodigoAuth:focus {
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+    background-color: #fffde7;
+}
+</style>

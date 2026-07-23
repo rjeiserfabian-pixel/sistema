@@ -1,137 +1,218 @@
 {% extends 'plantilla/base.html' %}
 {% block main %}
 <main id="main" class="main">
-  <div class="pagetitle">
-    <h1>Tipo usuarios</h1>
-    <nav>
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
-        <li class="breadcrumb-item active">Tipo usuarios</li>
-      </ol>
-    </nav>
-  </div><!-- End Page Title -->
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <h1 class="fw-bold text-primary">
+      <i class="fas fa-users-cog me-2"></i>Tipos de Usuario
+    </h1>
+    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal"
+      data-bs-target="#myModalAgregar">
+      <i class="fa-solid fa-circle-plus me-2"></i>Agregar Tipo de Usuario
+    </button>
+  </div>
 
-  <section class="section dashboard">
-    <div class="row">
-      <div class="col-lg-12">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Tipo usuarios</h5>
-            <button type="" class="btn btn-success"  data-bs-toggle="modal"
-              data-bs-target="#myModaAgregar">Agregar tipo usuario</button>
-              
-              <table class="table datatable">
-                <thead>
-                  <tr>
-                    <th scope="col">CODIGO</th>
-                    <th scope="col">Tipo usuario</th>
-                    <th scope="col">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for tipoUsuariosuario in tipoUsuariosuarios %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ tipoUsuariosuario.nombretipousuario }}</td>
-                    <td>
-                      <a type="button" id="btnEditar" class="btn" data-bs-toggle="modal" data-bs-target="#myModal2{{ tipoUsuariosuario.idtipousuario }}">
-                        <i class="fa-solid fa-pen-to-square fa-2xl" style="color: #005eff;"></i>
-                      </a>
-                      <a href="{% url 'tipousuariosEliminar' id=tipoUsuariosuario.idtipousuario %}" class="eliminar">
-                        <i class="fa-solid fa-trash fa-2xl" style="color: #f71b02;"></i>
-                      </a>
-                    </td>
+  <nav aria-label="breadcrumb" class="mt-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+      <li class="breadcrumb-item active">Tipos de Usuario</li>
+    </ol>
+  </nav>
 
+  <!-- Contenido -->
+  <section class="section dashboard mt-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Listado de tipos de usuario</h5>
 
-                     <!-- Modales de editar -->
-                     <div class="modal fade" id="myModal2{{ tipoUsuariosuario.idtipousuario }}" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-                      <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                          <div class="modal-header">
-                            <h4 class="modal-title">Agregar tipo usuario</h4>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                              <span aria-hidden="true">&times;</span>
-                            </button>
-                          </div>
-                          <div class="modal-body">
-                            <form  action="{% url 'tipousuariosEditar' %}" method="post" enctype="multipart/form-data">
-                              {% csrf_token %}
-                              <div class="form-group">
-                                <label for="nombreTipo"><strong>Nombre</strong></label>
-                                <input type="text" name="nombreTipo" value="{{ tipoUsuariosuario.nombretipousuario }}" class="form-control">
-                                <input type="hidden" name="idtipousuario" value="{{ tipoUsuariosuario.idtipousuario }}">
-                              </div>
-                              <div class="modal-footer">
-                                <button type="submit" class="btn btn-success btn-editar" >Guardar</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                              </div>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                      <!-- fin del modal editar -->
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-              
-             
-              
+        <div class="table-responsive">
+          <table class="table table-hover align-middle datatable" style="width: 100%;">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col" style="width: 10%;">#</th>
+                <th scope="col" style="width: 70%;">Tipo de Usuario</th>
+                <th scope="col" class="text-center" style="width: 20%;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tipoUsuario in tipoUsuariosuarios %}
+              <tr>
+                <td class="fw-semibold text-center">{{ forloop.counter }}</td>
+                <td>
+                  <span class="badge bg-primary me-2"><i class="fa-solid fa-user-tag"></i></span>
+                  {{ tipoUsuario.nombretipousuario }}
+                </td>
+                <td class="text-center">
+                  <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
+                    data-bs-target="#myModalEditar{{ tipoUsuario.idtipousuario }}" title="Editar">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </a>
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar"
+                    data-id="{{ tipoUsuario.idtipousuario }}" title="Eliminar">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
 
-
-            <!-- Modal de Agregar -->
-            <div class="modal" id="myModaAgregar">
-              <div class="modal-dialog">
-                <div class="modal-content">
-
-                  <!-- Cabecera del modal -->
-                  <div class="modal-header">
-                    <h4 class="modal-title">Agregar tipo usuario</h4>
-                    <button type="button" class="close" data-bs-dismiss="modal">&times;</button>
-                  </div>
-
-                  <!-- Contenido del modal De editar-->
-                  <div class="modal-body">
-
-                    <!-- inicio de form -->
-
-                    <form  action="{% url 'tipousuariosAgregar' %}" method="post" enctype="multipart/form-data">
-                      {% csrf_token %}
-                      <label for="nombreTipo">Nombre</label><br>
-                      <input type="text" name="nombreTipo" class="form-control">
-                      
-                      <div style="display:flex; margin-left:140px;">
-                          <div class="modal-footer">
-                              <button type="submit" class="btn btn-success" id="agregar">Agregar</button>
-                          </div>
-                          <div class="modal-footer">
-                              <button type="button" id="btn-cerrar" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                          </div>
-                      </div>
-                    </form>
-                  
-
-                  <!-- fin del form -->
-
-                </div>
-
-                <!-- Pie del modal -->
-
-              </div>
-            </div>
-
-            <!-- Fin del modal agregar-->
-
-          </div>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-
       </div>
     </div>
   </section>
 
-</main><!-- End #main -->
+  <!-- Modales de Edición -->
+  {% for tipoUsuario in tipoUsuariosuarios %}
+  <div class="modal fade" id="myModalEditar{{ tipoUsuario.idtipousuario }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Tipo de Usuario</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del Tipo <span class="text-danger">*</span></label>
+            <input type="text" class="form-control rounded-pill input-nombre-editar" maxlength="100"
+              value="{{ tipoUsuario.nombretipousuario }}" data-id="{{ tipoUsuario.idtipousuario }}"
+              placeholder="Ej: Administrador, Vendedor...">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-primary rounded-pill px-4 btn-guardar-editar"
+              data-id="{{ tipoUsuario.idtipousuario }}">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <!-- Modal Agregar -->
+  <div class="modal fade" id="myModalAgregar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-circle-plus me-2"></i>Agregar Tipo de Usuario</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del Tipo <span class="text-danger">*</span></label>
+            <input type="text" id="nombreTipoAgregar" class="form-control rounded-pill" maxlength="100"
+              placeholder="Ej: Administrador, Vendedor...">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnAgregar">
+              <i class="fa-solid fa-circle-plus me-1"></i>Agregar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'tipousuariosAgregar' %}";
+  var URL_EDITAR = "{% url 'tipousuariosEditar' %}";
+  var URL_LISTA = "{% url 'tipoUsuarios' %}";
+
+  $(function () {
+
+    // ==================== AGREGAR ====================
+    $('#btnAgregar').on('click', function () {
+      var nombre = $('#nombreTipoAgregar').val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo requerido', text: 'Ingrese el nombre del tipo de usuario.', icon: 'warning', confirmButtonText: 'OK' });
+        return;
+      }
+      $.post(URL_AGREGAR, { nombreTipo: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Agregado!', text: 'Tipo de usuario registrado correctamente.', icon: 'success', confirmButtonText: '¡Ok!' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo agregar.', icon: 'error', confirmButtonText: 'OK' });
+          }
+        })
+        .fail(function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error código: ' + xhr.status;
+          Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'OK' });
+        });
+    });
+
+    $('#myModalAgregar').on('hidden.bs.modal', function () {
+      $('#nombreTipoAgregar').val('');
+    });
+
+    // ==================== EDITAR ====================
+    $(document).on('click', '.btn-guardar-editar', function () {
+      var id = $(this).data('id');
+      var nombre = $('.input-nombre-editar[data-id="' + id + '"]').val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo requerido', text: 'Ingrese el nombre del tipo de usuario.', icon: 'warning', confirmButtonText: 'OK' });
+        return;
+      }
+      $.post(URL_EDITAR, { idtipousuario: id, nombreTipo: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Actualizado!', text: 'Tipo de usuario actualizado correctamente.', icon: 'success', confirmButtonText: '¡Ok!' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo actualizar.', icon: 'error', confirmButtonText: 'OK' });
+          }
+        })
+        .fail(function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error código: ' + xhr.status;
+          Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'OK' });
+        });
+    });
+
+    // ==================== ELIMINAR ====================
+    $(document).on('click', '.btn-eliminar', function () {
+      var id = $(this).data('id');
+      Swal.fire({
+        title: '¿Eliminar este tipo de usuario?',
+        text: 'El tipo de usuario quedará inactivo.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          $.ajax({
+            type: "POST",
+            url: '/tipousuarios/eliminar/' + id + '/',
+            data: { csrfmiddlewaretoken: CSRF_TOKEN },
+            success: function (res) {
+              if (res.ok) {
+                Swal.fire({ title: 'Eliminado', text: 'El tipo de usuario fue desactivado.', icon: 'success', confirmButtonText: 'Ok' })
+                  .then(() => window.location.href = URL_LISTA);
+              } else {
+                Swal.fire({ title: 'Error', text: res.error || 'No se pudo eliminar.', icon: 'error', confirmButtonText: 'OK' });
+              }
+            },
+            error: function (xhr) {
+              var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error código: ' + xhr.status;
+              Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'OK' });
+            }
+          });
+        }
+      });
+    });
+
+  });
+</script>
 {% endblock %}

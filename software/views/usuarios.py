@@ -21,6 +21,7 @@ from openpyxl.utils import get_column_letter
 
 # Importar las utilidades de cifrado
 from software.utils.encryption_utils import EncryptionManager, PasswordManager
+import cloudinary.uploader
 
 
 def usuarios(request):
@@ -55,10 +56,10 @@ def usuarios(request):
         # Admin sin sucursal seleccionada no ve nada
         usuarios_db = []
     
-    # Descifrar correos para mostrarlos en la vista
+    # Descifrar nombres de usuario para mostrarlos en la vista
     usuarios = []
     for usuario in usuarios_db:
-        usuario.correo_descifrado = EncryptionManager.decrypt_email(usuario.correo)
+        usuario.correo_descifrado = EncryptionManager.decrypt_data(usuario.correo)
         usuarios.append(usuario)
     
     tipoUsuarios = Tipousuario.objects.filter(estado=1)
@@ -81,6 +82,7 @@ def agregar(request):
             tipoUsuario = request.POST.get('tipoUsuario2')
             celularUsuario = request.POST.get('celularUsuario2')
             dniUsuario = request.POST.get('dniUsuario2')
+            gmailUsuario = request.POST.get('gmailUsuario2')
 
             # Validaciones básicas
             if not all([nombreUsuario, correoUsuario, contrasenaUsuario, tipoUsuario, celularUsuario, dniUsuario]):
@@ -106,10 +108,10 @@ def agregar(request):
                     "error": "La sucursal seleccionada no existe."
                 }, status=400)
 
-            # Cifrar el correo electrónico
-            correo_cifrado = EncryptionManager.encrypt_email(correoUsuario)
+            # Cifrar el nombre de usuario
+            correo_cifrado = EncryptionManager.encrypt_data(correoUsuario)
             if not correo_cifrado:
-                return JsonResponse({"error": "Error al cifrar el correo electrónico"}, status=400)
+                return JsonResponse({"error": "Error al cifrar el nombre de usuario"}, status=400)
             
             # Hashear la contraseña
             contrasena_hasheada = PasswordManager.hash_password(contrasenaUsuario)
@@ -127,6 +129,7 @@ def agregar(request):
                 idtipousuario=getTipoUsuario,
                 celular=celularUsuario,
                 dni=dniUsuario,
+                gmail=gmailUsuario,
                 id_sucursal_id=id_sucursal_session,  # ✅ ASIGNAR SUCURSAL
                 idempresa_id=id_empresa,             # ✅ ASIGNAR EMPRESA
                 estado=1
@@ -162,6 +165,7 @@ def editar(request):
             tipoUsuario = request.POST.get('tipoUsuario')
             celularUsuario = request.POST.get('celularUsuario')
             dniUsuario = request.POST.get('dniUsuario')
+            gmailUsuario = request.POST.get('gmailUsuario')
 
             # Validaciones básicas
             if not all([idUsuario, nombreUsuario, correoUsuario, tipoUsuario, celularUsuario, dniUsuario]):
@@ -185,15 +189,16 @@ def editar(request):
             usuario.idtipousuario = getTipoUsuario
             usuario.celular = celularUsuario
             usuario.dni = dniUsuario
-            # ✅ NO modificar id_sucursal ni idempresa - se mantienen los originales
+            usuario.gmail = gmailUsuario
+            # NO modificar id_sucursal ni idempresa - se mantienen los originales
             
-            # Verificar si el correo cambió
-            correo_actual_descifrado = EncryptionManager.decrypt_email(usuario.correo)
+            # Verificar si el usuario cambió
+            correo_actual_descifrado = EncryptionManager.decrypt_data(usuario.correo)
             if correo_actual_descifrado != correoUsuario:
-                # Cifrar el nuevo correo
-                correo_cifrado = EncryptionManager.encrypt_email(correoUsuario)
+                # Cifrar el nuevo nombre de usuario
+                correo_cifrado = EncryptionManager.encrypt_data(correoUsuario)
                 if not correo_cifrado:
-                    return JsonResponse({"error": "Error al cifrar el correo electrónico"}, status=400)
+                    return JsonResponse({"error": "Error al cifrar el nombre de usuario"}, status=400)
                 usuario.correo = correo_cifrado
             
             # Verificar si la contraseña cambió
@@ -245,10 +250,10 @@ def login_usuario(correo_plano, contrasena_plana):
         usuarios = Usuario.objects.filter(estado=1)
         
         for usuario in usuarios:
-            # Descifrar el correo de cada usuario
-            correo_descifrado = EncryptionManager.decrypt_email(usuario.correo)
+            # Descifrar el nombre de usuario de cada usuario
+            correo_descifrado = EncryptionManager.decrypt_data(usuario.correo)
             
-            # Si el correo coincide, verificar la contraseña
+            # Si el usuario coincide, verificar la contraseña
             if correo_descifrado == correo_plano:
                 if PasswordManager.verify_password(contrasena_plana, usuario.contrasena):
                     return usuario
@@ -257,3 +262,84 @@ def login_usuario(correo_plano, contrasena_plana):
     except Exception as e:
         print(f"Error en login: {e}")
         return None
+
+def mi_perfil(request):
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return HttpResponse("<h1>No tiene acceso</h1>")
+    
+    usuario = get_object_or_404(Usuario, idusuario=idusuario)
+    usuario.correo_descifrado = EncryptionManager.decrypt_data(usuario.correo)
+    
+    data = {
+        'usuario': usuario,
+        'nombrecompleto': usuario.nombrecompleto,
+    }
+    return render(request, 'usuarios/perfil.html', data)
+
+def actualizar_perfil(request):
+    if request.method == "POST":
+        try:
+            idusuario = request.session.get('idusuario')
+            nombre = request.POST.get('nombrecompleto')
+            celular = request.POST.get('celular')
+            gmail = request.POST.get('gmail')
+            imagen = request.FILES.get('imagen_perfil')
+            
+            if not all([nombre, celular]):
+                return JsonResponse({"error": "Todos los campos son requeridos"}, status=400)
+            
+            usuario = get_object_or_404(Usuario, idusuario=idusuario)
+            usuario.nombrecompleto = nombre
+            usuario.celular = celular
+            usuario.gmail = gmail
+            
+            if imagen:
+                # SUBIR A CLOUDINARY
+                upload_result = cloudinary.uploader.upload(
+                    imagen,
+                    folder="usuarios/perfiles/",
+                    resource_type='image',
+                    public_id=f'user_{idusuario}',
+                    overwrite=True,
+                )
+                usuario.imagen_perfil = upload_result['secure_url']
+                
+            usuario.save()
+            
+            # Actualizar nombre en sesión
+            request.session['nombrecompleto'] = nombre
+            
+            return JsonResponse({"message": "Perfil actualizado correctamente"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Método no permitido"}, status=405)
+
+def cambiar_contrasena(request):
+    if request.method == "POST":
+        try:
+            idusuario = request.session.get('idusuario')
+            actual = request.POST.get('password_actual')
+            nueva = request.POST.get('password_nueva')
+            confirmar = request.POST.get('password_confirmar')
+            
+            if not all([actual, nueva, confirmar]):
+                return JsonResponse({"error": "Todos los campos son requeridos"}, status=400)
+            
+            if nueva != confirmar:
+                return JsonResponse({"error": "Las contraseñas no coinciden"}, status=400)
+            
+            usuario = get_object_or_404(Usuario, idusuario=idusuario)
+            
+            # Verificar contraseña actual
+            if not PasswordManager.verify_password(actual, usuario.contrasena):
+                return JsonResponse({"error": "La contraseña actual es incorrecta"}, status=400)
+            
+            # Hashear y guardar nueva contraseña
+            usuario.contrasena = PasswordManager.hash_password(nueva)
+            usuario.save()
+            
+            return JsonResponse({"message": "Contraseña actualizada correctamente"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Método no permitido"}, status=405)

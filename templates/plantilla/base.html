@@ -9,23 +9,23 @@
   <title>VENTAS</title>
   <meta content="" name="description">
   <meta content="" name="keywords">
-  
+
   <!-- highcharts -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/modules/exporting.js"></script>
   <script src="https://code.highcharts.com/modules/export-data.js"></script>
   <script src="https://code.highcharts.com/modules/accessibility.js"></script>
-  
+
 
 
   <!-- Favicons -->
   <link href="{% static 'img/favicon.png' %}" rel="icon">
   <link href="{% static 'img/apple-touch-icon.png' %}" rel="apple-touch-icon">
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts Premium -->
   <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <!-- Vendor CSS Files -->
   <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
   <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
@@ -42,10 +42,30 @@
 
   <!-- Template Main CSS File -->
   <link href="{% static 'css/style.css' %}" rel="stylesheet">
+  <link href="{% static 'css/premium.css' %}" rel="stylesheet">
+
+  <!-- Flatpickr Global CSS (Dynamic Theme) -->
+  <link id="flatpickr-theme-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem('sys-theme') || 'dark';
+      if (savedTheme === 'dark') {
+          document.getElementById('flatpickr-theme-css').href = 'https://npmcdn.com/flatpickr/dist/themes/dark.css';
+      }
+    })();
+  </script>
 
 </head>
 
 <body>
+
+  <!-- Script de tema (debe ir antes del render para evitar parpadeo) -->
+  <script>
+    (function() {
+      var saved = localStorage.getItem('sys-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
 
   <!-- ======= Header ======= -->
   <header id="header" class="header fixed-top d-flex align-items-center">
@@ -53,13 +73,10 @@
     <div class="d-flex align-items-center justify-content-between">
       <a href="{% url 'index' %}" class="logo d-flex align-items-center">
         {% if empresa.logo %}
-          <!-- Intentar cargar desde media primero, si falla desde static -->
-          <img src="/media/{{ empresa.logo }}" 
-              alt="Logo {{ empresa.nombrecomercial }}" 
-              onerror="this.onerror=null; this.src='/static/{{ empresa.logo }}'; if(this.error) this.src='{% static 'img/mestanza.png' %}';">
+        <img src="{{ empresa.logo }}" alt="Logo {{ empresa.nombrecomercial }}">
         {% else %}
-          <!-- Logo por defecto -->
-          <img src="{% static 'img/mestanza.png' %}" alt="Logo Empresa">
+        <!-- Logo por defecto -->
+        <img src="{% static 'img/mestanza.png' %}" alt="Logo Empresa">
         {% endif %}
         <span class="d-none d-lg-block">{{ empresa.nombrecomercial|default:"ALIMARK"|truncatewords:2 }}</span>
       </a>
@@ -74,10 +91,14 @@
       </div>
       <div class="branch-info ms-4">
         <span class="branch-text">
-          {{ sucursal.nombre_sucursal|default:"Sin sucursal" }} / 
-          {{ caja.nombre_caja|default:"Sin caja" }} / 
+          {{ sucursal.nombre_sucursal|default:"Sin sucursal" }} /
+          {{ caja.nombre_caja|default:"Sin caja" }} /
           {{ almacen.nombre_almacen|default:"Sin almacén" }}
         </span>
+      </div>
+      <!-- Tipo de cambio BCRP -->
+      <div id="header-tipo-cambio" class="badge rounded-pill ms-4" style="background-color: #28a745; font-size: 13px; font-weight: normal; padding: 6px 12px; border: 1px solid rgba(255,255,255,0.2);">
+        <i class="bi bi-currency-dollar me-1"></i>Consultando dólar...
       </div>
     </div>
 
@@ -86,22 +107,31 @@
 
         <!-- Botón Gestión de Caja -->
         <li class="nav-item me-3">
-          <a class="nav-link nav-icon" href="#" data-bs-toggle="modal" data-bs-target="#modalGestionCaja" title="Gestión de Caja">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="modal" data-bs-target="#modalGestionCaja"
+            title="Gestión de Caja">
             <i class="bi bi-cash-stack"></i>
             {% if apertura_actual %}
-              {% if apertura_actual.estado == 'reabierta' %}
-                <span class="badge bg-warning text-dark">
-                  <i class="bi bi-arrow-clockwise"></i> Reabierta
-                </span>
-              {% else %}
-                <span class="badge bg-success">Abierta</span>
-              {% endif %}
+            {% if apertura_actual.estado == 'reabierta' %}
+            <span class="badge bg-warning text-dark">
+              <i class="bi bi-arrow-clockwise"></i> Reabierta
+            </span>
             {% else %}
-              <span class="badge bg-danger">Cerrada</span>
+            <span class="badge bg-success">Abierta</span>
+            {% endif %}
+            {% else %}
+            <span class="badge bg-danger">Cerrada</span>
             {% endif %}
           </a>
         </li>
 
+
+        <!-- Toggle Tema Oscuro/Claro -->
+        <li class="nav-item me-2" title="Cambiar tema">
+          <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Cambiar tema">
+            <span class="theme-icon-dark"><i class="bi bi-moon-stars-fill"></i></span>
+            <span class="theme-icon-light"><i class="bi bi-sun-fill"></i></span>
+          </button>
+        </li>
 
         <!-- Icono de Teléfono -->
         <li class="nav-item me-3">
@@ -111,31 +141,86 @@
         </li>
 
         <!-- Icono de Notificaciones -->
-        <li class="nav-item me-3">
-          <a class="nav-link nav-icon" href="#" title="Notificaciones">
+        <li class="nav-item dropdown me-3">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown" title="Notificaciones">
             <i class="bi bi-bell"></i>
-            <span class="badge-number">9</span>
+            <span class="badge bg-danger badge-number d-none" id="notification-badge">0</span>
           </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications" id="notification-list">
+            <li class="dropdown-header">
+              Tienes <span id="notification-count">0</span> cuotas vencidas
+              <a href="{% url 'creditos' %}" class="badge rounded-pill bg-primary p-2 ms-2">Ver todo</a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            
+            <div id="notification-items" style="max-height: 350px; overflow-y: auto;">
+              <!-- Se cargará vía JS -->
+              <li class="notification-item p-3 text-center">
+                <p class="text-muted mb-0">Cargando notificaciones...</p>
+              </li>
+            </div>
+
+            <li><hr class="dropdown-divider"></li>
+            <li class="p-2">
+              <div class="d-flex flex-column">
+                <div class="form-check form-switch ms-2">
+                  <input class="form-check-input" type="checkbox" id="toggle-sound" checked>
+                  <label class="form-check-label small" for="toggle-sound">Sonido de alerta</label>
+                </div>
+                
+                <!-- Opción para subir sonido (visible solo si el switch está ON) -->
+                <div id="upload-sound-container" class="mt-2 ms-2 d-none">
+                  <input type="file" id="input-upload-sound" accept=".mp3,.wav,.ogg" style="display: none;">
+                  <button type="button" class="btn btn-outline-primary btn-sm w-100" id="btn-upload-sound">
+                    <i class="bi bi-upload"></i> Subir Sonido
+                  </button>
+                  <div id="upload-status" class="small text-center mt-1"></div>
+                </div>
+              </div>
+            </li>
+          </ul>
         </li>
+
+        <!-- Audio para notificaciones (sin src por defecto para evitar 404) -->
+        <audio id="notification-sound" preload="none"></audio>
 
         <!-- Perfil de Usuario -->
         <li class="nav-item dropdown pe-3">
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-            <img src="https://i.pinimg.com/736x/28/44/88/284488453f7490e41e7467f4d4aefed2.jpg" alt="Profile" class="rounded-circle">
-            <span class="d-none d-md-block ps-2">{{ nombrecompleto|truncatewords:2 }}</span>
+            {% if user_obj.imagen_perfil %}
+              <img src="{{ user_obj.imagen_perfil }}" alt="Profile" class="rounded-circle">
+            {% else %}
+              <img src="https://i.pinimg.com/736x/28/44/88/284488453f7490e41e7467f4d4aefed2.jpg" alt="Profile" class="rounded-circle">
+            {% endif %}
+            <span class="d-none d-md-block ps-2">Hola, {{ user_obj.nombrecompleto|truncatewords:2 }}</span>
             <i class="bi bi-chevron-down d-none d-md-block dropdown-toggle ps-1"></i>
           </a><!-- End Profile Image Icon -->
 
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
-            <li>
-              <p style="margin-left: 15px;"><strong>{{ nombrecompleto }}</strong></p>
-              <a class="dropdown-item d-flex align-items-center" href="{% url 'logout' %}">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Cerrar sesión</span>
-              </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile profile-premium">
+            <li class="dropdown-header text-start">
+              <h6 class="text-white mb-0">{{ user_obj.nombrecompleto }}</h6>
+              <span class="text-light-muted small">Usuario del sistema</span>
             </li>
             <li>
               <hr class="dropdown-divider">
+            </li>
+
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{% url 'mi_perfil' %}">
+                <i class="bi bi-person"></i>
+                <span>Mi cuenta</span>
+              </a>
+            </li>
+            
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" id="logout-link">
+                <i class="bi bi-lock"></i>
+                <span>Cerrar sesión</span>
+              </a>
             </li>
           </ul><!-- End Profile Dropdown Items -->
         </li><!-- End Profile Nav -->
@@ -148,551 +233,1115 @@
 
   <!-- ======= Sidebar ======= -->
   <aside id="sidebar" class="sidebar">
-      <ul class="sidebar-nav" id="sidebar-nav">
-          {% for nombre_grupo, grupo in modulos_organizados.items %}
-              {% if grupo.hijos %}
-                  <!-- Módulo Padre con Submenú -->
-                  <li class="nav-item">
-                      <a class="nav-link collapsed" data-bs-toggle="collapse" 
-                        data-bs-target="#{{ grupo.padre.nombremodulo|slugify }}-nav">
-                          <i class="{{ grupo.padre.logo }}"></i>
-                          <span>{{ grupo.padre.nombremodulo }}</span>
-                          <i class="bi bi-chevron-down ms-auto"></i>
-                      </a>
-                      <ul id="{{ grupo.padre.nombremodulo|slugify }}-nav" 
-                          class="nav-content collapse" 
-                          data-bs-parent="#sidebar-nav">
-                          {% for hijo in grupo.hijos %}
-                          <li>
-                              <a href="{{ hijo.url }}">
-                                  <i class="bi bi-circle"></i>
-                                  <span>{{ hijo.nombremodulo }}</span>
-                              </a>
-                          </li>
-                          {% endfor %}
-                      </ul>
-                  </li>
-              {% else %}
-                  <!-- Módulo Simple (sin hijos) -->
-                  <li class="nav-item">
-                      <a class="nav-link" href="{{ grupo.padre.url }}">
-                          <i class="{{ grupo.padre.logo }}"></i>
-                          <span>{{ grupo.padre.nombremodulo }}</span>
-                      </a>
-                  </li>
-              {% endif %}
+    <ul class="sidebar-nav" id="sidebar-nav">
+      {% for nombre_grupo, grupo in modulos_organizados.items %}
+      {% if grupo.hijos %}
+      <!-- Módulo Padre con Submenú -->
+      <li class="nav-item">
+        <a class="nav-link collapsed" data-bs-toggle="collapse"
+          data-bs-target="#{{ grupo.padre.nombremodulo|slugify }}-nav">
+          <i class="{{ grupo.padre.logo }}"></i>
+          <span>{{ grupo.padre.nombremodulo }}</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="{{ grupo.padre.nombremodulo|slugify }}-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+          {% for hijo in grupo.hijos %}
+          <li>
+            <a href="{{ hijo.url }}">
+              <i class="bi bi-circle"></i>
+              <span>{{ hijo.nombremodulo }}</span>
+            </a>
+          </li>
           {% endfor %}
-      </ul>
+        </ul>
+      </li>
+      {% else %}
+      <!-- Módulo Simple (sin hijos) -->
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == grupo.padre.url %}active{% else %}collapsed{% endif %}" href="{{ grupo.padre.url }}">
+          <i class="{{ grupo.padre.logo }}"></i>
+          <span>{{ grupo.padre.nombremodulo }}</span>
+        </a>
+      </li>
+      {% endif %}
+      {% endfor %}
+    </ul>
   </aside>
   <!-- End Sidebar-->
 
-{% block main %}
-    
+  {% block main %}
 
-{% endblock %}
+
+  {% endblock %}
 
   <!-- ======= Footer ======= -->
-<footer id="footer" class="footer">
+  <footer id="footer" class="footer">
     <div class="copyright">
-      &copy; Jeiser <strong><span>AdmiBot</span></strong>. All Rights Reserved
+      &copy; innovacion tecnologica <strong><span>AdmiBot</span></strong>. All Rights Reserved
     </div>
   </footer><!-- End Footer -->
 
-  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i
+      class="bi bi-arrow-up-short"></i></a>
 
-    <!-- 1. jQuery PRIMERO -->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <!-- Menú Flotante para Sidebar Colapsado (debe ir ANTES de los scripts) -->
+  <div id="sidebar-floating-menu" class="sidebar-floating-menu"></div>
 
-    <!-- 2. Bootstrap JS -->
-    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <!-- 1. jQuery PRIMERO -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
-    <!-- 3. SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- 2. Bootstrap JS -->
+  <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 
-    <!-- 5. Otros Vendor JS Files -->
-    <script src="{% static 'vendor/apexcharts/apexcharts.min.js' %}"></script>
-    <script src="{% static 'vendor/chart.js/chart.umd.js' %}"></script>
-    <script src="{% static 'js/producto.js' %}"></script>
-    <script src="{% static 'vendor/quill/quill.min.js' %}"></script>
-    <script src="{% static 'vendor/simple-datatables/simple-datatables.js' %}"></script>
-    <script src="{% static 'vendor/tinymce/tinymce.min.js' %}"></script>
-    <script src="{% static 'vendor/php-email-form/validate.js' %}"></script>
-    <script src="https://kit.fontawesome.com/be2c92fd5f.js" crossorigin="anonymous"></script>
+  <!-- 3. SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- 6. Template Main JS -->
-    <script src="{% static 'js/main.js' %}"></script>
+  <!-- 5. Otros Vendor JS Files -->
+  <script src="{% static 'vendor/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'vendor/chart.js/chart.umd.js' %}"></script>
+  <script src="{% static 'js/producto.js' %}"></script>
+  <script src="{% static 'vendor/quill/quill.min.js' %}"></script>
+  <script src="{% static 'vendor/simple-datatables/simple-datatables.js' %}"></script>
+  <script src="{% static 'vendor/tinymce/tinymce.min.js' %}"></script>
+  <script src="{% static 'vendor/php-email-form/validate.js' %}"></script>
+  <script src="https://kit.fontawesome.com/be2c92fd5f.js" crossorigin="anonymous"></script>
 
-<!-- Modal unificado en base.html -->
-<div class="modal fade" id="modalGestionCaja" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">
-          <i class="bi bi-gear"></i> Configuración de Trabajo
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        
-        <!-- Mostrar info de caja abierta SOLO si es la caja de la sesión -->
-        {% if apertura_actual and caja and apertura_actual.id_caja.id_caja == caja.id_caja %}
-        <div class="alert alert-success">
-          <h6 class="alert-heading">
-            <i class="bi bi-check-circle"></i> Caja Abierta
-          </h6>
-          <hr>
-          <div class="row">
-            <div class="col-md-6">
-              <p class="mb-1"><strong>Caja:</strong> {{ apertura_actual.id_caja.nombre_caja }}</p>
-              <p class="mb-1"><strong>Saldo Inicial:</strong> S/ {{ apertura_actual.saldo_inicial }}</p>
+  <!-- 6. Template Main JS -->
+  <script src="{% static 'js/main.js' %}"></script>
+
+  <!-- Notificaciones (inline para evitar GET extra en cada página) -->
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+
+      const badge           = document.getElementById('notification-badge');
+      const countDisplay    = document.getElementById('notification-count');
+      const itemsContainer  = document.getElementById('notification-items');
+      const soundToggle     = document.getElementById('toggle-sound');
+      const audio           = document.getElementById('notification-sound');
+      const uploadContainer = document.getElementById('upload-sound-container');
+      const btnUpload       = document.getElementById('btn-upload-sound');
+      const inputUpload     = document.getElementById('input-upload-sound');
+      const uploadStatus    = document.getElementById('upload-status');
+
+      // ── sessionStorage keys ────────────────────────────────────
+      const KEY_COUNT  = 'notif_count';   // 0, 1 o 2 (nº de GETs hechos)
+      const KEY_TS     = 'notif_ts';      // timestamp del GET #1
+      const KEY_CACHE  = 'notif_cache';   // último resultado guardado (JSON)
+      const MAX        = 2;
+      const INTERVALO  = 60000;
+
+      function getCount()   { return parseInt(sessionStorage.getItem(KEY_COUNT) || '0', 10); }
+      function getTs()      { return parseInt(sessionStorage.getItem(KEY_TS)    || '0', 10); }
+      function setCount(n)  { sessionStorage.setItem(KEY_COUNT, String(n)); }
+      function saveCache(data) {
+          try { sessionStorage.setItem(KEY_CACHE, JSON.stringify(data)); } catch(e) {}
+      }
+      function loadCache() {
+          try { return JSON.parse(sessionStorage.getItem(KEY_CACHE)); } catch(e) { return null; }
+      }
+      function resetAll() {
+          sessionStorage.removeItem(KEY_COUNT);
+          sessionStorage.removeItem(KEY_TS);
+          sessionStorage.removeItem(KEY_CACHE);
+      }
+
+      const logoutBtn = document.getElementById('logout-link');
+      if (logoutBtn) logoutBtn.addEventListener('click', resetAll);
+
+      // ── Audio ──────────────────────────────────────────────────
+      let pendingSound = false;
+
+      function tryPlay() {
+          if (!audio || !audio.src) return;
+          audio.currentTime = 0;
+          audio.play()
+              .then(() => { pendingSound = false; })
+              .catch(() => { pendingSound = true; });
+      }
+
+      function onUserInteraction() {
+          if (pendingSound) { pendingSound = false; tryPlay(); }
+      }
+
+      ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(evt =>
+          document.addEventListener(evt, onUserInteraction, { passive: true })
+      );
+
+      function setAudioSrc(url) {
+          if (!audio || !url) return;
+          const rel = audio.src.replace(window.location.origin, '');
+          if (rel !== url) { audio.src = url; audio.load(); }
+      }
+
+      // ── Renderizar datos (desde fetch o desde caché) ───────────
+      function applyData(data, withSound) {
+          const count = data.count;
+
+          badge.textContent = count;
+          badge.classList.toggle('d-none', count === 0);
+          countDisplay.textContent = count;
+
+          renderNotifications(data.notificaciones);
+
+          if (soundToggle) {
+              soundToggle.checked = data.sonido_activo;
+              toggleUpload(data.sonido_activo);
+          }
+          if (data.sonido_url) setAudioSrc(data.sonido_url);
+
+          if (withSound && data.sonido_activo && count > 0) tryPlay();
+      }
+
+      // ── Fetch ──────────────────────────────────────────────────
+      function fetchNotifications(withSound) {
+          fetch('/api/notificaciones/vencidas/')
+              .then(r => r.json())
+              .then(data => {
+                  if (!data.ok) return;
+                  saveCache(data);       // Guardar en caché para páginas futuras
+                  applyData(data, withSound);
+              })
+              .catch(err => console.error('Notificaciones error:', err));
+      }
+
+      // ── Render ─────────────────────────────────────────────────
+      function renderNotifications(list) {
+          if (!list || !list.length) {
+              itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No tienes cuotas vencidas</p></li>';
+              return;
+          }
+          itemsContainer.innerHTML = list.map(item => `
+              <li class="notification-item p-2">
+                  <a href="${item.url}" class="text-decoration-none">
+                      <div class="d-flex align-items-center">
+                          <i class="bi bi-exclamation-circle text-danger me-2 fs-5"></i>
+                          <div>
+                              <h4 class="mb-0 fs-6 text-dark">${item.cliente}</h4>
+                              <p class="mb-0 text-muted small">Cuota ${item.numero_cuota}: S/ ${item.monto.toFixed(2)}</p>
+                              <p class="mb-0 text-danger small">Venció: ${item.fecha_vencimiento}</p>
+                          </div>
+                      </div>
+                  </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+          `).join('');
+      }
+
+      function toggleUpload(active) {
+          if (uploadContainer) uploadContainer.classList.toggle('d-none', !active);
+      }
+
+      // ── Subir sonido ───────────────────────────────────────────
+      if (btnUpload) btnUpload.addEventListener('click', () => inputUpload && inputUpload.click());
+      if (inputUpload) inputUpload.addEventListener('change', function () {
+          if (!this.files || !this.files[0]) return;
+          const fd = new FormData();
+          fd.append('sonido', this.files[0]);
+          uploadStatus.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> Subiendo...';
+          fetch('/api/notificaciones/subir-sonido/', {
+              method: 'POST', body: fd,
+              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+          })
+          .then(r => r.json())
+          .then(d => {
+              if (d.ok) {
+                  uploadStatus.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> ¡Listo!</span>';
+                  setAudioSrc(d.url);
+                  tryPlay();
+                  setTimeout(() => uploadStatus.innerHTML = '', 4000);
+              } else {
+                  uploadStatus.innerHTML = '<span class="text-danger">' + d.error + '</span>';
+              }
+          })
+          .catch(() => uploadStatus.innerHTML = '<span class="text-danger">Error al subir</span>');
+      });
+
+      // ── Preferencia sonido ─────────────────────────────────────
+      if (soundToggle) soundToggle.addEventListener('change', function () {
+          toggleUpload(this.checked);
+          const fd = new FormData();
+          fd.append('activo', this.checked);
+          fetch('/api/notificaciones/config-sonido/', {
+              method: 'POST', body: fd,
+              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+          }).catch(() => {});
+      });
+
+      // ── CSRF ───────────────────────────────────────────────────
+      function getCookie(name) {
+          const c = document.cookie.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
+          return c ? decodeURIComponent(c.split('=')[1]) : null;
+      }
+
+      // ══════════════════════════════════════════════════════════
+      // LÓGICA PRINCIPAL
+      //
+      //  count=0 → Primera página post-login:
+      //            fetch + sonido #1, guardar ts, programar #2 en 60s
+      //
+      //  count=1 → Ya sonó #1 en otra página:
+      //            mostrar caché, esperar tiempo restante → fetch + sonido #2
+      //
+      //  count≥2 → Límite alcanzado:
+      //            mostrar caché (sin fetch, sin sonido)
+      // ══════════════════════════════════════════════════════════
+      const count = getCount();
+
+      if (count === 0) {
+          // GET #1 + sonido
+          fetchNotifications(true);
+          sessionStorage.setItem(KEY_TS, String(Date.now()));
+          setCount(1);
+          // Programar GET #2 en 60s
+          setTimeout(() => {
+              if (getCount() < MAX) {
+                  fetchNotifications(true);
+                  setCount(2);
+              }
+          }, INTERVALO);
+
+      } else if (count === 1) {
+          // Mostrar caché mientras llega el momento del GET #2
+          const cached = loadCache();
+          if (cached) applyData(cached, false);
+
+          const remaining = INTERVALO - (Date.now() - getTs());
+          if (remaining <= 0) {
+              // Los 60s ya pasaron → GET #2 ahora
+              fetchNotifications(true);
+              setCount(2);
+          } else {
+              // Esperar lo que queda
+              setTimeout(() => {
+                  if (getCount() < MAX) {
+                      fetchNotifications(true);
+                      setCount(2);
+                  }
+              }, remaining);
+          }
+
+      } else {
+          // Límite alcanzado → solo mostrar caché (0 GETs)
+          const cached = loadCache();
+          if (cached) {
+              applyData(cached, false);
+          } else {
+              // Nunca debería pasar, pero por si acaso
+              itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">Sin datos disponibles</p></li>';
+          }
+      }
+
+  });
+  </script>
+
+  <!-- Bloque para scripts adicionales de páginas hijas (se carga DESPUÉS de jQuery) -->
+  {% block extra_scripts %}{% endblock %}
+
+
+  <!-- Modal unificado en base.html -->
+  <div class="modal fade" id="modalGestionCaja" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-gear"></i> Configuración de Trabajo
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Mostrar info de caja abierta SOLO si es la caja de la sesión -->
+          {% if apertura_actual and caja and apertura_actual.id_caja.id_caja == caja.id_caja %}
+          <div class="alert alert-success">
+            <h6 class="alert-heading">
+              <i class="bi bi-check-circle"></i> Caja Abierta
+            </h6>
+            <hr>
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Caja:</strong> {{ apertura_actual.id_caja.nombre_caja }}</p>
+                <p class="mb-1"><strong>Saldo Inicial:</strong> S/ {{ apertura_actual.saldo_inicial }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Apertura:</strong> {{ apertura_actual.fecha_apertura|date:"d/m/Y" }} -
+                  {{ apertura_actual.hora_apertura|time:"H:i" }}</p>
+              </div>
             </div>
-            <div class="col-md-6">
-              <p class="mb-1"><strong>Apertura:</strong> {{ apertura_actual.fecha_apertura|date:"d/m/Y" }} - {{ apertura_actual.hora_apertura|time:"H:i" }}</p>
+
+            <button type="button" class="btn btn-danger btn-sm mt-2" data-bs-toggle="collapse"
+              data-bs-target="#collapseCerrarCaja">
+              <i class="bi bi-x-circle"></i> Cerrar Caja
+            </button>
+
+            <div class="collapse mt-3" id="collapseCerrarCaja">
+              <form id="formCerrarCaja">
+                {% csrf_token %}
+                <!-- Mostrar información del saldo -->
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <div class="card border-success">
+                      <div class="card-body p-2">
+                        <small class="text-muted">Saldo Inicial</small>
+                        <h6 class="mb-0" id="saldoInicialDisplay">S/ {{ apertura_actual.saldo_inicial }}</h6>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="card border-info">
+                      <div class="card-body p-2">
+                        <small class="text-muted">Saldo Actual</small>
+                        <h6 class="mb-0" id="saldoActualDisplay">
+                          <span class="spinner-border spinner-border-sm"></span> Calculando...
+                        </h6>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="saldo_final" class="form-label">Saldo Final:</label>
+                  <input type="number" class="form-control" id="saldo_final" name="saldo_final" step="0.01" min="0"
+                    required placeholder="0.00" readonly>
+                  <small class="text-muted">Este valor se calcula automáticamente</small>
+                </div>
+
+                <button type="submit" class="btn btn-danger w-100">
+                  <i class="bi bi-x-circle"></i> Confirmar Cierre
+                </button>
+              </form>
             </div>
           </div>
-          
-          <button type="button" class="btn btn-danger btn-sm mt-2" data-bs-toggle="collapse" data-bs-target="#collapseCerrarCaja">
-            <i class="bi bi-x-circle"></i> Cerrar Caja
+
+          <hr>
+          {% endif %}
+
+          <!-- Formulario de configuración -->
+          <form id="formCambiarContexto">
+            {% csrf_token %}
+
+            <div class="row">
+              <!-- Sucursal -->
+              <div class="col-md-6 mb-3">
+                <label class="form-label">
+                  <i class="bi bi-building"></i> Sucursal:
+                </label>
+                <select class="form-select" id="select_sucursal" name="id_sucursal" required>
+                  <option value="">-- Seleccionar --</option>
+                </select>
+              </div>
+
+              <!-- Almacén -->
+              <div class="col-md-6 mb-3">
+                <label class="form-label">
+                  <i class="bi bi-box-seam"></i> Almacén:
+                </label>
+                <select class="form-select" id="select_almacen" name="id_almacen">
+                  <option value="">-- Seleccionar --</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Caja (opcional) -->
+            <div class="mb-3">
+              <label class="form-label">
+                <i class="bi bi-inbox"></i> Caja:
+              </label>
+              <select class="form-select" id="select_caja" name="id_caja">
+                <option value="">-- Sin caja --</option>
+              </select>
+              <small class="text-muted">Selecciona una caja para poder aperturarla</small>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-check-circle"></i> Aplicar Configuración
+            </button>
+          </form>
+
+          <div id="mensajesCaja" class="mt-3"></div>
+
+          <!-- Botón para aperturar caja manualmente -->
+          {% if not apertura_actual or not caja or apertura_actual.id_caja.id_caja != caja.id_caja %}
+          <hr>
+          <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="collapse"
+            data-bs-target="#collapseAperturarCaja">
+            <i class="bi bi-box-arrow-in-right"></i> Aperturar Caja
           </button>
-          
-          <div class="collapse mt-3" id="collapseCerrarCaja">
-            <form id="formCerrarCaja">
+
+          <div class="collapse mt-3" id="collapseAperturarCaja">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Aperture la caja seleccionada para poder realizar operaciones.
+            </div>
+
+            <form id="formAbrirCaja">
               {% csrf_token %}
-              <!-- Mostrar información del saldo -->
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <div class="card border-success">
-                    <div class="card-body p-2">
-                      <small class="text-muted">Saldo Inicial</small>
-                      <h6 class="mb-0" id="saldoInicialDisplay">S/ {{ apertura_actual.saldo_inicial }}</h6>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="card border-info">
-                    <div class="card-body p-2">
-                      <small class="text-muted">Saldo Actual</small>
-                      <h6 class="mb-0" id="saldoActualDisplay">
-                        <span class="spinner-border spinner-border-sm"></span> Calculando...
-                      </h6>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
+
               <div class="mb-3">
-                <label for="saldo_final" class="form-label">Saldo Final:</label>
-                <input type="number" class="form-control" id="saldo_final" name="saldo_final" 
-                      step="0.01" min="0" required placeholder="0.00" readonly>
-                <small class="text-muted">Este valor se calcula automáticamente</small>
+                <label for="caja_apertura" class="form-label">Caja:</label>
+                <select class="form-select" id="caja_apertura" name="id_caja" required>
+                  <option value="">-- Seleccionar Caja --</option>
+                </select>
               </div>
-              
-              <button type="submit" class="btn btn-danger w-100">
-                <i class="bi bi-x-circle"></i> Confirmar Cierre
+
+              <div class="mb-3">
+                <label for="almacen_apertura" class="form-label">Almacén:</label>
+                <select class="form-select" id="almacen_apertura" name="id_almacen" required>
+                  <option value="">-- Seleccionar Almacén --</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label for="monto" class="form-label">Monto Inicial:</label>
+                <input type="number" class="form-control" id="monto" name="monto" step="0.01" min="0" required
+                  placeholder="0.00">
+              </div>
+
+              <button type="submit" class="btn btn-success w-100">
+                <i class="bi bi-box-arrow-in-right"></i> Aperturar Caja
               </button>
             </form>
           </div>
+          {% endif %}
+
         </div>
-        
-        <hr>
-        {% endif %}
-        
-        <!-- Formulario de configuración -->
-        <form id="formCambiarContexto">
-          {% csrf_token %}
-          
-          <div class="row">
-            <!-- Sucursal -->
-            <div class="col-md-6 mb-3">
-              <label class="form-label">
-                <i class="bi bi-building"></i> Sucursal:
-              </label>
-              <select class="form-select" id="select_sucursal" name="id_sucursal" required>
-                <option value="">-- Seleccionar --</option>
-              </select>
-            </div>
-            
-            <!-- Almacén -->
-            <div class="col-md-6 mb-3">
-              <label class="form-label">
-                <i class="bi bi-box-seam"></i> Almacén:
-              </label>
-              <select class="form-select" id="select_almacen" name="id_almacen">
-                <option value="">-- Seleccionar --</option>
-              </select>
-            </div>
-          </div>
-          
-          <!-- Caja (opcional) -->
-          <div class="mb-3">
-            <label class="form-label">
-              <i class="bi bi-inbox"></i> Caja:
-            </label>
-            <select class="form-select" id="select_caja" name="id_caja">
-              <option value="">-- Sin caja --</option>
-            </select>
-            <small class="text-muted">Selecciona una caja para poder aperturarla</small>
-          </div>
-          
-          <button type="submit" class="btn btn-success w-100">
-            <i class="bi bi-check-circle"></i> Aplicar Configuración
-          </button>
-        </form>
-        
-        <div id="mensajesCaja" class="mt-3"></div>
-        
-        <!-- Botón para aperturar caja manualmente -->
-        {% if not apertura_actual or not caja or apertura_actual.id_caja.id_caja != caja.id_caja %}
-        <hr>
-        <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="collapse" data-bs-target="#collapseAperturarCaja">
-          <i class="bi bi-box-arrow-in-right"></i> Aperturar Caja
-        </button>
-        
-        <div class="collapse mt-3" id="collapseAperturarCaja">
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Aperture la caja seleccionada para poder realizar operaciones.
-          </div>
-          
-          <form id="formAbrirCaja">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-              <label for="caja_apertura" class="form-label">Caja:</label>
-              <select class="form-select" id="caja_apertura" name="id_caja" required>
-                <option value="">-- Seleccionar Caja --</option>
-              </select>
-            </div>
-            
-            <div class="mb-3">
-              <label for="almacen_apertura" class="form-label">Almacén:</label>
-              <select class="form-select" id="almacen_apertura" name="id_almacen" required>
-                <option value="">-- Seleccionar Almacén --</option>
-              </select>
-            </div>
-            
-            <div class="mb-3">
-              <label for="monto" class="form-label">Monto Inicial:</label>
-              <input type="number" class="form-control" id="monto" name="monto" 
-                     step="0.01" min="0" required placeholder="0.00">
-            </div>
-            
-            <button type="submit" class="btn btn-success w-100">
-              <i class="bi bi-box-arrow-in-right"></i> Aperturar Caja
-            </button>
-          </form>
-        </div>
-        {% endif %}
-        
       </div>
     </div>
   </div>
-</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const modalGestionCaja = document.getElementById('modalGestionCaja');
-    const formCambiarContexto = document.getElementById('formCambiarContexto');
-    const formCerrarCaja = document.getElementById('formCerrarCaja');
-    const formAbrirCaja = document.getElementById('formAbrirCaja');
-    
-    const selectSucursal = document.getElementById('select_sucursal');
-    const selectCaja = document.getElementById('select_caja');
-    const selectAlmacen = document.getElementById('select_almacen');
-    
-    const cajaApertura = document.getElementById('caja_apertura');
-    const almacenApertura = document.getElementById('almacen_apertura');
-    
-    const mensajesCaja = document.getElementById('mensajesCaja');
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const modalGestionCaja = document.getElementById('modalGestionCaja');
+      const formCambiarContexto = document.getElementById('formCambiarContexto');
+      const formCerrarCaja = document.getElementById('formCerrarCaja');
+      const formAbrirCaja = document.getElementById('formAbrirCaja');
 
-    const collapseCerrarCaja = document.getElementById('collapseCerrarCaja');
-    
-    if (collapseCerrarCaja) {
-        collapseCerrarCaja.addEventListener('show.bs.collapse', function() {
-            // Cargar saldo actual desde el servidor
-            fetch('/api/obtener-saldo-actual/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
-                        // Actualizar display
-                        document.getElementById('saldoActualDisplay').textContent = `S/ ${data.saldo_actual.toFixed(2)}`;
-                        
-                        // Auto-llenar el campo saldo_final
-                        document.getElementById('saldo_final').value = data.saldo_actual.toFixed(2);
-                        
-                        console.log('✅ Saldo actual cargado:', data);
-                    } else {
-                        document.getElementById('saldoActualDisplay').textContent = 'Error';
-                        mostrarMensaje(data.error || 'Error al obtener saldo', 'danger');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('saldoActualDisplay').textContent = 'Error';
-                    mostrarMensaje('Error al cargar el saldo actual', 'danger');
-                });
-        });
-    }
-    
-    // Cargar datos al abrir el modal
-    if (modalGestionCaja) {
-        modalGestionCaja.addEventListener('show.bs.modal', function() {
-            cargarDatosIniciales();
-        });
-    }
-    
-    // Función para cargar sucursales, cajas y almacenes
-    function cargarDatosIniciales() {
-        fetch('/api/obtener-datos-apertura/')
+      const selectSucursal = document.getElementById('select_sucursal');
+      const selectCaja = document.getElementById('select_caja');
+      const selectAlmacen = document.getElementById('select_almacen');
+
+      const cajaApertura = document.getElementById('caja_apertura');
+      const almacenApertura = document.getElementById('almacen_apertura');
+
+      const mensajesCaja = document.getElementById('mensajesCaja');
+
+      const collapseCerrarCaja = document.getElementById('collapseCerrarCaja');
+
+      if (collapseCerrarCaja) {
+        collapseCerrarCaja.addEventListener('show.bs.collapse', function () {
+          // Cargar saldo actual desde el servidor
+          fetch('/api/obtener-saldo-actual/')
             .then(response => response.json())
             .then(data => {
-                // Llenar sucursales
-                selectSucursal.innerHTML = '<option value="">-- Seleccionar --</option>';
-                data.sucursales.forEach(sucursal => {
-                    const option = document.createElement('option');
-                    option.value = sucursal.id;
-                    option.textContent = sucursal.nombre;
-                    selectSucursal.appendChild(option);
-                });
-                
-                // Si no es admin y solo tiene una sucursal, cargar sus datos
-                if (!data.es_admin && data.sucursales.length === 1) {
-                    selectSucursal.value = data.sucursales[0].id;
-                    selectSucursal.dispatchEvent(new Event('change'));
-                }
+              if (data.ok) {
+                // Actualizar display
+                document.getElementById('saldoActualDisplay').textContent = `S/ ${data.saldo_actual.toFixed(2)}`;
+
+                // Auto-llenar el campo saldo_final
+                document.getElementById('saldo_final').value = data.saldo_actual.toFixed(2);
+
+                console.log('✅ Saldo actual cargado:', data);
+              } else {
+                document.getElementById('saldoActualDisplay').textContent = 'Error';
+                mostrarMensaje(data.error || 'Error al obtener saldo', 'danger');
+              }
             })
             .catch(error => {
-                console.error('Error:', error);
-                mostrarMensaje('Error al cargar datos', 'danger');
+              console.error('Error:', error);
+              document.getElementById('saldoActualDisplay').textContent = 'Error';
+              mostrarMensaje('Error al cargar el saldo actual', 'danger');
             });
-    }
-    
-    // Cuando cambia la sucursal
-    if (selectSucursal) {
-        selectSucursal.addEventListener('change', function() {
-            const idSucursal = this.value;
-            
-            if (idSucursal) {
-                fetch(`/api/obtener-cajas-almacenes/?id_sucursal=${idSucursal}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Llenar cajas
-                        selectCaja.innerHTML = '<option value="">-- Sin caja --</option>';
-                        
-                        if (data.cajas && data.cajas.length > 0) {
-                            data.cajas.forEach(caja => {
-                                const option = document.createElement('option');
-                                option.value = caja.id;
-                                option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
-                                selectCaja.appendChild(option);
-                            });
-                        }
-                        
-                        // Duplicar para formulario de apertura
-                        if (cajaApertura) {
-                            cajaApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
-                            data.cajas.forEach(caja => {
-                                const option = document.createElement('option');
-                                option.value = caja.id;
-                                option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
-                                cajaApertura.appendChild(option);
-                            });
-                        }
-                        
-                        // Llenar almacenes
-                        selectAlmacen.innerHTML = '<option value="">-- Seleccionar --</option>';
-                        
-                        if (data.almacenes && data.almacenes.length > 0) {
-                            data.almacenes.forEach(almacen => {
-                                const option = document.createElement('option');
-                                option.value = almacen.id;
-                                option.textContent = almacen.nombre;
-                                selectAlmacen.appendChild(option);
-                            });
-                        }
-                        
-                        // Duplicar para formulario de apertura
-                        if (almacenApertura) {
-                            almacenApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
-                            data.almacenes.forEach(almacen => {
-                                const option = document.createElement('option');
-                                option.value = almacen.id;
-                                option.textContent = almacen.nombre;
-                                almacenApertura.appendChild(option);
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        mostrarMensaje('Error al cargar cajas y almacenes', 'danger');
-                    });
-            } else {
-                selectCaja.innerHTML = '<option value="">-- Sin caja --</option>';
-                selectAlmacen.innerHTML = '<option value="">-- Seleccionar --</option>';
-                if (cajaApertura) cajaApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
-                if (almacenApertura) almacenApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
-            }
         });
-    }
-    
-    // Cambiar contexto (sucursal/caja/almacén)
-    if (formCambiarContexto) {
-        formCambiarContexto.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const btnSubmit = this.querySelector('button[type="submit"]');
-            
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aplicando...';
-            
-            fetch('/api/cambiar-contexto/', {
-                method: 'POST',
-                body: formData
-            })
+      }
+
+      // Cargar datos al abrir el modal
+      if (modalGestionCaja) {
+        modalGestionCaja.addEventListener('show.bs.modal', function () {
+          cargarDatosIniciales();
+        });
+      }
+
+      // Función para cargar sucursales, cajas y almacenes
+      function cargarDatosIniciales() {
+        fetch('/api/obtener-datos-apertura/')
+          .then(response => response.json())
+          .then(data => {
+            // Llenar sucursales
+            selectSucursal.innerHTML = '<option value="">-- Seleccionar --</option>';
+            data.sucursales.forEach(sucursal => {
+              const option = document.createElement('option');
+              option.value = sucursal.id;
+              option.textContent = sucursal.nombre;
+              if (data.id_sucursal_actual && sucursal.id == data.id_sucursal_actual) {
+                option.selected = true;
+              }
+              selectSucursal.appendChild(option);
+            });
+
+            // Siempre disparar cambio si hay algo seleccionado para cargar cajas/almacenes
+            if (selectSucursal.value) {
+              selectSucursal.dispatchEvent(new Event('change'));
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            mostrarMensaje('Error al cargar datos', 'danger');
+          });
+      }
+
+      // Cuando cambia la sucursal
+      if (selectSucursal) {
+        selectSucursal.addEventListener('change', function () {
+          const idSucursal = this.value;
+
+          if (idSucursal) {
+            fetch(`/api/obtener-cajas-almacenes/?id_sucursal=${idSucursal}`)
+              .then(response => response.json())
+              .then(data => {
+                // Llenar cajas
+                selectCaja.innerHTML = '<option value="">-- Sin caja --</option>';
+
+                if (data.cajas && data.cajas.length > 0) {
+                  data.cajas.forEach(caja => {
+                    const option = document.createElement('option');
+                    option.value = caja.id;
+                    option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
+                    if (data.id_caja_actual && caja.id == data.id_caja_actual) {
+                      option.selected = true;
+                    }
+                    selectCaja.appendChild(option);
+                  });
+                }
+
+                // Duplicar para formulario de apertura
+                if (cajaApertura) {
+                  cajaApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
+                  data.cajas.forEach(caja => {
+                    const option = document.createElement('option');
+                    option.value = caja.id;
+                    option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
+                    cajaApertura.appendChild(option);
+                  });
+                }
+
+                // Llenar almacenes
+                selectAlmacen.innerHTML = '<option value="">-- Seleccionar --</option>';
+
+                if (data.almacenes && data.almacenes.length > 0) {
+                  data.almacenes.forEach(almacen => {
+                    const option = document.createElement('option');
+                    option.value = almacen.id;
+                    option.textContent = almacen.nombre;
+                    if (data.id_almacen_actual && almacen.id == data.id_almacen_actual) {
+                      option.selected = true;
+                    }
+                    selectAlmacen.appendChild(option);
+                  });
+                }
+
+                // Duplicar para formulario de apertura
+                if (almacenApertura) {
+                  almacenApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
+                  data.almacenes.forEach(almacen => {
+                    const option = document.createElement('option');
+                    option.value = almacen.id;
+                    option.textContent = almacen.nombre;
+                    almacenApertura.appendChild(option);
+                  });
+                }
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                mostrarMensaje('Error al cargar cajas y almacenes', 'danger');
+              });
+          } else {
+            selectCaja.innerHTML = '<option value="">-- Sin caja --</option>';
+            selectAlmacen.innerHTML = '<option value="">-- Seleccionar --</option>';
+            if (cajaApertura) cajaApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
+            if (almacenApertura) almacenApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
+          }
+        });
+      }
+
+      // Cambiar contexto (sucursal/caja/almacén)
+      if (formCambiarContexto) {
+        formCambiarContexto.addEventListener('submit', function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+          const btnSubmit = this.querySelector('button[type="submit"]');
+
+          btnSubmit.disabled = true;
+          btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aplicando...';
+
+          fetch('/api/cambiar-contexto/', {
+            method: 'POST',
+            body: formData
+          })
             .then(response => response.json())
             .then(data => {
-                if (data.ok || data.success) {
-                    mostrarMensaje(data.mensaje, 'success');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
-                } else {
-                    mostrarMensaje(data.error || 'Error al cambiar contexto', 'danger');
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = '<i class="bi bi-check-circle"></i> Aplicar Configuración';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                mostrarMensaje('Error en la solicitud', 'danger');
+              if (data.ok || data.success) {
+                mostrarMensaje(data.mensaje, 'success');
+                setTimeout(() => {
+                  location.reload();
+                }, 1000);
+              } else {
+                mostrarMensaje(data.error || 'Error al cambiar contexto', 'danger');
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = '<i class="bi bi-check-circle"></i> Aplicar Configuración';
-            });
-        });
-    }
-    
-    // Abrir caja manualmente
-    if (formAbrirCaja) {
-        formAbrirCaja.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            // Agregar id_sucursal del select principal
-            const idSucursal = selectSucursal.value;
-            if (idSucursal) {
-                formData.append('id_sucursal', idSucursal);
-            }
-            
-            const btnSubmit = this.querySelector('button[type="submit"]');
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aperturando...';
-            
-            fetch('/api/abrir-caja/', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarMensaje(data.mensaje, 'success');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    mostrarMensaje(data.error || 'Error al aperturar caja', 'danger');
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Aperturar Caja';
-                }
+              }
             })
             .catch(error => {
-                console.error('Error:', error);
-                mostrarMensaje('Error en la solicitud', 'danger');
+              console.error('Error:', error);
+              mostrarMensaje('Error en la solicitud', 'danger');
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = '<i class="bi bi-check-circle"></i> Aplicar Configuración';
+            });
+        });
+      }
+
+      // Abrir caja manualmente
+      if (formAbrirCaja) {
+        formAbrirCaja.addEventListener('submit', function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+
+          // Agregar id_sucursal del select principal
+          const idSucursal = selectSucursal.value;
+          if (idSucursal) {
+            formData.append('id_sucursal', idSucursal);
+          }
+
+          const btnSubmit = this.querySelector('button[type="submit"]');
+          btnSubmit.disabled = true;
+          btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aperturando...';
+
+          fetch('/api/abrir-caja/', {
+            method: 'POST',
+            body: formData
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                mostrarMensaje(data.mensaje, 'success');
+                setTimeout(() => {
+                  location.reload();
+                }, 1500);
+              } else {
+                mostrarMensaje(data.error || 'Error al aperturar caja', 'danger');
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Aperturar Caja';
-            });
-        });
-    }
-    
-    // Cerrar caja
-    if (formCerrarCaja) {
-        formCerrarCaja.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (!confirm('¿Está seguro de cerrar la caja?')) {
-                return;
-            }
-            
-            const formData = new FormData(this);
-            const btnSubmit = this.querySelector('button[type="submit"]');
-            
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cerrando...';
-            
-            fetch('/api/cerrar-caja/', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarMensaje(data.mensaje, 'success');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    mostrarMensaje(data.error || 'Error al cerrar caja', 'danger');
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = '<i class="bi bi-x-circle"></i> Confirmar Cierre';
-                }
+              }
             })
             .catch(error => {
-                console.error('Error:', error);
-                mostrarMensaje('Error en la solicitud', 'danger');
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '<i class="bi bi-x-circle"></i> Confirmar Cierre';
+              console.error('Error:', error);
+              mostrarMensaje('Error en la solicitud', 'danger');
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Aperturar Caja';
             });
         });
-    }
-    
-    // Función para mostrar mensajes
-    function mostrarMensaje(mensaje, tipo) {
+      }
+
+      // Cerrar caja
+      if (formCerrarCaja) {
+        formCerrarCaja.addEventListener('submit', function (e) {
+          e.preventDefault();
+
+          if (!confirm('¿Está seguro de cerrar la caja?')) {
+            return;
+          }
+
+          const formData = new FormData(this);
+          const btnSubmit = this.querySelector('button[type="submit"]');
+
+          btnSubmit.disabled = true;
+          btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cerrando...';
+
+          fetch('/api/cerrar-caja/', {
+            method: 'POST',
+            body: formData
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                mostrarMensaje(data.mensaje, 'success');
+                setTimeout(() => {
+                  location.reload();
+                }, 1500);
+              } else {
+                mostrarMensaje(data.error || 'Error al cerrar caja', 'danger');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-x-circle"></i> Confirmar Cierre';
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              mostrarMensaje('Error en la solicitud', 'danger');
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = '<i class="bi bi-x-circle"></i> Confirmar Cierre';
+            });
+        });
+      }
+
+      // Función para mostrar mensajes
+      function mostrarMensaje(mensaje, tipo) {
         mensajesCaja.innerHTML = `
             <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
                 ${mensaje}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `;
+      }
+    });
+
+    // Manejar cierre de sesión con SweetAlert2
+    document.getElementById('logout-link').addEventListener('click', function(e) {
+        e.preventDefault();
+        Swal.fire({
+            title: '¿Cerrar sesión?',
+            text: "¿Estás seguro de que deseas salir del sistema?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, salir',
+            cancelButtonText: 'Cancelar',
+            background: '#1e2225',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = "{% url 'logout' %}";
+            }
+        });
+    });
+  </script>
+
+  <style>
+    /* Estilos para el perfil premium */
+    .profile-premium {
+      background-color: #2b3035 !important;
+      border: 1px solid #444 !important;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
+      min-width: 220px !important;
+      padding: 8px 0 !important;
     }
-});
-</script>
 
-<style>
-  /* Estilos para el logo del header */
-  .header .logo img {
-    max-height: 50px;
-    max-width: 50px;
-    object-fit: contain;
-    margin-right: 10px;
-  }
+    .profile-premium .dropdown-header {
+      padding: 10px 15px !important;
+      border-bottom: 1px solid #444 !important;
+      margin-bottom: 5px !important;
+    }
 
-  /* Reducir tamaño del texto del logo */
-  .header .logo span {
-    font-size: 1.1rem;
-    font-weight: 600;
-    text-align: center
-  }
-  
-  /* Animación suave si el logo no carga */
-  .header .logo img {
-    transition: opacity 0.3s ease;
-  }
-  
-  .header .logo img[src=""] {
-    opacity: 0;
-  }
-</style>
+    .profile-premium .dropdown-item {
+      color: #adb5bd !important;
+      padding: 10px 15px !important;
+      transition: all 0.3s ease !important;
+    }
 
+    .profile-premium .dropdown-item:hover {
+      background-color: #3d4246 !important;
+      color: #fff !important;
+    }
+
+    .profile-premium .dropdown-item i {
+      font-size: 18px !important;
+      margin-right: 10px !important;
+      color: #adb5bd !important;
+    }
+
+    .profile-premium .dropdown-item:hover i {
+      color: #fff !important;
+    }
+
+    .profile-premium .dropdown-divider {
+      border-top: 1px solid #444 !important;
+      margin: 5px 0 !important;
+    }
+
+    /* Clase auxiliar para texto claro en fondos oscuros */
+    .text-light-muted {
+      color: #ced4da !important;
+    }
+
+    .header .logo img {
+      max-height: 50px;
+      max-width: 50px;
+      object-fit: contain;
+      margin-right: 10px;
+    }
+
+    /* Reducir tamaño del texto del logo */
+    .header .logo span {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: center
+    }
+
+    /* Animación suave si el logo no carga */
+    .header .logo img {
+      transition: opacity 0.3s ease;
+    }
+
+    .header .logo img[src=""] {
+      opacity: 0;
+    }
+  </style>
+
+
+  {% include 'modals/modal_autorizacion.html' %}
+
+  <script>
+    /**
+     * Interceptor Global para Autorizaciones WhatsApp
+     * Solo para usuarios NO administradores
+     */
+    {% if not request.session.es_admin %}
+    (function() {
+        // 1. Interceptar Apertura de Modales (EDICIÓN)
+        // Bootstrap dispara 'show.bs.modal' antes de mostrar el modal. 
+        // Si llamamos a preventDefault(), el modal no se abre.
+        document.addEventListener('show.bs.modal', function(e) {
+            // Ignorar nuestro propio modal de autorización
+            if (e.target.id === 'modalAutorizacionWhatsApp') return;
+            
+            // Si el modal ya ha sido marcado como autorizado, permitir apertura
+            if (e.target.getAttribute('data-authorized') === 'true') {
+                e.target.removeAttribute('data-authorized');
+                return;
+            }
+
+            const trigger = e.relatedTarget; // El botón que disparó el modal
+            if (!trigger) return;
+
+            // Detectar si el disparador parece ser una acción de edición
+            let isEdit = (trigger.getAttribute('title') && trigger.getAttribute('title').toLowerCase().includes('editar')) ||
+                         (trigger.innerText && trigger.innerText.toLowerCase().includes('editar')) ||
+                         (trigger.innerHTML && trigger.innerHTML.toLowerCase().includes('editar')) ||
+                         (trigger.querySelector('i') && (trigger.querySelector('i').className.includes('fa-pen') || trigger.querySelector('i').className.includes('fa-edit')));
+
+            if (isEdit) {
+                // DETENER LA APERTURA DEL MODAL DE EDICIÓN
+                e.preventDefault();
+                
+                let action = 'EDICION';
+                let modulo = document.querySelector('.pagetitle h1')?.innerText.trim() || document.title || 'Sistema';
+                let id = 'N/A';
+                
+                // Intentar extraer ID del target o del disparador
+                let match = trigger.getAttribute('data-bs-target')?.match(/\d+/);
+                if (match) id = match[0];
+
+                // Iniciar flujo de autorización
+                AuthWhatsApp.init(action, modulo, id, function() {
+                    // Marcar el modal como autorizado y re-abrirlo manualmente tras un breve delay
+                    // para asegurar que el modal de seguridad se haya cerrado completamente.
+                    e.target.setAttribute('data-authorized', 'true');
+                    setTimeout(() => {
+                        const bsModal = bootstrap.Modal.getOrCreateInstance(e.target);
+                        bsModal.show();
+                    }, 100);
+                });
+            }
+        });
+
+        // 2. Interceptar Clics Directos (ELIMINACIÓN)
+        document.addEventListener('click', function(e) {
+            let target = e.target.closest('a, button');
+            if (!target) return;
+
+            // Si ya está autorizado para este clic, dejar pasar
+            if (target.getAttribute('data-authorized') === 'true') {
+                target.removeAttribute('data-authorized');
+                return;
+            }
+
+            // Detectar si es una acción de ELIMINACIÓN
+            let isDelete = target.classList.contains('eliminar') || 
+                           (target.getAttribute('onclick') && target.getAttribute('onclick').toLowerCase().includes('eliminar')) ||
+                           (target.getAttribute('title') && target.getAttribute('title').toLowerCase().includes('eliminar'));
+
+            // Detectar si es una acción de EDICIÓN (solo para los que NO usan data-bs-toggle="modal")
+            // Los modales estándar se manejan arriba con 'show.bs.modal'
+            let isEditJS = !target.getAttribute('data-bs-toggle') && 
+                           ((target.getAttribute('onclick') && target.getAttribute('onclick').toLowerCase().includes('editar')) ||
+                            (target.getAttribute('title') && target.getAttribute('title').toLowerCase().includes('editar')));
+
+            if (isDelete || isEditJS) {
+                // Evitar la acción original de forma inmediata
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                let action = isDelete ? 'ELIMINACION' : 'EDICION';
+                let modulo = document.querySelector('.pagetitle h1')?.innerText.trim() || document.title || 'Sistema';
+                let id = 'N/A';
+
+                // Intentar extraer ID del registro
+                if (target.getAttribute('onclick')) {
+                    let match = target.getAttribute('onclick').match(/\d+/);
+                    if (match) id = match[0];
+                } else if (target.href) {
+                    let match = target.href.match(/\/(\d+)\/?$/) || target.href.match(/id=(\d+)/);
+                    if (match) id = match[1];
+                }
+
+                // Iniciar flujo de autorización
+                AuthWhatsApp.init(action, modulo, id, function() {
+                    // Marcar como autorizado y re-disparar el clic tras un breve delay
+                    target.setAttribute('data-authorized', 'true');
+                    target.setAttribute('data-authorized-bypass', 'true');
+                    setTimeout(() => {
+                        target.click();
+                    }, 100);
+                });
+            }
+        }, true); // Usar fase de captura para el clic
+    })();
+    {% endif %}
+  </script>
+
+  <!-- =====================================================
+       SCRIPT Y ESTILOS: TOGGLE TEMA OSCURO / CLARO
+  ====================================================== -->
+  <style>
+    /* Botón de toggle de tema */
+    .theme-toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(4px);
+    }
+    .theme-toggle-btn:hover {
+      background: rgba(0, 191, 165, 0.15);
+      border-color: rgba(0, 191, 165, 0.5);
+      color: #00bfa5;
+      transform: rotate(15deg);
+    }
+
+    /* En modo oscuro: mostrar ícono de luna, ocultar sol */
+    [data-theme="dark"] .theme-icon-dark { display: inline; }
+    [data-theme="dark"] .theme-icon-light { display: none; }
+
+    /* En modo claro: mostrar ícono de sol, ocultar luna */
+    [data-theme="light"] .theme-icon-dark { display: none; }
+    [data-theme="light"] .theme-icon-light { display: inline; }
+    [data-theme="light"] .theme-toggle-btn {
+      border-color: rgba(0, 0, 0, 0.15);
+      background: rgba(0, 0, 0, 0.05);
+      color: #333;
+    }
+    [data-theme="light"] .theme-toggle-btn:hover {
+      background: rgba(14, 165, 120, 0.1);
+      border-color: #00bfa5;
+      color: #00875a;
+    }
+  </style>
+
+  <script>
+    // =====================================================
+    // CONTROLADOR DEL TOGGLE OSCURO / CLARO
+    // =====================================================
+    (function() {
+      var btn = document.getElementById('theme-toggle-btn');
+      if (!btn) return;
+
+      btn.addEventListener('click', function() {
+        var current = document.documentElement.getAttribute('data-theme') || 'dark';
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('sys-theme', next);
+        
+        // Actualizar Tema de Flatpickr (Calendario Premium)
+        var fpTheme = document.getElementById('flatpickr-theme-css');
+        if (fpTheme) {
+            fpTheme.href = next === 'dark' 
+                ? 'https://npmcdn.com/flatpickr/dist/themes/dark.css' 
+                : 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        }
+      });
+    })();
+  </script>
+
+  <!-- =====================================================
+       SCRIPT: TIPO DE CAMBIO BCRP
+  ====================================================== -->
+  <script>
+    async function cargarTipoCambio() {
+        const cacheKey = 'tipo_cambio_bcrp_venta';
+        const fechaActual = new Date();
+        const dia = String(fechaActual.getDate()).padStart(2, '0');
+        const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+        const anio = fechaActual.getFullYear();
+        const hoyCadena = `${dia}/${mes}/${anio}`;
+
+        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        
+        if (cached && cached.fecha === hoyCadena) {
+            mostrarTipoCambio(cached.valor, hoyCadena);
+            return;
+        }
+
+        try {
+            // Usando el endpoint interno de Django para evadir bloqueos de red, adblockers y CORS
+            const response = await fetch('/api/tipo-cambio/');
+            const data = await response.json();
+            
+            if (data && data.venta) {
+                const valor = parseFloat(data.venta).toFixed(2);
+                
+                localStorage.setItem(cacheKey, JSON.stringify({ fecha: hoyCadena, valor: valor }));
+                mostrarTipoCambio(valor, hoyCadena);
+            } else {
+                throw new Error("Formato de respuesta inválido");
+            }
+        } catch (e) {
+            console.error("Error obteniendo tipo de cambio del BCRP", e);
+            document.getElementById('header-tipo-cambio').innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Dólar no disp.`;
+        }
+    }
+
+    function mostrarTipoCambio(valor, fechaCadena) {
+        document.getElementById('header-tipo-cambio').innerHTML = 
+            `<i class="bi bi-currency-dollar me-1"></i>Hoy ${fechaCadena} &nbsp;|&nbsp; 1 dólar = S/ ${valor}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarTipoCambio);
+  </script>
+
+  <!-- =====================================================
+       SCRIPT: FLATPICKR GLOBAL (CALENDARIOS PREMIUM)
+  ====================================================== -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Inicializar en cualquier input con la clase date-picker-premium
+      flatpickr(".date-picker-premium", {
+        locale: "es",
+        dateFormat: "Y-m-d", // Formato para Backend
+        altInput: true,
+        altFormat: "d/m/Y",  // Formato Visual
+        allowInput: false,
+        disableMobile: "true",
+        onChange: function(selectedDates, dateStr, instance) {
+          // Si el input pertenece al form de Filtros, auto-submit
+          if (instance.element.closest('#formFiltroFechas')) {
+            setTimeout(() => {
+              document.getElementById('formFiltroFechas').submit();
+            }, 150);
+          }
+        }
+      });
+    });
+  </script>
 
 </body>
 

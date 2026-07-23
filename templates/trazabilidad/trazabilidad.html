@@ -1,0 +1,342 @@
+{% extends "plantilla/base.html" %}
+{% block main %}
+<style>
+  .traz-hero { background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); padding: 2rem 2rem 1.5rem; border-radius: 0 0 1.5rem 1.5rem; margin-bottom: 1.5rem; }
+  .traz-hero h1 { font-size: 1.8rem; font-weight: 700; color: #fff; margin: 0; }
+  .traz-hero p  { color: rgba(255,255,255,.65); margin: .3rem 0 0; }
+
+  .traz-tabs { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
+  .traz-tab-btn { flex: 1; padding: .75rem 1rem; border: 2px solid transparent; border-radius: 1rem; background: var(--bs-body-bg); color: var(--bs-body-color); font-weight: 600; cursor: pointer; transition: all .25s; font-size: .95rem; }
+  .traz-tab-btn.active { background: linear-gradient(135deg, #00b09b, #1a6b60); color: #fff; border-color: #00b09b; box-shadow: 0 4px 18px rgba(0,176,155,.35); }
+  .traz-tab-btn:not(.active):hover { border-color: #00b09b; color: #00b09b; }
+
+  .traz-search-box { margin-bottom: 1.5rem; }
+  .traz-input-wrapper { position: relative; }
+  .traz-input-wrapper input { width: 100%; padding: .85rem 1.2rem .85rem 3.2rem; border-radius: 1rem; border: 2px solid var(--bs-border-color); background: var(--bs-body-bg); color: var(--bs-body-color); font-size: 1rem; transition: border-color .2s; }
+  .traz-input-wrapper input:focus { outline: none; border-color: #00b09b; box-shadow: 0 0 0 3px rgba(0,176,155,.15); }
+  .traz-input-wrapper .traz-icon { position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: #00b09b; pointer-events: none; }
+  .traz-search-hint { font-size: .82rem; color: var(--bs-secondary-color); margin-top: .5rem; padding-left: 1rem; }
+
+  .traz-panel { display: none; }
+  .traz-panel.active { display: block; }
+
+  .traz-result-card { border-radius: 1.2rem; border: 1.5px solid var(--bs-border-color); overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 2px 18px rgba(0,0,0,.07); }
+  .traz-result-header { padding: 1.2rem 1.5rem; background: linear-gradient(135deg, #1a2a3a, #2c3e50); color: #fff; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .traz-result-header .title { font-size: 1.15rem; font-weight: 700; flex: 1; }
+  .traz-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .9rem; border-radius: 999px; font-size: .8rem; font-weight: 700; letter-spacing: .02em; }
+  .badge-success { background: rgba(16,185,129,.4); color: #fff !important; border: 1.5px solid #34d399; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .badge-primary { background: rgba(59,130,246,.4); color: #fff !important; border: 1.5px solid #60a5fa; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .badge-info    { background: rgba(34,211,238,.4); color: #fff !important; border: 1.5px solid #22d3ee; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .badge-warning { background: rgba(251,191,36,.4); color: #fff !important; border: 1.5px solid #fbbf24; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .badge-danger  { background: rgba(248,113,113,.4); color: #fff !important; border: 1.5px solid #f87171; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .badge-secondary { background: rgba(156,163,175,.4); color: #fff !important; border: 1.5px solid #9ca3af; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+
+  .traz-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; padding: 1.2rem 1.5rem; }
+  .traz-info-item .label { font-size: .85rem; color: var(--bs-secondary-color); text-transform: uppercase; font-weight: 600; letter-spacing: .04em; }
+  .traz-info-item .value { font-size: 1.05rem; font-weight: 600; color: var(--bs-body-color); }
+
+  /* Timeline */
+  .traz-timeline { padding: 0 1.5rem 1.5rem; }
+  .traz-timeline h6 { font-size: .9rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary-color); margin: 1.2rem 0 .8rem; font-weight: 700; }
+  .timeline-list { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--bs-border-color); margin-left: 1rem; }
+  .timeline-list li { position: relative; padding: .6rem 0 .6rem 1.5rem; }
+  .timeline-list li::before { content: ''; position: absolute; left: -7px; top: 1.1rem; width: 12px; height: 12px; border-radius: 50%; background: #00b09b; border: 2px solid var(--bs-body-bg); }
+  .timeline-list li.tl-compra::before { background: #3b82f6; }
+  .timeline-list li.tl-venta::before  { background: #10b981; }
+  .timeline-list li.tl-credito::before { background: #06b6d4; }
+  .timeline-list li.tl-transfer::before { background: #a855f7; }
+  .timeline-list li.tl-auditoria::before { background: #ef4444; }
+  .tl-date { font-size: .85rem; color: var(--bs-secondary-color); }
+  .tl-title { font-weight: 700; font-size: 1.05rem; color: var(--bs-body-color); }
+  .tl-detail { font-size: .95rem; color: var(--bs-secondary-color); margin-top: 0.2rem; }
+
+  /* Corrección de contraste en Modo Oscuro */
+  [data-theme="dark"] .traz-info-item .value,
+  [data-theme="dark"] .tl-title,
+  [data-theme="dark"] .traz-table td { color: #f8f9fa !important; }
+  
+  [data-theme="dark"] .traz-info-item .label,
+  [data-theme="dark"] .tl-date,
+  [data-theme="dark"] .tl-detail,
+  [data-theme="dark"] .traz-timeline h6 { color: #adb5bd !important; }
+  
+  [data-theme="dark"] .traz-result-card { background: #1e293b; border-color: #334155; }
+  [data-theme="dark"] .timeline-list li::before { border-color: #1e293b; }
+  
+  [data-theme="dark"] .traz-input-wrapper input { background: #1e293b; border-color: #334155; color: #f8f9fa; }
+  [data-theme="dark"] .traz-input-wrapper input::placeholder { color: #94a3b8; }
+  [data-theme="dark"] .traz-search-hint { color: #94a3b8; }
+
+  /* Tabla repuestos */
+  .traz-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .traz-table th { background: rgba(0,176,155,.12); color: #00b09b; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; padding: .6rem .9rem; text-align: left; border-bottom: 1.5px solid var(--bs-border-color); }
+  .traz-table td { padding: .55rem .9rem; border-bottom: 1px solid var(--bs-border-color); vertical-align: middle; }
+  .traz-table tr:last-child td { border-bottom: none; }
+  .traz-table tr:hover td { background: rgba(0,176,155,.05); }
+
+  .traz-stats { display: flex; gap: 1rem; padding: 1rem 1.5rem; flex-wrap: wrap; }
+  .traz-stat { flex: 1; min-width: 110px; background: var(--bs-body-bg); border: 1.5px solid var(--bs-border-color); border-radius: .8rem; padding: .8rem 1rem; text-align: center; }
+  .traz-stat .num { font-size: 1.6rem; font-weight: 800; color: #00b09b; }
+  .traz-stat .lbl { font-size: .72rem; color: var(--bs-secondary-color); text-transform: uppercase; font-weight: 600; }
+
+  .traz-empty { text-align: center; padding: 3rem 1rem; color: var(--bs-secondary-color); }
+  .traz-empty i { font-size: 3rem; margin-bottom: 1rem; display: block; opacity: .5; }
+  .traz-skeleton { animation: pulse 1.5s infinite; background: var(--bs-border-color); border-radius: .5rem; height: 18px; }
+  @keyframes pulse { 0%,100%{opacity:.5}50%{opacity:1} }
+</style>
+
+<div class="pagetitle">
+  <h1><i class="bi bi-diagram-3 me-2" style="color:#00b09b"></i>Trazabilidad</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">Almacén</li>
+      <li class="breadcrumb-item active">Trazabilidad</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <div class="container-fluid" style="max-width:960px">
+
+    <!-- Pestañas -->
+    <div class="traz-tabs">
+      <button class="traz-tab-btn active" onclick="cambiarTab('vehiculos', this)">
+        <i class="bi bi-bicycle me-2"></i>Vehículos
+      </button>
+      <button class="traz-tab-btn" onclick="cambiarTab('repuestos', this)">
+        <i class="bi bi-tools me-2"></i>Repuestos
+      </button>
+    </div>
+
+    <!-- Panel Vehículos -->
+    <div id="panel-vehiculos" class="traz-panel active">
+      <div class="traz-search-box">
+        <div class="traz-input-wrapper">
+          <i class="bi bi-search traz-icon"></i>
+          <input type="text" id="input-vehiculo" placeholder="Ingresa número de Serie Motor o Serie Chasis..." autocomplete="off">
+        </div>
+        <div class="traz-search-hint"><i class="bi bi-info-circle me-1"></i>Escribe al menos 3 caracteres para buscar automáticamente</div>
+      </div>
+      <div id="resultado-vehiculo"></div>
+    </div>
+
+    <!-- Panel Repuestos -->
+    <div id="panel-repuestos" class="traz-panel">
+      <div class="traz-search-box">
+        <div class="traz-input-wrapper">
+          <i class="bi bi-upc-scan traz-icon"></i>
+          <input type="text" id="input-repuesto" placeholder="Ingresa el Código de Barras del repuesto..." autocomplete="off">
+        </div>
+        <div class="traz-search-hint"><i class="bi bi-info-circle me-1"></i>Escribe al menos 2 caracteres para buscar automáticamente</div>
+      </div>
+      <div id="resultado-repuesto"></div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  // --- Utilidades ---
+  function cambiarTab(tab, btn) {
+    document.querySelectorAll('.traz-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.traz-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+  }
+
+  function badgeHtml(type, icon, text) {
+    return `<span class="traz-badge badge-${type}" style="color: #ffffff !important;"><i class="bi ${icon}"></i>${text}</span>`;
+  }
+
+  // --- Búsqueda Vehículo (debounce 500ms) ---
+  let timerVeh = null;
+  document.getElementById('input-vehiculo').addEventListener('input', function() {
+    clearTimeout(timerVeh);
+    const q = this.value.trim();
+    if (q.length < 3) { document.getElementById('resultado-vehiculo').innerHTML = ''; return; }
+    document.getElementById('resultado-vehiculo').innerHTML = '<div class="traz-skeleton" style="width:60%;margin:1rem auto"></div>';
+    timerVeh = setTimeout(() => fetchVehiculo(q), 500);
+  });
+
+  function fetchVehiculo(q) {
+    fetch(`/trazabilidad/buscar-vehiculo/?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          document.getElementById('resultado-vehiculo').innerHTML = `
+            <div class="traz-empty"><i class="bi bi-search"></i><strong>${data.error}</strong></div>`;
+          return;
+        }
+        renderVehiculo(data);
+      })
+      .catch(() => {
+        document.getElementById('resultado-vehiculo').innerHTML = '<div class="traz-empty"><i class="bi bi-exclamation-triangle"></i>Error al conectar con el servidor.</div>';
+      });
+  }
+
+  function renderVehiculo(d) {
+    const v = d.vehiculo;
+    const colorMap = { success:'#10b981', primary:'#3b82f6', info:'#06b6d4', warning:'#f59e0b', danger:'#ef4444', secondary:'#6b7280' };
+    const iconMap  = { vendido:'bi-check-circle', disponible:'bi-box-seam', credito:'bi-credit-card', retenido:'bi-lock', anulado:'bi-x-circle', sin_informacion:'bi-question-circle' };
+
+    let html = `
+    <div class="traz-result-card">
+      <div class="traz-result-header">
+        <div>
+          <div class="title"><i class="bi bi-bicycle me-2"></i>${v.nombre}</div>
+          <div style="font-size:.85rem;color:rgba(255,255,255,.9);margin-top:.2rem">Motor: <strong style="color:#fff">${v.serie_motor}</strong> &nbsp;|&nbsp; Chasis: <strong style="color:#fff">${v.serie_chasis}</strong></div>
+        </div>
+        ${badgeHtml(v.estado_color, iconMap[v.estado_actual] || 'bi-circle', v.estado_label)}
+        <a href="/trazabilidad/vehiculo/${encodeURIComponent(v.serie_motor || v.serie_chasis)}/pdf/" target="_blank" class="btn btn-sm btn-outline-light" style="border-radius: 999px; padding: 0.35rem 0.9rem; font-weight: 600;"><i class="bi bi-printer me-1"></i>PDF</a>
+      </div>
+      <div class="traz-info-grid">
+        ${infoItem('Marca', v.marca)}${infoItem('Modelo', v.modelo)}${infoItem('Color', v.color)}
+        ${infoItem('Año', v.anio)}${infoItem('Placa', v.placas)}${infoItem('Categoría', v.categoria)}
+      </div>
+      <div class="traz-timeline">
+        <h6>📋 Línea de tiempo</h6>
+        <ul class="timeline-list">`;
+
+    if (d.compra) {
+      html += `<li class="tl-compra">
+        <div class="tl-date">${d.compra.fecha}</div>
+        <div class="tl-title"><i class="bi bi-box-arrow-in-down me-1" style="color:#3b82f6"></i>Ingreso al Stock</div>
+        <div class="tl-detail">Proveedor: <strong>${d.compra.proveedor}</strong> &nbsp;|&nbsp; Compra: <strong>${d.compra.precio_compra}</strong> &nbsp;|&nbsp; Almacén: ${d.compra.almacen} &nbsp;|&nbsp; Comprobante: ${d.compra.comprobante}</div>
+      </li>`;
+    }
+
+    d.transferencias.forEach(t => {
+      html += `<li class="tl-transfer">
+        <div class="tl-date">${t.fecha}</div>
+        <div class="tl-title"><i class="bi bi-arrow-left-right me-1" style="color:#a855f7"></i>Transferencia</div>
+        <div class="tl-detail"><strong>${t.origen}</strong> → <strong>${t.destino}</strong> &nbsp;|&nbsp; ${t.estado} &nbsp;|&nbsp; Guía: ${t.guia}</div>
+      </li>`;
+    });
+
+    if (d.venta) {
+      html += `<li class="tl-venta">
+        <div class="tl-date">${d.venta.fecha}</div>
+        <div class="tl-title"><i class="bi bi-bag-check me-1" style="color:#10b981"></i>Vendido — ${d.venta.tipo_comprobante}: ${d.venta.comprobante}</div>
+        <div class="tl-detail">Cliente: <strong>${d.venta.cliente}</strong> (Doc: ${d.venta.cliente_doc}) &nbsp;|&nbsp; <strong>${d.venta.precio_venta}</strong> &nbsp;|&nbsp; Pago: ${d.venta.forma_pago} &nbsp;|&nbsp; Almacén: ${d.venta.almacen} &nbsp;|&nbsp; Estado: ${d.venta.estado}</div>
+      </li>`;
+    }
+
+    if (d.credito) {
+      html += `<li class="tl-credito">
+        <div class="tl-date"></div>
+        <div class="tl-title"><i class="bi bi-credit-card me-1" style="color:#06b6d4"></i>Crédito Generado — ${d.credito.codigo}</div>
+        <div class="tl-detail">Total: <strong>${d.credito.monto_total}</strong> &nbsp;|&nbsp; Adelanto: ${d.credito.adelanto} &nbsp;|&nbsp; Saldo: <strong>${d.credito.saldo}</strong> &nbsp;|&nbsp; ${d.credito.cuotas} cuotas &nbsp;|&nbsp; Estado: <strong>${d.credito.estado}</strong> &nbsp;|&nbsp; Garante: ${d.credito.garante}</div>
+      </li>`;
+    }
+
+    d.auditorias.forEach(a => {
+      html += `<li class="tl-auditoria">
+        <div class="tl-date">${a.fecha}</div>
+        <div class="tl-title"><i class="bi bi-pencil-square me-1" style="color:#ef4444"></i>${a.accion}</div>
+        <div class="tl-detail">Motivo: ${a.motivo} &nbsp;|&nbsp; Usuario: ${a.usuario}</div>
+      </li>`;
+    });
+
+    if (!d.compra && !d.venta && d.transferencias.length === 0) {
+      html += `<li><div class="tl-detail" style="color:var(--bs-secondary-color)">Sin eventos registrados.</div></li>`;
+    }
+
+    html += `</ul></div></div>`;
+    document.getElementById('resultado-vehiculo').innerHTML = html;
+  }
+
+  // --- Búsqueda Repuesto (debounce 500ms) ---
+  let timerRep = null;
+  document.getElementById('input-repuesto').addEventListener('input', function() {
+    clearTimeout(timerRep);
+    const q = this.value.trim();
+    if (q.length < 2) { document.getElementById('resultado-repuesto').innerHTML = ''; return; }
+    document.getElementById('resultado-repuesto').innerHTML = '<div class="traz-skeleton" style="width:60%;margin:1rem auto"></div>';
+    timerRep = setTimeout(() => fetchRepuesto(q), 500);
+  });
+
+  function fetchRepuesto(q) {
+    fetch(`/trazabilidad/buscar-repuesto/?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          document.getElementById('resultado-repuesto').innerHTML = `
+            <div class="traz-empty"><i class="bi bi-search"></i><strong>${data.error}</strong></div>`;
+          return;
+        }
+        renderRepuesto(data);
+      })
+      .catch(() => {
+        document.getElementById('resultado-repuesto').innerHTML = '<div class="traz-empty"><i class="bi bi-exclamation-triangle"></i>Error al conectar con el servidor.</div>';
+      });
+  }
+
+  function renderRepuesto(d) {
+    const r = d.repuesto;
+    const stockColor = r.stock_actual > 0 ? '#10b981' : '#ef4444';
+
+    let html = `
+    <div class="traz-result-card">
+      <div class="traz-result-header">
+        <div>
+          <div class="title"><i class="bi bi-tools me-2"></i>${r.nombre}</div>
+          <div style="font-size:.85rem;color:rgba(255,255,255,.9);margin-top:.2rem">Cód. Barras: <strong style="color:#fff">${r.codigo_barras}</strong> &nbsp;|&nbsp; Int: <strong style="color:#fff">${r.codigo_interno}</strong></div>
+        </div>
+        <span class="traz-badge" style="background:rgba(16,185,129,.3);color:#ffffff !important;border:1.5px solid ${stockColor};text-shadow:0 1px 2px rgba(0,0,0,0.3);">
+          <i class="bi bi-box-seam"></i>Stock: ${r.stock_actual} uds.
+        </span>
+        <a href="/trazabilidad/repuesto/${encodeURIComponent(r.codigo_barras)}/pdf/" target="_blank" class="btn btn-sm btn-outline-light" style="border-radius: 999px; padding: 0.35rem 0.9rem; font-weight: 600;"><i class="bi bi-printer me-1"></i>PDF</a>
+      </div>
+      <div class="traz-info-grid">
+        ${infoItem('Marca', r.marca)}${infoItem('Categoría', r.categoria)}
+        ${infoItem('Compatibilidad', r.compatibilidad)}${infoItem('Garantía', r.garantia)}
+      </div>
+      <div class="traz-stats">
+        <div class="traz-stat"><div class="num">${r.total_ingresado}</div><div class="lbl">Ingresados</div></div>
+        <div class="traz-stat"><div class="num" style="color:#ef4444">${r.total_vendido}</div><div class="lbl">Vendidos</div></div>
+        <div class="traz-stat"><div class="num" style="color:${stockColor}">${r.stock_actual}</div><div class="lbl">En Stock</div></div>
+      </div>`;
+
+    if (d.compras.length > 0) {
+      html += `<div style="padding:0 1.5rem 1rem"><h6 style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--bs-secondary-color);font-weight:700;margin-bottom:.6rem"><i class="bi bi-box-arrow-in-down me-1" style="color:#3b82f6"></i>Historial de Compras (${d.compras.length})</h6>
+      <div style="overflow-x:auto"><table class="traz-table">
+        <thead><tr><th>Fecha</th><th>Proveedor</th><th>Cant.</th><th>P. Unit</th><th>Subtotal</th><th>Comprobante</th><th>Almacén</th></tr></thead>
+        <tbody>`;
+      d.compras.forEach(c => {
+        html += `<tr><td>${c.fecha}</td><td>${c.proveedor}</td><td><strong>${c.cantidad}</strong></td><td>${c.precio_unitario}</td><td>${c.subtotal}</td><td>${c.comprobante}</td><td>${c.almacen}</td></tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    if (d.ventas.length > 0) {
+      html += `<div style="padding:0 1.5rem 1rem"><h6 style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--bs-secondary-color);font-weight:700;margin-bottom:.6rem"><i class="bi bi-bag-check me-1" style="color:#10b981"></i>Historial de Ventas (${d.ventas.length})</h6>
+      <div style="overflow-x:auto"><table class="traz-table">
+        <thead><tr><th>Fecha</th><th>Cliente</th><th>Cant.</th><th>P. Unit</th><th>Subtotal</th><th>Comprobante</th><th>Almacén</th><th>Estado</th></tr></thead>
+        <tbody>`;
+      d.ventas.forEach(v => {
+        const estadoColor = v.estado === 'Activa' ? '#10b981' : '#ef4444';
+        html += `<tr><td>${v.fecha}</td><td>${v.cliente}<br><small class="text-muted">Doc: ${v.cliente_doc}</small></td><td><strong>${v.cantidad}</strong></td><td>${v.precio_unitario}</td><td>${v.subtotal}</td><td>${v.comprobante}</td><td>${v.almacen}</td><td><span style="color:${estadoColor};font-weight:600">${v.estado}</span></td></tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    if (d.stock_detalle.length > 0) {
+      html += `<div style="padding:0 1.5rem 1.2rem"><h6 style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--bs-secondary-color);font-weight:700;margin-bottom:.6rem"><i class="bi bi-building me-1" style="color:#a855f7"></i>Stock por Almacén</h6>
+      <div style="overflow-x:auto"><table class="traz-table">
+        <thead><tr><th>Almacén</th><th>Cantidad Disponible</th></tr></thead><tbody>`;
+      d.stock_detalle.forEach(s => {
+        const c = s.cantidad > 0 ? '#10b981' : '#ef4444';
+        html += `<tr><td>${s.almacen}</td><td><strong style="color:${c}">${s.cantidad}</strong></td></tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    html += `</div>`;
+    document.getElementById('resultado-repuesto').innerHTML = html;
+  }
+
+  function infoItem(label, value) {
+    return `<div class="traz-info-item"><div class="label">${label}</div><div class="value">${value || '-'}</div></div>`;
+  }
+</script>
+{% endblock %}

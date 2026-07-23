@@ -1,0 +1,140 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+    
+    <!-- HEADER -->
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold" style="color:#7c3aed;">
+                <i class="bi bi-x-circle me-2"></i>Historial de Créditos Anulados / Cancelados
+            </h1>
+            <p class="text-muted mb-0">Créditos anulados por eliminación de venta y créditos cancelados por retención de vehículos</p>
+        </div>
+        <div>
+            <a href="{% url 'creditos' %}" class="btn btn-primary rounded-pill shadow-sm">
+                <i class="bi bi-arrow-left me-2"></i>Volver a Créditos
+            </a>
+        </div>
+    </div>
+
+    <nav aria-label="breadcrumb" class="mt-2">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'creditos' %}">Créditos</a></li>
+            <li class="breadcrumb-item active">Historial Anulados</li>
+        </ol>
+    </nav>
+
+    <!-- TABLA DE CRÉDITOS ANULADOS -->
+    <section class="section mt-4">
+        <div class="card shadow-sm border-0 border-top border-danger border-4">
+            <div class="card-body pt-3">
+                <h5 class="card-title">Créditos Anulados y Cancelados por Retención</h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle datatable w-100">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Código</th>
+                                <th>Cliente</th>
+                                <th>Comprobante</th>
+                                <th>Fecha Crédito</th>
+                                <th>Fecha Baja</th>
+                                <th class="text-end">Monto Total</th>
+                                <th>Motivo</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for credito in creditos %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-secondary">{{ credito.codigo_credito }}</span>
+                                </td>
+                                <td>
+                                    {% if credito.idventa %}
+                                        <strong>{{ credito.idventa.idcliente.razonsocial|truncatewords:4 }}</strong><br>
+                                        <small class="text-muted">{{ credito.idventa.idcliente.numdoc }}</small>
+                                    {% elif credito.idcliente %}
+                                        <strong>{{ credito.idcliente.razonsocial|truncatewords:4 }}</strong><br>
+                                        <small class="text-muted">{{ credito.idcliente.numdoc }}</small>
+                                    {% else %}
+                                        <span class="text-muted">---</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if credito.idventa %}
+                                        {{ credito.idventa.numero_comprobante }}
+                                    {% else %}
+                                        <span class="badge bg-secondary">CRÉDITO DIRECTO</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ credito.fecha_credito|date:"d/m/Y" }}</td>
+                                <td class="fw-bold" style="color: {% if credito.tipo_baja == 'cancelado' %}#7c3aed{% else %}#dc2626{% endif %}">
+                                    {{ credito.fecha_anulacion|date:"d/m/Y"|default:"---" }}<br>
+                                    <small class="text-dark">{{ credito.fecha_anulacion|date:"h:i A" }}</small>
+                                </td>
+                                <td class="text-end fw-bold">S/ {{ credito.monto_total|floatformat:2 }}</td>
+                                <td style="max-width: 200px;">
+                                    <small class="text-wrap d-block text-muted">{{ credito.motivo_anulacion }}</small>
+                                </td>
+                                <td class="text-center">
+                                    {% if credito.tipo_baja == 'cancelado' %}
+                                    <span class="badge px-2" style="background:#7c3aed;">CANCELADO</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">ANULADO</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'detalle_credito' credito.idcredito %}"
+                                       class="btn btn-sm btn-info" title="Ver Detalle">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox" style="font-size: 3rem;"></i><br>
+                                    No hay créditos anulados registrados
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<style>
+.card-title {
+    padding: 0 0 15px 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: #4154f1;
+}
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "/";
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    if ($('.datatable').length) {
+        $('.datatable').DataTable({
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+            },
+            pageLength: 25,
+            order: [[4, 'desc']]
+        });
+    }
+});
+</script>
+{% endblock %}

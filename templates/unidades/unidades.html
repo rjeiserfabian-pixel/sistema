@@ -3,177 +3,406 @@
 {% block main %}
 <main id="main" class="main">
 
-  <div class="pagetitle">
-    <h1>Unidades</h1>
-    <nav>
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-        <li class="breadcrumb-item active">Unidades</li>
-      </ol>
-    </nav>
-  </div><!-- End Page Title -->
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="fw-bold text-primary">
+        <i class="fas fa-balance-scale me-2"></i>Unidades
+      </h1>
+      <nav aria-label="breadcrumb" class="mt-1">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+          <li class="breadcrumb-item active">Unidades</li>
+        </ol>
+      </nav>
+    </div>
+    <button type="button" class="btn btn-success rounded-pill shadow-sm px-4" data-bs-toggle="modal"
+      data-bs-target="#modalAgregar">
+      <i class="fa-solid fa-circle-plus me-2"></i>Nueva Unidad
+    </button>
+  </div>
 
-  <section class="section dashboard">
-    <div class="row">
-      <div class="col-lg-12"> 
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <h5 class="card-title">Lista de Unidades</h5> 
-
-            <!-- Tabla con DataTables -->
-            <div class="table-responsive">
-              <table class="table table-hover align-middle datatable">
-                <thead class="table-dark">
-                  <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">Código</th>
-                    <th scope="col">Unidad</th>
-                    <th scope="col">Estado</th>
-                    <th scope="col" class="text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for unidad in unidades %}
-                  <tr>
-                    <td class="fw-semibold">{{ forloop.counter }}</td>
-                    <td>{{ unidad.codigounidad }}</td>
-                    <td>{{ unidad.abrunidad }}</td>
-                    <td>
-                      {% if unidad.estado == 1 %}
-                        <span class="badge bg-success">Unidad activa</span>    
-                      {% else %}
-                        <span class="badge bg-danger">Unidad desactivada</span>    
-                      {% endif %}
-                    </td>
-                    <td class="text-center">
-                      {% if unidad.estado == 1 %}
-                        <!-- Botón desactivar -->
-                        <a href="{% url 'unidadesDesactivo' id=unidad.idunidad %}" 
-                          class="btn btn-sm btn-danger"
-                          onclick="return desactivar('{{ unidad.idunidad }}', this)">
-                          Desactivar
-                        </a>
-                      {% else %}
-                        <!-- Botón activar -->
-                        <a href="{% url 'unidadesActivo' id=unidad.idunidad %}" 
-                          class="btn btn-sm btn-primary"
-                          onclick="return activar('{{ unidad.idunidad }}', this)">
-                          Activar
-                        </a>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <!-- End Tabla -->
-
-          </div>
+  <!-- Tabla principal -->
+  <section class="section dashboard mt-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Listado de Unidades</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle datatable" style="width:100%;">
+            <thead class="table-dark">
+              <tr>
+                <th class="text-center" style="width: 60px;">#</th>
+                <th style="width: 150px;">Código SUNAT</th>
+                <th>Nombre de Unidad</th>
+                <th style="width: 120px;">Estado</th>
+                <th class="text-center" style="width: 120px;" data-sortable="false">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for unidad in unidades %}
+              <tr id="fila-{{ unidad.idunidad }}">
+                <td class="fw-semibold text-center">{{ forloop.counter }}</td>
+                <td>
+                  <span class="badge bg-secondary px-3 py-2 rounded-pill" style="font-size:.85rem;">
+                    {{ unidad.codigo_sunat }}
+                  </span>
+                </td>
+                <td>
+                  <i class="fa-solid fa-ruler me-2 text-primary"></i>
+                  {{ unidad.abrunidad }}
+                </td>
+                <td>
+                  {% if unidad.estado == 1 %}
+                  <span class="badge bg-success badge-estado">Activa</span>
+                  {% else %}
+                  <span class="badge bg-danger badge-estado">Desactivada</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <div class="d-flex justify-content-center gap-2">
+                    <!-- Editar -->
+                    <button class="btn btn-sm btn-outline-primary shadow-sm"
+                      style="border-radius:8px; width:36px; height:36px;" data-bs-toggle="modal"
+                      data-bs-target="#modalEditar{{ unidad.idunidad }}" title="Editar">
+                      <i class="fa-solid fa-pen-to-square" style="font-size:1rem;"></i>
+                    </button>
+                    <!-- Activar / Desactivar -->
+                    {% if unidad.estado == 1 %}
+                    <button class="btn btn-sm btn-outline-danger shadow-sm btn-estado"
+                      style="border-radius:8px; width:36px; height:36px;" data-id="{{ unidad.idunidad }}"
+                      data-url="{% url 'unidadesDesactivo' id=unidad.idunidad %}" data-action="desactivar"
+                      title="Desactivar">
+                      <i class="fa-solid fa-toggle-on" style="font-size:1rem;"></i>
+                    </button>
+                    {% else %}
+                    <button class="btn btn-sm btn-outline-success shadow-sm btn-estado"
+                      style="border-radius:8px; width:36px; height:36px;" data-id="{{ unidad.idunidad }}"
+                      data-url="{% url 'unidadesActivo' id=unidad.idunidad %}" data-action="activar" title="Activar">
+                      <i class="fa-solid fa-toggle-off" style="font-size:1rem;"></i>
+                    </button>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </section>
 
-</main><!-- End #main -->
+  <!-- ===== MODALES DE EDICIÓN ===== -->
+  {% for unidad in unidades %}
+  <div class="modal fade" id="modalEditar{{ unidad.idunidad }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg border-0">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-pen-to-square me-2"></i>Editar Unidad
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form class="formEditarUnidad" data-id="{{ unidad.idunidad }}">
+            <div class="row g-3">
+              <div class="col-md-5">
+                <label class="form-label fw-semibold">Código SUNAT <span class="text-danger">*</span></label>
+                <input type="text" name="codigo_sunat2" value="{{ unidad.codigo_sunat }}"
+                  class="form-control rounded-pill" placeholder="Ej: NIU, KGM, MTQ...">
+              </div>
+              <div class="col-md-7">
+                <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                <input type="text" name="abrunidad2" value="{{ unidad.abrunidad }}" class="form-control rounded-pill"
+                  placeholder="Ej: KILOGRAMOS, UNIDAD...">
+              </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+              <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                data-bs-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-primary rounded-pill px-4 btn-save-edit-unidad"
+                data-id="{{ unidad.idunidad }}">
+                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 
-<!-- DataTables + Bootstrap 5 -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+  <!-- ===== MODAL AGREGAR ===== -->
+  <div class="modal fade" id="modalAgregar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg border-0">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-circle-plus me-2"></i>Registrar Nueva Unidad
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="formNuevaUnidad">
+            <div class="row g-3">
+              <div class="col-md-5">
+                <label class="form-label fw-semibold">Código SUNAT <span class="text-danger">*</span></label>
+                <input type="text" name="codigo_sunat" id="inputCodigo" class="form-control rounded-pill"
+                  placeholder="Ej: NIU, KGM, MTQ...">
+              </div>
+              <div class="col-md-7">
+                <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                <input type="text" name="abrunidad" id="inputNombre" class="form-control rounded-pill"
+                  placeholder="Ej: KILOGRAMOS, UNIDAD...">
+              </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+              <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                data-bs-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarUnidad">
+                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Unidad
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 
+</main>
+
+<style>
+  .datatable thead th {
+    background-color: #212529 !important;
+    color: #fff !important;
+    font-weight: 600;
+    vertical-align: middle;
+    border: none;
+    padding: 12px 8px !important;
+    text-align: center !important;
+  }
+  
+  .datatable thead th:nth-child(2),
+  .datatable thead th:nth-child(3) {
+    text-align: left !important;
+  }
+
+  /* Quitar espacio de iconos de ordenamiento en columnas no ordenables */
+  .datatable thead th[data-sortable="false"] {
+    padding-right: 8px !important;
+  }
+  .datatable thead th[data-sortable="false"]::after,
+  .datatable thead th[data-sortable="false"]::before {
+    display: none !important;
+  }
+
+  .datatable tbody td {
+    vertical-align: middle;
+    padding: 10px 8px;
+    font-size: 0.875rem;
+  }
+
+  /* Forzar centrado en columnas específicas */
+  .datatable thead th:first-child,
+  .datatable tbody td:first-child,
+  .datatable thead th:nth-child(4),
+  .datatable tbody td:nth-child(4),
+  .datatable thead th:last-child,
+  .datatable tbody td:last-child {
+    text-align: center !important;
+  }
+
+  .datatable thead th:nth-child(2),
+  .datatable tbody td:nth-child(2),
+  .datatable thead th:nth-child(3),
+  .datatable tbody td:nth-child(3) {
+    text-align: left !important;
+  }
+
+  .datatable tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  .badge {
+    font-weight: 500;
+    font-size: 0.78rem;
+  }
+
+  .modal-content {
+    overflow: hidden;
+  }
+
+  .form-control {
+    padding: 0.6rem 1.2rem;
+  }
+
+  .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, .15);
+  }
+
+  .btn-outline-primary:hover,
+  .btn-outline-danger:hover,
+  .btn-outline-success:hover {
+    transform: scale(1.1);
+    transition: transform .15s ease;
+  }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
-  $(document).ready(function () {
-    $('.datatable').DataTable({
-      language: {
-        url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-      },
-      pageLength: 5,
-      lengthMenu: [5, 10, 25, 50],
-      responsive: true
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'unidadesAgregar' %}";
+  var URL_EDITAR = "{% url 'unidadesEditar' %}";
+  var URL_LISTA = "{% url 'unidades' %}";
+
+  $(function () {
+
+    // ====== AGREGAR ======
+    $('#btnGuardarUnidad').on('click', function () {
+      var codigo = $('#inputCodigo').val().trim();
+      var nombre = $('#inputNombre').val().trim();
+
+      if (!codigo || !nombre) {
+        Swal.fire({ title: 'Campos requeridos', text: 'Por favor complete el Código y el Nombre.', icon: 'warning' });
+        return;
+      }
+
+      Swal.fire({
+        title: '¿Guardar unidad?',
+        text: 'Se registrará la nueva unidad.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, guardar',
+        cancelButtonText: 'Cancelar'
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          $.post(URL_AGREGAR, $('#formNuevaUnidad').serialize() + '&csrfmiddlewaretoken=' + CSRF_TOKEN)
+            .done(function (res) {
+              if (res.ok) {
+                Swal.fire({ title: '¡Guardado!', text: 'La unidad fue registrada correctamente.', icon: 'success' })
+                  .then(function () { window.location.href = URL_LISTA; });
+              } else {
+                Swal.fire({ title: 'Error', text: res.error, icon: 'error' });
+              }
+            })
+            .fail(function (xhr) {
+              var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error en la petición.';
+              Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+            });
+        }
+      });
     });
+
+    $('#modalAgregar').on('hidden.bs.modal', function () {
+      $('#formNuevaUnidad')[0].reset();
+    });
+
+    // ====== EDITAR ======
+    $(document).on('click', '.btn-save-edit-unidad', function () {
+      var id = $(this).data('id');
+      var form = $(this).closest('form');
+      var codigo = form.find('[name="codigo_sunat2"]').val().trim();
+      var nombre = form.find('[name="abrunidad2"]').val().trim();
+
+      if (!codigo || !nombre) {
+        Swal.fire({ title: 'Campos requeridos', text: 'Complete el Código y el Nombre.', icon: 'warning' });
+        return;
+      }
+
+      Swal.fire({
+        title: '¿Actualizar unidad?',
+        text: 'Se guardarán los cambios realizados.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, actualizar',
+        cancelButtonText: 'Cancelar'
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          var data = [
+            { name: 'idunidad', value: id },
+            { name: 'codigo_sunat2', value: codigo },
+            { name: 'abrunidad2', value: nombre },
+            { name: 'csrfmiddlewaretoken', value: CSRF_TOKEN }
+          ];
+          $.post(URL_EDITAR, $.param(data))
+            .done(function (res) {
+              if (res.ok) {
+                Swal.fire({ title: '¡Actualizado!', text: 'Los cambios se guardaron correctamente.', icon: 'success' })
+                  .then(function () { window.location.href = URL_LISTA; });
+              } else {
+                Swal.fire({ title: 'Error', text: res.error, icon: 'error' });
+              }
+            })
+            .fail(function (xhr) {
+              var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error al actualizar.';
+              Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+            });
+        }
+      });
+    });
+
+    // ====== ACTIVAR / DESACTIVAR ======
+    $(document).on('click', '.btn-estado', function () {
+      // Usar .attr() para leer Y escribir — evita el bug del caché interno de jQuery
+      var id = $(this).attr('data-id');
+      var url = $(this).attr('data-url');
+      var action = $(this).attr('data-action');
+      var btn = $(this);
+      var fila = btn.closest('tr');   // más fiable que #fila-id con DataTables
+
+      var titulo = action === 'desactivar' ? '¿Desactivar esta unidad?' : '¿Activar esta unidad?';
+      var icon = action === 'desactivar' ? 'warning' : 'question';
+      var color = action === 'desactivar' ? '#d33' : '#198754';
+
+      Swal.fire({
+        title: titulo,
+        icon: icon,
+        showCancelButton: true,
+        confirmButtonColor: color,
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí',
+        cancelButtonText: 'Cancelar'
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          $.ajax({
+            type: 'GET',
+            url: url,
+            data: { csrfmiddlewaretoken: CSRF_TOKEN },
+            success: function (res) {
+              if (res.status === 'success') {
+                if (action === 'desactivar') {
+                  fila.find('.badge-estado').removeClass('bg-success').addClass('bg-danger').text('Desactivada');
+                  btn.removeClass('btn-outline-danger').addClass('btn-outline-success')
+                    .attr('data-action', 'activar')
+                    .attr('data-url', url.replace('desactivo', 'activo'))
+                    .attr('title', 'Activar')
+                    .html('<i class="fa-solid fa-toggle-off" style="font-size:1rem;"></i>');
+                } else {
+                  fila.find('.badge-estado').removeClass('bg-danger').addClass('bg-success').text('Activa');
+                  btn.removeClass('btn-outline-success').addClass('btn-outline-danger')
+                    .attr('data-action', 'desactivar')
+                    .attr('data-url', url.replace('activo', 'desactivo'))
+                    .attr('title', 'Desactivar')
+                    .html('<i class="fa-solid fa-toggle-on" style="font-size:1rem;"></i>');
+                }
+                Swal.fire({ title: '¡Listo!', text: 'El estado fue actualizado.', icon: 'success', timer: 1500, showConfirmButton: false });
+              } else {
+                Swal.fire({ title: 'Error', text: 'No se pudo cambiar el estado.', icon: 'error' });
+              }
+            },
+            error: function () {
+              Swal.fire({ title: 'Error', text: 'Ocurrió un problema.', icon: 'error' });
+            }
+          });
+        }
+      });
+    });
+
   });
-
-// Activar unidad
-  function activar(id, enlace) {
-    let url = $(enlace).attr("href");
-    Swal.fire({
-      title: '¿Desea activar esta unidad?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#198754',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí',
-      cancelButtonText: 'Cancelar'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        $.ajax({
-          type: "GET",
-          url: url,
-          data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
-          success: function(response) {
-            if(response.status === 'success') {
-              let fila = $(enlace).closest('tr');
-              fila.find('td:nth-child(4)').html('<span class="badge bg-success">Unidad activa</span>');
-              fila.find('td:nth-child(5)').html(`
-                <a href="{% url 'unidadesDesactivo' id=0 %}`.replace("0", id) + `" 
-                   class="btn btn-sm btn-danger"
-                   onclick="return desactivar('${id}', this)">
-                  Desactivar
-                </a>
-              `);
-            } else {
-              Swal.fire('Error', response.message, 'error');
-            }
-          },
-          error: function() {
-            Swal.fire('Error', 'No se pudo procesar la solicitud.', 'error');
-          }
-        });
-      }
-    });
-    return false;
-  }
-
-  // Desactivar unidad
-  function desactivar(id, enlace) {
-    let url = $(enlace).attr("href");
-    Swal.fire({
-      title: '¿Desea desactivar esta unidad?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Sí',
-      cancelButtonText: 'Cancelar'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        $.ajax({
-          type: "GET",
-          url: url,
-          data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
-          success: function(response) {
-            if(response.status === 'success') {
-              let fila = $(enlace).closest('tr');
-              fila.find('td:nth-child(4)').html('<span class="badge bg-danger">Unidad desactivada</span>');
-              fila.find('td:nth-child(5)').html(`
-                <a href="{% url 'unidadesActivo' id=0 %}`.replace("0", id) + `" 
-                   class="btn btn-sm btn-primary"
-                   onclick="return activar('${id}', this)">
-                  Activar
-                </a>
-              `);
-            } else {
-              Swal.fire('Error', response.message, 'error');
-            }
-          },
-          error: function() {
-            Swal.fire('Error', 'No se pudo procesar la solicitud.', 'error');
-          }
-        });
-      }
-    });
-    return false;
-  }
 </script>
 {% endblock %}

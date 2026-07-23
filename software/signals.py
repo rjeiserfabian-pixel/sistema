@@ -23,8 +23,15 @@ def crear_stock_compra(sender, instance, created, **kwargs):
     en el almacén de la sucursal principal
     """
     if created:
+        # IGNORAR SI ES UN INGRESO DIRECTO DE STOCK (STOCKDIR) PARA EVITAR DUPLICADOS
+        if instance.idcompra and instance.idcompra.numcorrelativo == 'STOCKDIR':
+            print("[WARN] SIGNAL IGNORADO: Es un ingreso directo de stock (STOCKDIR), stock manejado manualmente.")
+            return
+
         # Obtener almacén de la sucursal principal (o de la compra si está definido)
-        if instance.idcompra.id_sucursal:
+        if hasattr(instance.idcompra, 'id_almacen') and instance.idcompra.id_almacen:
+            almacen = instance.idcompra.id_almacen
+        elif instance.idcompra.id_sucursal:
             almacen = instance.idcompra.id_sucursal.almacenes.filter(estado=1).first()
         else:
             # Si no hay sucursal en la compra, usar la primera sucursal principal
@@ -33,11 +40,11 @@ def crear_stock_compra(sender, instance, created, **kwargs):
             if sucursal_principal:
                 almacen = sucursal_principal.almacenes.filter(estado=1).first()
             else:
-                print("❌ ERROR: No se encontró sucursal principal")
+                print("[ERROR] ERROR: No se encontró sucursal principal")
                 return
         
         if not almacen:
-            print("❌ ERROR: No se encontró almacén para la sucursal")
+            print("[ERROR] ERROR: No se encontró almacén para la sucursal")
             return
         
         # Determinar si es vehículo o repuesto
@@ -51,7 +58,7 @@ def crear_stock_compra(sender, instance, created, **kwargs):
             if not created:
                 stock.agregar_stock(1)
             
-            print(f"✅ Stock creado/actualizado: Vehículo {instance.id_vehiculo.id_vehiculo} en {almacen.nombre_almacen}")
+            print(f"[OK] Stock creado/actualizado: Vehículo {instance.id_vehiculo.id_vehiculo} en {almacen.nombre_almacen}")
         
         elif instance.id_repuesto_comprado:
             # REPUESTO: Usar cantidad del detalle
@@ -63,7 +70,7 @@ def crear_stock_compra(sender, instance, created, **kwargs):
             if not created:
                 stock.agregar_stock(instance.cantidad)
             
-            print(f"✅ Stock creado/actualizado: Repuesto {instance.id_repuesto_comprado.id_repuesto_comprado} - Cantidad: {instance.cantidad}")
+            print(f"[OK] Stock creado/actualizado: Repuesto {instance.id_repuesto_comprado.id_repuesto_comprado} - Cantidad: {instance.cantidad}")
 
 
 # ============================================
@@ -103,11 +110,11 @@ def actualizar_stock_transferencia(sender, instance, created, **kwargs):
                     )
                     stock_destino.agregar_stock(detalle.cantidad)
                     
-                    print(f"✅ Transferencia confirmada: Vehículo {detalle.id_vehiculo.id_vehiculo}")
+                    print(f"[OK] Transferencia confirmada: Vehículo {detalle.id_vehiculo.id_vehiculo}")
                     print(f"   Origen: {instance.id_almacen_origen.nombre_almacen} ({stock_origen.cantidad_disponible})")
                     print(f"   Destino: {instance.id_almacen_destino.nombre_almacen} ({stock_destino.cantidad_disponible})")
                 else:
-                    print(f"❌ ERROR: Stock insuficiente en origen para vehículo {detalle.id_vehiculo.id_vehiculo}")
+                    print(f"[ERROR] ERROR: Stock insuficiente en origen para vehículo {detalle.id_vehiculo.id_vehiculo}")
             
             elif detalle.id_repuesto_comprado:
                 # REPUESTO
@@ -125,9 +132,9 @@ def actualizar_stock_transferencia(sender, instance, created, **kwargs):
                     )
                     stock_destino.agregar_stock(detalle.cantidad)
                     
-                    print(f"✅ Transferencia confirmada: Repuesto {detalle.id_repuesto_comprado.id_repuesto_comprado} - Cantidad: {detalle.cantidad}")
+                    print(f"[OK] Transferencia confirmada: Repuesto {detalle.id_repuesto_comprado.id_repuesto_comprado} - Cantidad: {detalle.cantidad}")
                 else:
-                    print(f"❌ ERROR: Stock insuficiente en origen para repuesto {detalle.id_repuesto_comprado.id_repuesto_comprado}")
+                    print(f"[ERROR] ERROR: Stock insuficiente en origen para repuesto {detalle.id_repuesto_comprado.id_repuesto_comprado}")
 
 
 # ============================================
@@ -149,7 +156,7 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
     # PARTE 1: DESCONTAR STOCK
     # ========================================
     if not hasattr(venta, 'id_almacen') or not venta.id_almacen:
-        print(f"❌ SIGNAL: La venta #{venta.idventa} no tiene almacén asignado")
+        print(f"[ERROR] SIGNAL: La venta #{venta.idventa} no tiene almacén asignado")
         return
     
     almacen = venta.id_almacen
@@ -163,10 +170,10 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
         ).first()
         
         if stock and stock.descontar_stock(instance.cantidad):
-            print(f"✅ SIGNAL: Stock descontado - Vehículo {instance.id_vehiculo.id_vehiculo}")
+            print(f"[OK] SIGNAL: Stock descontado - Vehículo {instance.id_vehiculo.id_vehiculo}")
             print(f"   Almacén: {almacen.nombre_almacen}, Stock restante: {stock.cantidad_disponible}")
         else:
-            print(f"⚠️ SIGNAL: No se pudo descontar stock para vehículo {instance.id_vehiculo.id_vehiculo}")
+            print(f"[WARN] SIGNAL: No se pudo descontar stock para vehículo {instance.id_vehiculo.id_vehiculo}")
     
     elif instance.id_repuesto_comprado:
         # REPUESTO
@@ -177,10 +184,10 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
         ).first()
         
         if stock and stock.descontar_stock(instance.cantidad):
-            print(f"✅ SIGNAL: Stock descontado - Repuesto {instance.id_repuesto_comprado.id_repuesto_comprado}")
+            print(f"[OK] SIGNAL: Stock descontado - Repuesto {instance.id_repuesto_comprado.id_repuesto_comprado}")
             print(f"   Cantidad: {instance.cantidad}, Stock restante: {stock.cantidad_disponible}")
         else:
-            print(f"⚠️ SIGNAL: No se pudo descontar stock para repuesto")
+            print(f"[WARN] SIGNAL: No se pudo descontar stock para repuesto")
     
     # ========================================
     # PARTE 2: CREAR MOVIMIENTO DE CAJA (solo una vez)
@@ -200,15 +207,15 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
         
         # Verificar que tiene caja asignada
         if not hasattr(venta, 'id_caja') or not venta.id_caja:
-            print(f"❌ SIGNAL: La venta #{venta.idventa} no tiene caja asignada")
+            print(f"[ERROR] SIGNAL: La venta #{venta.idventa} no tiene caja asignada")
             return
         
         # Verificar que el total no sea 0
         if venta.total_venta <= 0:
-            print(f"⚠️ SIGNAL: La venta #{venta.idventa} tiene total S/ 0")
+            print(f"[WARN] SIGNAL: La venta #{venta.idventa} tiene total S/ 0")
             return
         
-        # ✅ CREAR MOVIMIENTO DE CAJA
+        # [OK] CREAR MOVIMIENTO DE CAJA
         movimiento = MovimientoCaja.objects.create(
             id_caja=venta.id_caja,
             idusuario=venta.idusuario,
@@ -219,7 +226,7 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
             estado=1
         )
         
-        print(f"✅ SIGNAL: Movimiento de caja creado - Ingreso S/ {venta.total_venta} (Venta #{venta.idventa})")
+        print(f"[OK] SIGNAL: Movimiento de caja creado - Ingreso S/ {venta.total_venta} (Venta #{venta.idventa})")
     
     # Ejecutar después de que termine la transacción
     transaction.on_commit(crear_movimiento_caja)

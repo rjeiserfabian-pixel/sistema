@@ -27,12 +27,15 @@ def requiere_caja_aperturada(view_func):
             
             # Si es una petición AJAX (POST para guardar venta/compra)
             if request.method == 'POST':
-                return JsonResponse({
-                    'ok': False,
-                    'error': 'Debe aperturar una caja antes de realizar esta operación',
-                    'necesita_aperturar': True,
-                    'codigo': 'CAJA_REQUERIDA'
-                }, status=400)
+                if request.POST.get('afecta_caja') == '0':
+                    pass
+                else:
+                    return JsonResponse({
+                        'ok': False,
+                        'error': 'Debe aperturar una caja antes de realizar esta operación',
+                        'necesita_aperturar': True,
+                        'codigo': 'CAJA_REQUERIDA'
+                    }, status=400)
             
             # Si es una petición GET (mostrar formulario)
             # Permitir ver el formulario pero mostrará alerta al intentar guardar

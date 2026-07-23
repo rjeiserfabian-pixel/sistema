@@ -1,0 +1,188 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<main id="main" class="main">
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <h1 class="fw-bold text-primary">
+      <i class="fa-solid fa-location-dot me-2"></i>Situación de Vehículo
+    </h1>
+    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal"
+      data-bs-target="#myModalAgregar">
+      <i class="fa-solid fa-circle-plus me-2"></i>Agregar Situación
+    </button>
+  </div>
+
+  <nav aria-label="breadcrumb" class="mt-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+      <li class="breadcrumb-item active">Situación de Vehículo</li>
+    </ol>
+  </nav>
+
+  <!-- Contenido -->
+  <section class="section dashboard mt-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Listado de Situaciones de Vehículo</h5>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle datatable" style="width: 100%;">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                <th scope="col" style="width: 70%;">Nombre de Situación</th>
+                <th scope="col" class="text-center" style="width: 20%;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for situacion in situaciones %}
+              <tr>
+                <td class="fw-semibold text-center">{{ forloop.counter }}</td>
+                <td>
+                  <span class="badge {% if situacion.nombre_situacion == 'DISPONIBLE' %}bg-success{% elif situacion.nombre_situacion == 'RETENIDO' %}bg-danger{% else %}bg-warning{% endif %} me-2">
+                    <i class="fa-solid fa-circle-info"></i>
+                  </span>
+                  {{ situacion.nombre_situacion }}
+                </td>
+                <td class="text-center">
+                  <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
+                    data-bs-target="#myModalEditar{{ situacion.id_situacion }}" title="Editar">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </a>
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar"
+                    data-id="{{ situacion.id_situacion }}" title="Eliminar">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modales de Edición -->
+  {% for situacion in situaciones %}
+  <div class="modal fade" id="myModalEditar{{ situacion.id_situacion }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Situación</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input type="text" class="form-control rounded-pill input-nombre-editar" maxlength="100"
+              value="{{ situacion.nombre_situacion }}"
+              data-id="{{ situacion.id_situacion }}"
+              placeholder="Ej: DISPONIBLE, RETENIDO...">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-primary rounded-pill px-4 btn-guardar-editar"
+              data-id="{{ situacion.id_situacion }}">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Modal Agregar -->
+  <div class="modal fade" id="myModalAgregar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-circle-plus me-2"></i>Agregar Situación</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input type="text" id="nombreSituacionAgregar" class="form-control rounded-pill" maxlength="100"
+              placeholder="Ej: EN REPARACION, REPARADO...">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnAgregar">
+              <i class="fa-solid fa-circle-plus me-1"></i>Agregar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'agregar_situacion' %}";
+  var URL_EDITAR = "{% url 'editar_situacion' %}";
+  var URL_LISTA = "{% url 'situacion_vehiculos' %}";
+
+  $(function () {
+    // Agregar
+    $('#btnAgregar').on('click', function () {
+      var nombre = $('#nombreSituacionAgregar').val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo requerido', text: 'Ingrese el nombre de la situación.', icon: 'warning' });
+        return;
+      }
+      $.post(URL_AGREGAR, { nombre_situacion: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Agregado!', text: 'Situación registrada correctamente.', icon: 'success' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo agregar.', icon: 'error' });
+          }
+        });
+    });
+
+    // Editar
+    $(document).on('click', '.btn-guardar-editar', function () {
+      var id = $(this).data('id');
+      var nombre = $('.input-nombre-editar[data-id="' + id + '"]').val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo requerido', text: 'Ingrese el nombre.', icon: 'warning' });
+        return;
+      }
+      $.post(URL_EDITAR, { id_situacion: id, nombre_situacion: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Actualizado!', text: 'Situación actualizada correctamente.', icon: 'success' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo actualizar.', icon: 'error' });
+          }
+        });
+    });
+
+    // Eliminar
+    $(document).on('click', '.btn-eliminar', function () {
+      var id = $(this).data('id');
+      Swal.fire({
+        title: '¿Eliminar esta situación?',
+        text: 'El registro quedará inactivo.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then(function (result) {
+        if (result.isConfirmed) {
+          window.location.href = '/situacion-vehiculos/eliminar/' + id + '/';
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

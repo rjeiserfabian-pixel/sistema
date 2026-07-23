@@ -7,9 +7,8 @@ class Tipocomprobante(models.Model):
     
     codigo = models.CharField(
         max_length=10,
-        unique=True,
         verbose_name="Código",
-        help_text="Código único del tipo de comprobante (ej: 01, 03, 07)",
+        help_text="Código del tipo de comprobante (ej: 01, 03, 07). Único entre registros activos.",
         validators=[
             RegexValidator(
                 regex=r'^[0-9A-Z\-]+$',

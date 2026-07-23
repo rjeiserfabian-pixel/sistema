@@ -1,331 +1,426 @@
 {% extends 'plantilla/base.html' %}
 {% block main %}
 <main id="main" class="main">
+
   <!-- Encabezado -->
   <div class="pagetitle d-flex justify-content-between align-items-center">
-    <h1 class="fw-bold text-primary">Color</h1>
-    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#myModaAgregar">
-      <i class="fa-solid fa-circle-plus me-2"></i>Agregar Color
-    </button>
+    <div>
+      <h1 class="fw-bold text-primary">
+        <i class="fas fa-palette me-2"></i>Colores
+      </h1>
+      <nav aria-label="breadcrumb" class="mt-1">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+          <li class="breadcrumb-item active">Colores</li>
+        </ol>
+      </nav>
+    </div>
   </div>
 
-  <nav aria-label="breadcrumb" class="mt-2">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-      <li class="breadcrumb-item active">Color</li>
-    </ol>
-  </nav>
-
-  <!-- Contenido -->
+  <!-- Pestañas de navegación -->
   <section class="section dashboard mt-4">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">Listado de colores</h5>
-        
-        <div class="table-responsive">
-          <table class="table table-hover align-middle datatable" style="width: 100%;">
-            <thead class="table-dark">
-              <tr>
-                <th scope="col" style="width: 10%;">#</th>
-                <th scope="col" style="width: 75%;">Color</th>
-                <th scope="col" class="text-center" style="width: 15%;">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for color_registro in colores_registros %}
-              <tr>
-                <td class="fw-semibold text-center">{{ forloop.counter }}</td>
-                <td>{{ color_registro.nombrecolor }}</td>
-                <td class="text-center">
-                  <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
-                    data-bs-target="#myModal2{{ color_registro.idcolor }}" title="Editar">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </a>
+    <ul class="nav nav-tabs nav-tabs-bordered" id="coloresTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="colores-tab" data-bs-toggle="tab"
+          data-bs-target="#tab-colores" type="button" role="tab"
+          aria-controls="tab-colores" aria-selected="true">
+          <i class="fa-solid fa-droplet me-1"></i> Colores
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="detalle-tab" data-bs-toggle="tab"
+          data-bs-target="#tab-detalle" type="button" role="tab"
+          aria-controls="tab-detalle" aria-selected="false">
+          <i class="fa-solid fa-brush me-1"></i> Detalle de Color
+        </button>
+      </li>
+    </ul>
 
-                  <a href="{% url 'coloresEliminar' id=color_registro.idcolor %}" class="btn btn-sm btn-outline-danger eliminar"
-                    onclick="return confirmarEliminar('{{ color_registro.idcolor }}', this)" title="Eliminar">
-                    <i class="fa-solid fa-trash"></i>
-                  </a>
-                </td>
-              </tr>
+    <div class="tab-content pt-4" id="coloresTabsContent">
 
-              <!-- Modal Editar -->
-              <div class="modal fade" id="myModal2{{ color_registro.idcolor }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content rounded-3 shadow-lg">
-                    <div class="modal-header bg-primary text-white">
-                      <h5 class="modal-title">Editar Color</h5>
-                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                      <form id="formEditarColor{{ color_registro.idcolor }}" action="{% url 'editarColores' %}" method="post">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Nombre del Color <span class="text-danger">*</span></label>
-                          <input type="text" name="nameColor" value="{{ color_registro.nombrecolor }}" class="form-control rounded-pill" required>
-                          <input type="hidden" name="idColor" value="{{ color_registro.idcolor }}">
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar" data-id="{{ color_registro.idcolor }}">Guardar</button>
-                          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {% endfor %}
-            </tbody>
-          </table>
+      <!-- ===================== TAB 1: COLORES ===================== -->
+      <div class="tab-pane fade show active" id="tab-colores" role="tabpanel" aria-labelledby="colores-tab">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 fw-bold text-primary">
+              <i class="fa-solid fa-list me-1"></i> Listado de colores
+            </h6>
+            <button type="button" class="btn btn-success rounded-pill btn-sm shadow-sm"
+              data-bs-toggle="modal" data-bs-target="#myModaAgregar">
+              <i class="fa-solid fa-circle-plus me-2"></i>Agregar Color
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle datatable" style="width: 100%;">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" style="width: 10%;">#</th>
+                    <th scope="col" style="width: 70%;">Color</th>
+                    <th scope="col" class="text-center" style="width: 20%;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for color_registro in colores_registros %}
+                  <tr>
+                    <td class="fw-semibold text-center">{{ forloop.counter }}</td>
+                    <td>
+                      <span class="badge bg-secondary me-2"><i class="fa-solid fa-droplet"></i></span>
+                      {{ color_registro.nombrecolor }}
+                    </td>
+                    <td class="text-center">
+                      <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
+                        data-bs-target="#myModalEditar{{ color_registro.idcolor }}" title="Editar">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                      </a>
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar"
+                        data-id="{{ color_registro.idcolor }}" title="Eliminar">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
+      <!-- ===================== FIN TAB 1 ===================== -->
+
+      <!-- ===================== TAB 2: DETALLE DE COLOR ===================== -->
+      <div class="tab-pane fade" id="tab-detalle" role="tabpanel" aria-labelledby="detalle-tab">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 fw-bold text-primary">
+              <i class="fa-solid fa-list me-1"></i> Listado de Detalles de Color
+            </h6>
+            <button class="btn btn-success rounded-pill btn-sm shadow-sm" onclick="abrirModalDetalle()">
+              <i class="fa-solid fa-circle-plus me-2"></i>Agregar Detalle
+            </button>
+          </div>
+          <div class="card-body mt-2">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle w-100" id="tablaDetalleColor">
+                <thead class="table-dark">
+                  <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ===================== FIN TAB 2 ===================== -->
+
     </div>
   </section>
 
-  <!-- Modal Agregar -->
+  <!-- =========================================================== -->
+  <!-- MODALES COLORES (existentes - sin cambios)                   -->
+  <!-- =========================================================== -->
+
+  <!-- Modales de Edición de Color -->
+  {% for color_registro in colores_registros %}
+  <div class="modal fade" id="myModalEditar{{ color_registro.idcolor }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Color</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del Color <span class="text-danger">*</span></label>
+            <input type="text" id="nameColor{{ color_registro.idcolor }}"
+              value="{{ color_registro.nombrecolor }}" class="form-control rounded-pill" required>
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar-confirm"
+              data-id="{{ color_registro.idcolor }}">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Modal Agregar Color -->
   <div class="modal fade" id="myModaAgregar" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-3 shadow-lg">
         <div class="modal-header bg-success text-white">
-          <h5 class="modal-title">Agregar Color</h5>
+          <h5 class="modal-title"><i class="fa-solid fa-circle-plus me-2"></i>Agregar Color</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form id="formAgregarColor" action="{% url 'agregarColores' %}" method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Nombre del Color <span class="text-danger">*</span></label>
-              <input type="text" name="nameColorAgregar" class="form-control rounded-pill" required>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-success rounded-pill px-4" id="agregar">Agregar</button>
-              <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-          </form>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del Color <span class="text-danger">*</span></label>
+            <input type="text" id="nameColorAgregar" class="form-control rounded-pill"
+              placeholder="Ej: Rojo, Azul Metálico..." required>
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarColor">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- =========================================================== -->
+  <!-- MODAL DETALLE DE COLOR (nuevo)                               -->
+  <!-- =========================================================== -->
+  <div class="modal fade" id="modalDetalleColor" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold" id="tituloModalDetalle">
+            <i class="fa-solid fa-brush me-2"></i>Agregar Detalle
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formDetalleColor">
+          {% csrf_token %}
+          <div class="modal-body p-4">
+            <input type="hidden" id="iddetalleColorForm" name="iddetalle_color">
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+              <input type="text" class="form-control rounded-pill" id="nombreDetalle"
+                name="nombre" required placeholder="Ej: Mate, Metálico, Perlado...">
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label fw-semibold">Estado</label>
+              <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="estadoDetalle"
+                  name="estado" value="true" checked>
+                <label class="form-check-label" for="estadoDetalle">Activo</label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary rounded-pill">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
 </main>
+{% endblock %}
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<!-- DataTables + Bootstrap 5 -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
-<style>
-  /* Mejoras visuales para la tabla */
-  .datatable {
-    font-size: 0.9rem;
-  }
-  
-  .datatable thead th {
-    background-color: #212529 !important;
-    color: white !important;
-    font-weight: 600;
-    text-align: center;
-    vertical-align: middle;
-    border: none;
-    padding: 12px 8px;
-  }
-  
-  .datatable tbody td {
-    vertical-align: middle;
-    padding: 10px 8px;
-    font-size: 0.875rem;
-  }
-  
-  .datatable tbody tr:hover {
-    background-color: #f8f9fa;
-  }
-  
-  /* Botones de acciones */
-  .btn-sm {
-    padding: 4px 8px;
-    font-size: 0.875rem;
-  }
-  
-  /* Espaciado del DataTable */
-  .dataTables_wrapper .dataTables_length,
-  .dataTables_wrapper .dataTables_filter {
-    margin-bottom: 15px;
-  }
-  
-  .dataTables_wrapper .dataTables_info,
-  .dataTables_wrapper .dataTables_paginate {
-    margin-top: 15px;
-  }
-  
-  /* Select de paginación */
-  .dataTables_length select {
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-  }
-  
-  /* Input de búsqueda */
-  .dataTables_filter input {
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-    margin-left: 10px;
-  }
-  
-  /* Responsive */
-  @media (max-width: 768px) {
-    .datatable {
-      font-size: 0.8rem;
-    }
-    
-    .datatable thead th,
-    .datatable tbody td {
-      padding: 8px 4px;
-    }
-  }
-</style>
-
+{% block extra_scripts %}
 <script>
-$(document).ready(function(){
-  // Para agregar
-  $("#agregar").click(function(){
-    var formData = new FormData($('#formAgregarColor')[0]);
-    $.ajax({
-      type: "POST",
-      url: "{% url 'agregarColores' %}",
-      data: formData,
-      processData: false,
-      contentType: false,
-      success: function (response) {
-        Swal.fire({
-          title: 'Color guardado exitosamente',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-          confirmButtonText: '¡Ok!',
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "{% url 'colores' %}";
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'agregarColores' %}";
+  var URL_EDITAR  = "{% url 'editarColores' %}";
+  var URL_LISTA   = "{% url 'colores' %}";
+
+  var URL_DETALLE_LISTAR   = "{% url 'listarDetalleColor' %}";
+  var URL_DETALLE_GUARDAR  = "{% url 'guardarDetalleColor' %}";
+  var URL_DETALLE_ELIMINAR = "{% url 'eliminarDetalleColor' %}";
+
+  $(function () {
+
+    // ===================== COLORES (lógica existente sin cambios) =====================
+
+    // AGREGAR
+    $("#btnGuardarColor").click(function () {
+      var nombre = $("#nameColorAgregar").val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo Requerido', text: 'Por favor, ingrese el nombre del color.', icon: 'warning', confirmButtonText: 'Entendido' });
+        return;
+      }
+      $.post(URL_AGREGAR, { nameColorAgregar: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (response) {
+          if (response.ok) {
+            Swal.fire({ title: '¡Guardado!', text: 'El color ha sido registrado exitosamente.', icon: 'success', confirmButtonText: 'Excelente' })
+              .then(() => { window.location.href = URL_LISTA; });
           }
+        })
+        .fail(function (xhr) {
+          var errorMsg = xhr.responseJSON ? xhr.responseJSON.error : "Error interno del servidor";
+          Swal.fire({ title: 'Error', text: errorMsg, icon: 'error', confirmButtonText: 'Cerrar' });
         });
-      },
-      error: function(response) {
-        Swal.fire({
-          title: 'Error al guardar el color',
-          text: response.responseText,
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      }
     });
-    return false;
-  });
 
-  // Para editar
-  $(".btn-editar").click(function(){
-    var id = $(this).data('id');
-    var form = $('#formEditarColor' + id);
-    var formData = new FormData(form[0]);
-    $.ajax({
-      type: "POST",
-      url: form.attr('action'),
-      data: formData,
-      processData: false,
-      contentType: false,
-      success: function (response) {
-        Swal.fire({
-          title: 'Color editado exitosamente',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-          confirmButtonText: '¡Ok!',
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "{% url 'colores' %}";
+    // Resetear modal al cerrar
+    $('#myModaAgregar').on('hidden.bs.modal', function () { $("#nameColorAgregar").val(""); });
+
+    // EDITAR
+    $(document).on('click', '.btn-editar-confirm', function () {
+      var id = $(this).data('id');
+      var nombre = $("#nameColor" + id).val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo Requerido', text: 'El nombre del color no puede estar vacío.', icon: 'warning', confirmButtonText: 'Entendido' });
+        return;
+      }
+      $.post(URL_EDITAR, { idColor: id, nameColor: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (response) {
+          if (response.ok) {
+            Swal.fire({ title: '¡Actualizado!', text: 'Información actualizada correctamente.', icon: 'success', confirmButtonText: 'Ok' })
+              .then(() => { window.location.href = URL_LISTA; });
           }
+        })
+        .fail(function (xhr) {
+          var errorMsg = xhr.responseJSON ? xhr.responseJSON.error : "Error al actualizar";
+          Swal.fire({ title: 'Error', text: errorMsg, icon: 'error', confirmButtonText: 'Cerrar' });
         });
-      },
-      error: function(response) {
-        Swal.fire({
-          title: 'Error al guardar el color',
-          text: response.responseText,
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      }
     });
-    return false;
-  });
 
-  // DataTable inicialización
-  if ($.fn.DataTable.isDataTable('.datatable')) {
-    $('.datatable').DataTable().destroy();
-  }
-  
-  $('.datatable').DataTable({
-    "language": {
-      "decimal": "",
-      "emptyTable": "No hay información",
-      "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-      "infoEmpty": "Mostrando 0 to 0 of 0 registros",
-      "infoFiltered": "(Filtrado de _MAX_ total registros)",
-      "infoPostFix": "",
-      "thousands": ",",
-      "lengthMenu": "Mostrar _MENU_ registros",
-      "loadingRecords": "Cargando...",
-      "processing": "Procesando...",
-      "search": "Buscar:",
-      "zeroRecords": "Sin resultados encontrados",
-      "paginate": {
-        "first": "Primero",
-        "last": "Último",
-        "next": "Siguiente",
-        "previous": "Anterior"
-      }
-    },
-    "pageLength": 10,
-    "lengthMenu": [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]],
-    "responsive": true,
-    "order": [[1, 'asc']],
-    "columnDefs": [
-      { 
-        "targets": 2,
-        "orderable": false,
-        "searchable": false
-      },
-      {
-        "targets": 0,
-        "width": "10%"
-      }
-    ],
-    "autoWidth": false
-  });
-});
-
-// Confirmación eliminar
-function confirmarEliminar(id, enlace) {
-  let urlEliminar = $(enlace).attr("href");
-  Swal.fire({
-    title: '¿Seguro que quieres eliminar este color?',
-    text: 'Esta acción cambiará el estado del color',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      $.ajax({
-        type: "GET",
-        url: urlEliminar,
-        data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
-        success: function (response) {
-          window.location.href = "{% url 'colores' %}";
-        },
+    // ELIMINAR
+    $(document).on('click', '.btn-eliminar', function () {
+      var id = $(this).data('id');
+      Swal.fire({
+        title: '¿Eliminar Color?',
+        text: "Esta acción cambiará el estado del registro a inactivo.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/colores/eliminarColor/" + id;
+        }
       });
-    }
-  });
-  return false;
-}
+    });
+
+    // ===================== DETALLE DE COLOR =====================
+
+    // Cargar tabla al abrir la pestaña
+    $('#detalle-tab').on('shown.bs.tab', function () {
+      cargarDetalles();
+    });
+
+    // Submit formulario (agregar / editar)
+    $('#formDetalleColor').submit(function (e) {
+      e.preventDefault();
+      var estado = $('#estadoDetalle').is(':checked') ? 'true' : 'false';
+      $.ajax({
+        url: URL_DETALLE_GUARDAR,
+        type: 'POST',
+        data: {
+          iddetalle_color: $('#iddetalleColorForm').val(),
+          nombre: $('#nombreDetalle').val().trim(),
+          estado: estado,
+          csrfmiddlewaretoken: CSRF_TOKEN
+        },
+        success: function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Éxito!', text: res.mensaje, icon: 'success', confirmButtonText: 'Ok' })
+              .then(() => {
+                $('#modalDetalleColor').modal('hide');
+                cargarDetalles();
+              });
+          } else {
+            Swal.fire({ title: 'Error', text: res.error, icon: 'error', confirmButtonText: 'Cerrar' });
+          }
+        },
+        error: function (xhr) {
+          var errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'Error interno del servidor';
+          Swal.fire({ title: 'Error', text: errorMsg, icon: 'error', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
+
+  }); // fin document.ready
+
+  // ---- Funciones globales Detalle de Color ----
+
+  function cargarDetalles() {
+    $.get(URL_DETALLE_LISTAR, function (res) {
+      var tbody = $('#tablaDetalleColor tbody');
+      tbody.empty();
+      if (!res.data || res.data.length === 0) {
+        tbody.append('<tr><td colspan="4" class="text-center text-muted">Sin registros</td></tr>');
+        return;
+      }
+      $.each(res.data, function (i, d) {
+        var badge = d.estado
+          ? '<span class="badge bg-success">Activo</span>'
+          : '<span class="badge bg-danger">Inactivo</span>';
+        tbody.append(`
+          <tr>
+            <td class="fw-semibold text-center">${i + 1}</td>
+            <td>
+              <span class="badge bg-secondary me-2"><i class="fa-solid fa-brush"></i></span>
+              ${d.nombre}
+            </td>
+            <td class="text-center">${badge}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-primary me-1" onclick='editarDetalle(${JSON.stringify(d)})' title="Editar">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="eliminarDetalle(${d.iddetalle_color})" title="Eliminar">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `);
+      });
+    });
+  }
+
+  function abrirModalDetalle() {
+    $('#formDetalleColor')[0].reset();
+    $('#iddetalleColorForm').val('');
+    $('#estadoDetalle').prop('checked', true);
+    $('#tituloModalDetalle').html('<i class="fa-solid fa-brush me-2"></i>Agregar Detalle');
+    $('#modalDetalleColor').modal('show');
+  }
+
+  function editarDetalle(d) {
+    $('#iddetalleColorForm').val(d.iddetalle_color);
+    $('#nombreDetalle').val(d.nombre);
+    $('#estadoDetalle').prop('checked', d.estado == 1);
+    $('#tituloModalDetalle').html('<i class="fa-solid fa-pen-to-square me-2"></i>Editar Detalle');
+    $('#modalDetalleColor').modal('show');
+  }
+
+  function eliminarDetalle(id) {
+    Swal.fire({
+      title: '¿Desactivar detalle?',
+      text: 'El registro pasará a estado inactivo.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, desactivar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.post(URL_DETALLE_ELIMINAR, {
+          iddetalle_color: id,
+          csrfmiddlewaretoken: CSRF_TOKEN
+        }, function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Desactivado!', text: res.mensaje, icon: 'success', confirmButtonText: 'Ok' })
+              .then(() => { cargarDetalles(); });
+          } else {
+            Swal.fire({ title: 'Error', text: res.error, icon: 'error', confirmButtonText: 'Cerrar' });
+          }
+        });
+      }
+    });
+  }
 </script>
 {% endblock %}

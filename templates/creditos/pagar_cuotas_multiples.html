@@ -1,0 +1,451 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+
+    <div class="pagetitle">
+        <h1 class="fw-bold">
+            <i class="bi bi-currency-dollar text-success me-2"></i>Pago de Múltiples Cuotas
+        </h1>
+    </div>
+
+    <nav aria-label="breadcrumb" class="mt-2">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'creditos' %}">Créditos</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'detalle_credito' credito.idcredito %}">{{ credito.codigo_credito }}</a></li>
+            <li class="breadcrumb-item active">Pago Múltiple</li>
+        </ol>
+    </nav>
+
+    <section class="section dashboard mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+
+                <!-- INFORMACIÓN DEL CRÉDITO -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle-fill me-2"></i>Información del Crédito
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-2"><strong>Código:</strong> <span class="badge bg-primary">{{ credito.codigo_credito }}</span></p>
+                                <p class="mb-2"><strong>Cliente:</strong> {{ credito.idventa.idcliente.razonsocial }}</p>
+                                <p class="mb-0"><strong>DNI/RUC:</strong> {{ credito.idventa.idcliente.numdoc }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-2"><strong>Comprobante:</strong> {{ credito.idventa.numero_comprobante }}</p>
+                                <p class="mb-2"><strong>Monto Total:</strong> S/ {{ credito.monto_total|floatformat:2 }}</p>
+                                <p class="mb-0"><strong>Saldo Pendiente:</strong>
+                                    <span class="text-danger fw-bold">S/ {{ total_pendiente|floatformat:2 }}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CUOTAS SELECCIONADAS -->
+                <div class="card shadow-sm border-0 mb-4" style="background: #f8f9fa;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-check me-2"></i>Cuotas Seleccionadas para Pago
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0 align-middle">
+                                <thead style="background: #012970; color: white;">
+                                    <tr>
+                                        <th class="text-center">N° Cuota</th>
+                                        <th class="text-center">F. Vencimiento</th>
+                                        <th class="text-end">Total Cuota</th>
+                                        <th class="text-end">Saldo a Pagar</th>
+                                        <th class="text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cuota in cuotas %}
+                                    <tr>
+                                        <td class="text-center">
+                                            {% if cuota.numero_cuota == 0 %}
+                                                <span class="badge bg-warning text-dark">Inicial</span>
+                                            {% else %}
+                                                <strong>{{ cuota.numero_cuota }}</strong>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge {% if cuota.esta_vencida %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                {{ cuota.fecha_vencimiento|date:"d/m/Y" }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">S/ {{ cuota.total|floatformat:2 }}</td>
+                                        <td class="text-end">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">S/</span>
+                                                <input type="number" 
+                                                       class="form-control fw-bold text-danger input-monto-cuota" 
+                                                       value="{{ cuota.saldo_cuota|stringformat:".2f" }}" 
+                                                       step="0.01" 
+                                                       min="0.01" 
+                                                       max="{{ cuota.saldo_cuota|stringformat:".2f" }}"
+                                                       data-id="{{ cuota.idcuotaventa }}"
+                                                       data-original="{{ cuota.saldo_cuota|stringformat:".2f" }}">
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if cuota.estado_pago == 'Parcial' %}
+                                                <span class="badge bg-warning text-dark">PARCIAL</span>
+                                            {% elif cuota.esta_vencida %}
+                                                <span class="badge bg-danger">VENCIDA</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">PENDIENTE</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot style="background: #e8f5e9;">
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold text-success">TOTAL A PAGAR:</td>
+                                        <td class="text-end fw-bold text-success fs-5">
+                                            S/ <span id="display-total-pagar">{{ total_a_pagar|floatformat:2 }}</span>
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORMULARIO DE PAGO -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-cash-coin me-2"></i>Datos del Pago
+                        </h5>
+                    </div>
+                    <div class="card-body">
+
+                        <!-- Monto total destacado (solo lectura) -->
+                        <div class="mb-4 p-3 rounded text-center" style="background: #e8f5e9; border: 2px solid #2e7d32;">
+                            <p class="mb-1 text-muted">Importe Total a Registrar</p>
+                            <h2 class="text-success fw-bold mb-0">S/ <span id="banner-total-pagar">{{ total_a_pagar|floatformat:2 }}</span></h2>
+                            <small class="text-muted">Suma de {{ cuotas|length }} cuota(s) seleccionada(s)</small>
+                        </div>
+
+                        <form id="formPagarMultiples" method="POST" novalidate>
+                            {% csrf_token %}
+                            <!-- IDsCuotas oculto -->
+                            <input type="hidden" name="cuotas_ids" value="{{ cuotas_ids }}">
+
+                            <!-- Campo para Fecha Manual -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-calendar-event"></i> Fecha de Pago
+                                </label>
+                                <input type="date" class="form-control form-control-lg" name="fecha_pago" id="fecha_pago" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}" required>
+                                <small class="form-text text-muted">Por defecto es la fecha actual. Modifíquelo solo para pagos retroactivos.</small>
+                            </div>
+
+                            <!-- SECCIÓN DE PAGOS MIXTOS -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-wallet2"></i> Métodos de Pago <span class="text-danger">*</span>
+                                </label>
+                                <div id="pagos-container">
+                                    <div class="pago-row row g-2 mb-2 align-items-end" id="pago-row-1">
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Tipo de Pago</label>
+                                            <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago" required>
+                                                <option value="">Seleccione...</option>
+                                                {% for tipo in tipos_pago %}
+                                                <option value="{{ tipo.id_tipo_pago }}">{{ tipo.nombre }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 nro-operacion-container d-none">
+                                            <label class="form-label small mb-1">N° Operación <span class="text-danger">*</span></label>
+                                            <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="Ej: 123456">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Monto (S/)</label>
+                                            <input type="number" name="monto_pago_item[]" class="form-control form-control-sm monto-item-input" 
+                                                   step="0.01" min="0.01" required>
+                                        </div>
+                                        <div class="col-md-1 text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-pago" disabled>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2 rounded-pill" id="btnAgregarPago">
+                                    <i class="bi bi-plus-circle me-1"></i>Agregar otro método
+                                </button>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="observaciones" class="form-label fw-bold">
+                                    <i class="bi bi-chat-left-text"></i> Observaciones
+                                </label>
+                                <textarea class="form-control" 
+                                          id="observaciones" 
+                                          name="observaciones" 
+                                          rows="2" 
+                                          placeholder="Información adicional (opcional)"></textarea>
+                            </div>
+
+                            <hr>
+
+                            <!-- BOTONES -->
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'detalle_credito' credito.idcredito %}" class="btn btn-secondary btn-lg rounded-pill px-4">
+                                    <i class="bi bi-arrow-left me-2"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-success btn-lg rounded-pill px-4" id="btnGuardarPagoMultiple">
+                                    <i class="bi bi-save me-2"></i>Registrar Pago de {{ cuotas|length }} Cuota(s)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+$(document).ready(function () {
+    // Referencias a los displays de totales
+    const $displayTotal = $('#display-total-pagar');
+    const $bannerTotal = $('#banner-total-pagar');
+
+    // Función para recalcular el gran total de las cuotas
+    function recalcularTotalCuotas() {
+        let total = 0;
+        $('.input-monto-cuota').each(function() {
+            let val = parseFloat($(this).val()) || 0;
+            total += val;
+        });
+        
+        const totalStr = total.toFixed(2);
+        $displayTotal.text(totalStr);
+        $bannerTotal.text(totalStr);
+        
+        // Sincronizar con el primer input del método de pago si solo hay uno
+        if ($('.pago-row').length === 1) {
+            $('.monto-item-input').first().val(totalStr);
+        }
+        
+        return total;
+    }
+
+    // Función para mostrar/ocultar N° Operación (igual que pre-financiamiento)
+    function toggleOperacion(select) {
+        const row = $(select).closest('.pago-row');
+        const container = row.find('.nro-operacion-container');
+        const input = container.find('input');
+        const selectedText = $(select).find('option:selected').text().toLowerCase();
+
+        if (selectedText && !selectedText.includes('efectivo') && selectedText !== 'seleccione...') {
+            container.removeClass('d-none');
+        } else {
+            container.addClass('d-none');
+            input.val('');
+        }
+    }
+
+    $(document).on('change', '.select-tipo-pago', function() {
+        toggleOperacion(this);
+    });
+
+    // --- LÓGICA DE PAGOS MIXTOS ---
+    const tiposPagoHtml = `{% for tipo in tipos_pago %}<option value="{{ tipo.id_tipo_pago }}">{{ tipo.nombre }}</option>{% endfor %}`;
+
+    function actualizarBotonesEliminar() {
+        const filas = $('.pago-row').length;
+        $('.btn-remove-pago').prop('disabled', filas === 1);
+    }
+
+    $('#btnAgregarPago').click(function() {
+        const id = Date.now();
+        
+        let sumaActual = 0;
+        $('.monto-item-input').each(function() { sumaActual += parseFloat($(this).val()) || 0; });
+        let totalSeleccionado = parseFloat($('#display-total-pagar').text()) || 0;
+        let restante = totalSeleccionado - sumaActual;
+        if (restante < 0) restante = 0;
+
+        const nuevaFila = `
+            <div class="pago-row row g-2 mb-2 align-items-end" id="pago-row-${id}">
+                <div class="col-md-4">
+                    <label class="form-label small mb-1 d-md-none">Tipo de Pago</label>
+                    <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago" required>
+                        <option value="">Seleccione...</option>
+                        ${tiposPagoHtml}
+                    </select>
+                </div>
+                <div class="col-md-3 nro-operacion-container d-none">
+                    <label class="form-label small mb-1">N° Operación <span class="text-danger">*</span></label>
+                    <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="Ej: 123456">
+                </div>
+                <div class="col-md-4">
+                    <input type="number" name="monto_pago_item[]" class="form-control form-control-sm monto-item-input" 
+                           step="0.01" min="0.01" value="${restante > 0 ? restante.toFixed(2) : ''}" required>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-pago">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+        $('#pagos-container').append(nuevaFila);
+        actualizarBotonesEliminar();
+    });
+
+    $(document).on('click', '.btn-remove-pago', function() {
+        $(this).closest('.pago-row').remove();
+        actualizarBotonesEliminar();
+    });
+
+    // Evento al cambiar el monto de una cuota
+    $('.input-monto-cuota').on('input', function() {
+        const $input = $(this);
+        let val = parseFloat($input.val()) || 0;
+        const max = parseFloat($input.data('original'));
+
+        if (val > max) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Monto excedido',
+                text: 'El monto no puede ser mayor al saldo de la cuota (S/ ' + max.toFixed(2) + ')',
+                confirmButtonColor: '#f8bb86'
+            });
+            $input.val(max.toFixed(2));
+        } else if (val < 0) {
+            $input.val('0.00');
+        }
+
+        recalcularTotalCuotas();
+    });
+
+    $('#formPagarMultiples').submit(function (e) {
+        e.preventDefault();
+
+        const totalCuotas = recalcularTotalCuotas();
+        
+        let totalMetodos = 0;
+        $('.monto-item-input').each(function() {
+            totalMetodos += parseFloat($(this).val()) || 0;
+        });
+
+        if (Math.abs(totalCuotas - totalMetodos) > 0.01) {
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Desajuste de montos', 
+                text: `El total de los métodos de pago (S/ ${totalMetodos.toFixed(2)}) debe ser igual al total de las cuotas (S/ ${totalCuotas.toFixed(2)})`, 
+                confirmButtonColor: '#dc3545' 
+            });
+            return;
+        }
+
+        let faltanDatos = false;
+        let faltaNroOp = false;
+        $('.pago-row').each(function() {
+            if (!$(this).find('.select-tipo-pago').val()) { faltanDatos = true; }
+            const nroOpContainer = $(this).find('.nro-operacion-container');
+            if (!nroOpContainer.hasClass('d-none') && !nroOpContainer.find('input').val().trim()) {
+                faltaNroOp = true;
+            }
+        });
+
+        if (faltanDatos) {
+            Swal.fire({ icon: 'warning', title: 'Falta información', text: 'Debe seleccionar el tipo de pago para todos los métodos', confirmButtonColor: '#f8bb86' });
+            return;
+        }
+
+        if (faltaNroOp) {
+            Swal.fire({ icon: 'warning', title: 'N° de Operación requerido', text: 'Ingrese el N° de operación para los métodos que no son Efectivo.', confirmButtonColor: '#f8bb86' });
+            return;
+        }
+
+        // Recolectar detalles de cuotas
+        let detallesCuotas = [];
+        $('.input-monto-cuota').each(function() {
+            let monto = parseFloat($(this).val()) || 0;
+            if (monto > 0) {
+                detallesCuotas.push({
+                    id_cuota: $(this).data('id'),
+                    monto: monto
+                });
+            }
+        });
+
+        const $form = $('#formPagarMultiples');
+
+        Swal.fire({
+            title: '¿Confirmar pago múltiple?',
+            html: `<p>Se registrará el pago de <strong>${detallesCuotas.length} cuota(s)</strong></p>
+                  <p>Importe total: <strong class="text-success">S/ ${totalMetodos.toFixed(2)}</strong></p>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, registrar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#btnGuardarPagoMultiple').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Procesando...');
+
+                let dataToSend = $form.serializeArray();
+                dataToSend.push({ name: 'detalles_pagos', value: JSON.stringify(detallesCuotas) });
+
+                $.ajax({
+                    url: "{% url 'pagar_cuotas_multiples' %}",
+                    type: 'POST',
+                    data: dataToSend,
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                    success: function (response) {
+                        if (response.ok) {
+                            const urlTicket = '/creditos/recibo-pago-multiple/' + response.pago_ids + '/';
+                            window.open(urlTicket, '_blank');
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Pago registrado!',
+                                html: `<p>${response.message}</p>
+                                      <p class="text-success mb-0"><strong>Total pagado:</strong> S/ ${response.total_pagado.toFixed(2)}</p>`,
+                                confirmButtonColor: '#198754'
+                            }).then(() => {
+                                window.location.href = "{% url 'detalle_credito' credito.idcredito %}";
+                            });
+                        } else {
+                            Swal.fire('Error', response.error || 'Error desconocido', 'error');
+                            $('#btnGuardarPagoMultiple').prop('disabled', false).html('<i class="bi bi-save me-2"></i>Registrar Pago');
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.error || 'Error de conexión', 'error');
+                        $('#btnGuardarPagoMultiple').prop('disabled', false).html('<i class="bi bi-save me-2"></i>Registrar Pago');
+                    }
+                });
+            }
+        });
+    });
+    
+    // Inicializar el monto del primer método de pago
+    recalcularTotalCuotas();
+});
+</script>
+
+{% endblock %}

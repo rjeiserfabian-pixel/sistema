@@ -1,0 +1,194 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle">
+    <h1>Reporte de Bonificaciones</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+        <li class="breadcrumb-item">Bonificaciones</li>
+        <li class="breadcrumb-item active">Reportes</li>
+      </ol>
+    </nav>
+  </div>
+
+  <section class="section">
+    <!-- Tarjetas resumen -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center border-0" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+          <div class="card-body text-white">
+            <i class="bi bi-calculator fs-2"></i>
+            <h4 class="fw-bold mt-1">{{ total_calculos }}</h4>
+            <p class="mb-0 small">Total Cálculos</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+          <div class="card-body text-white">
+            <i class="bi bi-cash-stack fs-2"></i>
+            <h4 class="fw-bold mt-1">S/ {{ total_pagado|floatformat:2 }}</h4>
+            <p class="mb-0 small">Total Pagado</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+          <div class="card-body text-white">
+            <i class="bi bi-hourglass-split fs-2"></i>
+            <h4 class="fw-bold mt-1">{{ pendientes }}</h4>
+            <p class="mb-0 small">En Proceso</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+          <div class="card-body text-white">
+            <i class="bi bi-people fs-2"></i>
+            <h4 class="fw-bold mt-1">{{ vendedores }}</h4>
+            <p class="mb-0 small">Vendedores</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label">Filtrar por Estado</label>
+                <select id="filtro_estado" name="estado" class="form-select">
+                  <option value="" {% if not estado_filtro %}selected{% endif %}>Todos</option>
+                  <option value="Calculado" {% if estado_filtro == 'Calculado' %}selected{% endif %}>Calculado</option>
+                  <option value="Aprobado" {% if estado_filtro == 'Aprobado' %}selected{% endif %}>Aprobado</option>
+                  <option value="Pagado" {% if estado_filtro == 'Pagado' %}selected{% endif %}>Pagado</option>
+                  <option value="Observado" {% if estado_filtro == 'Observado' %}selected{% endif %}>Observado</option>
+                  <option value="Anulado" {% if estado_filtro == 'Anulado' %}selected{% endif %}>Anulado</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <button id="btnLimpiarFiltro" class="btn btn-secondary">
+                  <i class="bi bi-x-circle me-1"></i> Limpiar Filtro
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla historial -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Historial de Pagos y Cálculos</h5>
+            <div class="table-responsive">
+              <table id="tablaReportes" class="table table-striped" style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th>Vendedor</th>
+                    <th>Periodo</th>
+                    <th>Vehículos</th>
+                    <th>Repuestos (S/)</th>
+                    <th>Com. Vehículos</th>
+                    <th>Com. Repuestos</th>
+                    <th>Bono Meta</th>
+                    <th>Total a Pagar</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- DataTables CSS y JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+  $(document).ready(function() {
+      // Inicializar DataTables en Server-Side
+      var table = $('#tablaReportes').DataTable({
+          "processing": true,
+          "serverSide": true,
+          "ajax": {
+              "url": "{% url 'api_listar_reportes_bonificaciones' %}",
+              "type": "GET",
+              "data": function ( d ) {
+                  d.estado = $('#filtro_estado').val();
+              }
+          },
+          "columns": [
+              { "data": "vendedor" },
+              { "data": "periodo" },
+              { "data": "vehiculos" },
+              { "data": "repuestos", render: $.fn.dataTable.render.number(',', '.', 2, 'S/ ') },
+              { "data": "comision_vehiculos", render: $.fn.dataTable.render.number(',', '.', 2, 'S/ ') },
+              { "data": "comision_repuestos", render: $.fn.dataTable.render.number(',', '.', 2, 'S/ ') },
+              { "data": "bono_meta", render: $.fn.dataTable.render.number(',', '.', 2, 'S/ ') },
+              { "data": "total_pagar",
+                "render": function (data, type, row) {
+                    let amount = 'S/ ' + parseFloat(data).toFixed(2);
+                    if (row.estado === 'Pagado') {
+                        return '<span class="text-success fw-bold">' + amount + '</span>';
+                    }
+                    return '<span class="fw-bold">' + amount + '</span>';
+                }
+              },
+              { "data": "estado",
+                "render": function(data, type, row) {
+                    let badgeClass = 'bg-secondary';
+                    if (data === 'Calculado') badgeClass = 'bg-warning text-dark';
+                    else if (data === 'Aprobado') badgeClass = 'bg-info text-dark';
+                    else if (data === 'Pagado') badgeClass = 'bg-success';
+                    else if (data === 'Observado') badgeClass = 'bg-danger';
+                    return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                }
+              },
+              { "data": "id_calculo",
+                "orderable": false,
+                "render": function(data, type, row) {
+                    let pdfUrl = "{% url 'pdf_calculo_bonificacion' id_calculo=0 %}".replace('0', data);
+                    return '<a href="' + pdfUrl + '" target="_blank" class="btn btn-sm btn-danger" title="Ver / Imprimir PDF"><i class="bi bi-file-earmark-pdf"></i> PDF</a>';
+                }
+              }
+          ],
+          "pagingType": "simple_numbers",
+          "order": [], // Dejar el ordenamiento al backend
+          "language": {
+              "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+          }
+      });
+
+      // Recargar tabla al cambiar el filtro
+      $('#filtro_estado').on('change', function() {
+          table.ajax.reload();
+      });
+      
+      // Limpiar filtro
+      $('#btnLimpiarFiltro').on('click', function() {
+          $('#filtro_estado').val('');
+          table.ajax.reload();
+      });
+  });
+</script>
+{% endblock %}

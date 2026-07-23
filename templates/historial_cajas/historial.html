@@ -2,6 +2,23 @@
 {% load static %}
 
 {% block main %}
+<style>
+    /* Prevenir que el fondo y la cabecera fija se desplacen a la izquierda al abrir el modal */
+    body {
+        padding-right: 0px !important;
+    }
+    body.modal-open {
+        padding-right: 0px !important;
+        overflow-y: scroll !important; /* Mantiene la barra de scroll vertical visible para evitar saltos de ancho en la página */
+    }
+    /* Evitar desplazamiento en el header fijo de Bootstrap */
+    #header.fixed-top, 
+    .modal-open #header.fixed-top,
+    .modal-open .fixed-top,
+    .modal-open .fixed-bottom {
+        padding-right: 0px !important;
+    }
+</style>
 <main id="main" class="main">
     <div class="pagetitle">
         <h1><i class="bi bi-clock-history"></i> Historial de Cajas</h1>
@@ -33,20 +50,20 @@
                             <i class="bi bi-funnel"></i> Filtros de Búsqueda
                         </h5>
 
-                        <form method="GET" class="row g-3">
-                            <div class="col-md-3">
+                        <form id="formFiltros" method="GET" class="row g-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Fecha Desde:</label>
-                                <input type="date" class="form-control" name="fecha_desde" value="{{ fecha_desde }}">
+                                <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" value="{{ fecha_desde }}">
                             </div>
                             
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Fecha Hasta:</label>
-                                <input type="date" class="form-control" name="fecha_hasta" value="{{ fecha_hasta }}">
+                                <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}">
                             </div>
                             
                             <div class="col-md-2">
                                 <label class="form-label">Estado:</label>
-                                <select class="form-select" name="estado">
+                                <select class="form-select" id="estado" name="estado">
                                     <option value="todos" {% if estado_filtro == 'todos' %}selected{% endif %}>Todos</option>
                                     <option value="abierta" {% if estado_filtro == 'abierta' %}selected{% endif %}>Abierta</option>
                                     <option value="cerrada" {% if estado_filtro == 'cerrada' %}selected{% endif %}>Cerrada</option>
@@ -54,9 +71,9 @@
                                 </select>
                             </div>
                             
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Caja:</label>
-                                <select class="form-select" name="id_caja">
+                                <select class="form-select" id="id_caja" name="id_caja">
                                     <option value="">Todas</option>
                                     {% for caja in cajas %}
                                     <option value="{{ caja.id_caja }}" {% if id_caja_filtro == caja.id_caja|stringformat:"s" %}selected{% endif %}>
@@ -65,11 +82,10 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            
-                            <div class="col-md-1 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="bi bi-search"></i>
-                                </button>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Usuario / Vendedor:</label>
+                                <input type="text" class="form-control" id="busqueda_usuario" placeholder="Nombre de usuario...">
                             </div>
                         </form>
                     </div>
@@ -80,11 +96,10 @@
                     <div class="card-body">
                         <h5 class="card-title">
                             Listado de Aperturas y Cierres
-                            <span class="badge bg-secondary">{{ aperturas.count }} registros</span>
                         </h5>
 
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
                                         <th>#</th>
@@ -98,98 +113,13 @@
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {% for apertura in aperturas %}
-                                    <tr>
-                                        <td><strong>{{ apertura.id_movimiento }}</strong></td>
-                                        <td>
-                                            <i class="bi bi-inbox"></i> 
-                                            {{ apertura.id_caja.nombre_caja|default:"N/A" }}
-                                        </td>
-                                        <td>
-                                            <i class="bi bi-person"></i>
-                                            {{ apertura.idusuario.nombrecompleto|default:"N/A" }}
-                                        </td>
-                                        <td>
-                                            <small>
-                                                {{ apertura.fecha_apertura|date:"d/m/Y" }}<br>
-                                                <span class="text-muted">{{ apertura.hora_apertura|time:"H:i" }}</span>
-                                            </small>
-                                        </td>
-                                        <td>
-                                            {% if apertura.fecha_cierre %}
-                                            <small>
-                                                {{ apertura.fecha_cierre|date:"d/m/Y" }}<br>
-                                                <span class="text-muted">{{ apertura.hora_cierre|time:"H:i" }}</span>
-                                            </small>
-                                            {% else %}
-                                            <span class="text-muted">---</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <strong class="text-success">S/ {{ apertura.saldo_inicial|floatformat:2 }}</strong>
-                                        </td>
-                                        <td>
-                                            {% if apertura.saldo_final %}
-                                            <strong class="text-primary">S/ {{ apertura.saldo_final|floatformat:2 }}</strong>
-                                            {% else %}
-                                            <span class="text-muted">---</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if apertura.estado == 'abierta' %}
-                                            <span class="badge bg-success">
-                                                <i class="bi bi-unlock"></i> Abierta
-                                            </span>
-                                            {% elif apertura.estado == 'cerrada' %}
-                                            <span class="badge bg-secondary">
-                                                <i class="bi bi-lock"></i> Cerrada
-                                            </span>
-                                            {% elif apertura.estado == 'reabierta' %}
-                                            <span class="badge bg-warning text-dark">
-                                                <i class="bi bi-arrow-repeat"></i> Reabierta
-                                            </span>
-                                            {% endif %}
-                                            
-                                            {% if apertura.fue_reabierta %}
-                                            <br><small class="text-info"><i class="bi bi-info-circle"></i> Ya reabierta antes</small>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <!-- Botón Reabrir -->
-                                            {% if apertura.puede_reabrirse %}
-                                            <button type="button" class="btn btn-sm btn-warning" 
-                                                    onclick="solicitarReapertura({{ apertura.id_movimiento }})" 
-                                                    title="Reabrir caja">
-                                                <i class="bi bi-arrow-repeat"></i> Reabrir
-                                            </button>
-                                            {% elif apertura.estado == 'reabierta' %}
-                                            <button type="button" class="btn btn-sm btn-danger" 
-                                                    onclick="cerrarReabierta({{ apertura.id_movimiento }})" 
-                                                    title="Cerrar caja reabierta">
-                                                <i class="bi bi-lock"></i> Cerrar
-                                            </button>
-                                            {% endif %}
-                                            
-                                            <!-- Botón Ver Movimientos -->
-                                            <button type="button" class="btn btn-sm btn-info" 
-                                                    onclick="verMovimientos({{ apertura.id_movimiento }})" 
-                                                    title="Ver movimientos">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="9" class="text-center text-muted py-5">
-                                            <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
-                                            <p class="mt-3 mb-0">No hay registros que mostrar</p>
-                                            <small>Ajusta los filtros para ver más resultados</small>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
+                                <tbody id="tbodyHistorial">
+                                    <tr><td colspan="9" class="text-center py-4 text-muted"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Paginación -->
+                        <div id="paginacionHistorial" class="d-flex justify-content-between align-items-center mt-3">
                         </div>
                     </div>
                 </div>
@@ -349,7 +279,243 @@
     </div>
 </div>
 
+<!-- Modal Ver Movimientos de Caja Enriquecido -->
+<div class="modal fade" id="modalVerMovimientos" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 90%;">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalVerMovimientosTitulo">
+                    <i class="bi bi-cash-coin"></i> Movimientos de Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Información General de la Apertura -->
+                <div class="card bg-light border-0 mb-4">
+                    <div class="card-body py-3">
+                        <div class="row text-center text-md-start">
+                            <div class="col-md-3 mb-2 mb-md-0">
+                                <strong>Caja:</strong> <span id="infoCaja" class="text-muted">---</span>
+                            </div>
+                            <div class="col-md-3 mb-2 mb-md-0">
+                                <strong>Usuario:</strong> <span id="infoUsuario" class="text-muted">---</span>
+                            </div>
+                            <div class="col-md-4 mb-2 mb-md-0">
+                                <strong>Rango:</strong> 
+                                <span class="text-muted" style="font-size: 0.85rem;">
+                                    <span id="infoFechaApertura">---</span> ➔ <span id="infoFechaCierre">---</span>
+                                </span>
+                            </div>
+                            <div class="col-md-2 text-md-end">
+                                <span id="infoEstadoBadge" class="badge bg-secondary">---</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjetas de Resumen (Ingresos/Egresos/Saldos) -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                        <div class="card border-0 bg-light-success p-3 text-center" style="border-left: 4px solid #2eca6a !important; background: #e0f8e9;">
+                            <small class="text-muted d-block uppercase fw-bold">Saldo Inicial</small>
+                            <span class="fs-4 fw-bold text-success" id="resumenSaldoInicial">S/ 0.00</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                        <div class="card border-0 bg-light-warning p-3 text-center" style="border-left: 4px solid #ff771d !important; background: #ffecdf;">
+                            <small class="text-muted d-block uppercase fw-bold">Total Ingresos</small>
+                            <span class="fs-4 fw-bold text-warning" id="resumenIngresos" style="color: #ff771d !important;">S/ 0.00</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                        <div class="card border-0 bg-light-danger p-3 text-center" style="border-left: 4px solid #ff0000 !important; background: #ffe0e0;">
+                            <small class="text-muted d-block uppercase fw-bold">Total Egresos</small>
+                            <span class="fs-4 fw-bold text-danger" id="resumenEgresos">S/ 0.00</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card border-0 bg-light-primary p-3 text-center" style="border-left: 4px solid #0d6efd !important; background: #f0f5ff;">
+                            <small class="text-muted d-block uppercase fw-bold">Saldo Final / Actual</small>
+                            <span class="fs-4 fw-bold text-primary" id="resumenSaldoFinal">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Movimientos Detallados -->
+                <h5 class="fw-bold mb-3"><i class="bi bi-list-stars"></i> Detalle de Transacciones</h5>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle table-bordered">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="width: 3%;">#</th>
+                                <th style="width: 12%;">Fecha y Hora</th>
+                                <th style="width: 10%;">Tipo</th>
+                                <th style="width: 18%;">Tercero (Cliente/Prov)</th>
+                                <th style="width: 10%;">Forma</th>
+                                <th style="width: 10%;">Método</th>
+                                <th style="width: 10%;">Nro Op.</th>
+                                <th style="width: 17%;">Descripción</th>
+                                <th style="width: 10%;" class="text-end">Monto</th>
+                                <th style="width: 10%;">Comprobante</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyMovimientosCaja">
+                            <!-- Los renglones serán insertados dinámicamente mediante JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                    <i class="bi bi-check2"></i> Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// ==========================================
+// LISTADO Y PAGINACIÓN (CUSTOM FETCH)
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+    let currentPage = 1;
+    let typingTimer;
+    
+    function cargarHistorial(page = 1) {
+        currentPage = page;
+        const bodyHistorial = document.getElementById('tbodyHistorial');
+        bodyHistorial.innerHTML = `<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>`;
+        
+        const params = new URLSearchParams({
+            page: page,
+            fecha_desde: document.getElementById('fecha_desde').value,
+            fecha_hasta: document.getElementById('fecha_hasta').value,
+            estado: document.getElementById('estado').value,
+            id_caja: document.getElementById('id_caja').value,
+            busqueda_usuario: document.getElementById('busqueda_usuario').value
+        });
+        
+        fetch(`/historial-cajas/api/listar/?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.ok) {
+                    renderizarTabla(data.aperturas);
+                    renderizarPaginacion(data.pagination, data.stats.total_registros);
+                } else {
+                    bodyHistorial.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger">Error: ${data.error}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                bodyHistorial.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger">Error de conexión al servidor</td></tr>`;
+            });
+    }
+    
+    function renderizarTabla(aperturas) {
+        const bodyHistorial = document.getElementById('tbodyHistorial');
+        if(aperturas.length === 0) {
+            bodyHistorial.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-5"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><p class="mt-3 mb-0">No hay registros que mostrar</p></td></tr>`;
+            return;
+        }
+        
+        let html = '';
+        aperturas.forEach(a => {
+            let badge = '';
+            if (a.estado === 'abierta') badge = '<span class="badge bg-success"><i class="bi bi-unlock"></i> Abierta</span>';
+            else if (a.estado === 'cerrada') badge = '<span class="badge bg-secondary"><i class="bi bi-lock"></i> Cerrada</span>';
+            else if (a.estado === 'reabierta') badge = '<span class="badge bg-warning text-dark"><i class="bi bi-arrow-repeat"></i> Reabierta</span>';
+            
+            if (a.fue_reabierta) {
+                badge += '<br><small class="text-info"><i class="bi bi-info-circle"></i> Ya reabierta antes</small>';
+            }
+            
+            let btnReabrir = '';
+            if (a.puede_reabrirse) {
+                btnReabrir = `<button type="button" class="btn btn-sm btn-warning me-1" onclick="solicitarReapertura(${a.id_movimiento})" title="Reabrir caja"><i class="bi bi-arrow-repeat"></i> Reabrir</button>`;
+            } else if (a.estado === 'reabierta') {
+                btnReabrir = `<button type="button" class="btn btn-sm btn-danger me-1" onclick="cerrarReabierta(${a.id_movimiento})" title="Cerrar caja reabierta"><i class="bi bi-lock"></i> Cerrar</button>`;
+            }
+            
+            let saldoFinalHtml = a.saldo_final !== null 
+                ? `<strong class="text-primary">S/ ${a.saldo_final.toFixed(2)}</strong>` 
+                : `<span class="text-muted">---</span>`;
+                
+            let fechaApHtml = a.fecha_apertura !== '---' 
+                ? `<small>${a.fecha_apertura}<br><span class="text-muted">${a.hora_apertura}</span></small>`
+                : `<span class="text-muted">---</span>`;
+                
+            let fechaCiHtml = a.fecha_cierre !== '---' 
+                ? `<small>${a.fecha_cierre}<br><span class="text-muted">${a.hora_cierre}</span></small>`
+                : `<span class="text-muted">---</span>`;
+            let btnPdf = '';
+            if (a.estado === 'cerrada') {
+                btnPdf = `<a href="/historial-cajas/exportar/${a.id_movimiento}/" target="_blank" class="btn btn-sm btn-danger text-white me-1" title="Exportar a PDF"><i class="bi bi-file-earmark-pdf"></i></a>`;
+            } else {
+                btnPdf = `<button type="button" class="btn btn-sm btn-secondary me-1" style="cursor: not-allowed;" disabled title="Cierre la caja para exportar"><i class="bi bi-file-earmark-pdf"></i></button>`;
+            }
+            
+            html += `
+            <tr>
+                <td><strong>${a.id_movimiento}</strong></td>
+                <td><i class="bi bi-inbox"></i> ${a.caja}</td>
+                <td><i class="bi bi-person"></i> ${a.usuario}</td>
+                <td>${fechaApHtml}</td>
+                <td>${fechaCiHtml}</td>
+                <td><strong class="text-success">S/ ${a.saldo_inicial.toFixed(2)}</strong></td>
+                <td>${saldoFinalHtml}</td>
+                <td>${badge}</td>
+                <td>
+                    ${btnReabrir}
+                    ${btnPdf}
+                    <button type="button" class="btn btn-sm btn-info text-white" onclick="verMovimientos(${a.id_movimiento})" title="Ver movimientos"><i class="bi bi-eye"></i></button>
+                </td>
+            </tr>`;
+        });
+        bodyHistorial.innerHTML = html;
+    }
+    
+    function renderizarPaginacion(pag, total) {
+        const pagDiv = document.getElementById('paginacionHistorial');
+        let html = `<div class="text-muted small">Mostrando registros ${pag.start_index} al ${pag.end_index} de un total de ${total}</div>`;
+        
+        if (pag.num_pages > 1) {
+            html += `<ul class="pagination pagination-sm mb-0">`;
+            if (pag.has_previous) {
+                html += `<li class="page-item"><button class="page-link" onclick="window.cambiarPagina(${pag.previous_page_number})">Anterior</button></li>`;
+            } else {
+                html += `<li class="page-item disabled"><span class="page-link">Anterior</span></li>`;
+            }
+            
+            html += `<li class="page-item active"><span class="page-link">${pag.current_page} de ${pag.num_pages}</span></li>`;
+            
+            if (pag.has_next) {
+                html += `<li class="page-item"><button class="page-link" onclick="window.cambiarPagina(${pag.next_page_number})">Siguiente</button></li>`;
+            } else {
+                html += `<li class="page-item disabled"><span class="page-link">Siguiente</span></li>`;
+            }
+            html += `</ul>`;
+        }
+        pagDiv.innerHTML = html;
+    }
+    
+    window.cambiarPagina = function(page) {
+        cargarHistorial(page);
+    };
+    
+    // Listeners
+    $('#fecha_desde, #fecha_hasta, #estado, #id_caja').on('change', function() {
+        cargarHistorial(1);
+    });
+    
+    $('#busqueda_usuario').on('keyup', function() {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => cargarHistorial(1), 500);
+    });
+    
+    // Carga inicial
+    cargarHistorial(1);
+});
+
 // ==========================================
 // SOLICITAR REAPERTURA
 // ==========================================
@@ -605,14 +771,137 @@ document.getElementById('formCerrarReabierta').addEventListener('submit', functi
 });
 
 // ==========================================
-// VER MOVIMIENTOS (PLACEHOLDER)
+// VER MOVIMIENTOS DINÁMICO (OPCIÓN A ENRIQUECIDA)
 // ==========================================
 function verMovimientos(id_movimiento) {
     Swal.fire({
-        icon: 'info',
-        title: 'Movimientos de Caja',
-        html: `Ver todos los movimientos de la apertura #${id_movimiento}<br><small class="text-muted">Funcionalidad próximamente...</small>`,
-        confirmButtonText: 'Entendido'
+        title: 'Cargando movimientos...',
+        html: 'Buscando información enriquecida en el servidor.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    fetch(`/historial-cajas/movimientos/${id_movimiento}/`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error al consultar movimientos');
+        }
+        return response.json();
+    })
+    .then(data => {
+        Swal.close();
+        if (data.ok) {
+            // Actualizar textos del modal
+            document.getElementById('modalVerMovimientosTitulo').innerHTML = `<i class="bi bi-cash-coin me-2"></i> Movimientos de Caja - Apertura #${id_movimiento}`;
+            document.getElementById('infoCaja').innerText = data.info.caja;
+            document.getElementById('infoUsuario').innerText = data.info.usuario;
+            document.getElementById('infoFechaApertura').innerText = data.info.fecha_apertura;
+            document.getElementById('infoFechaCierre').innerText = data.info.fecha_cierre;
+            
+            // Badge Estado
+            const badgeEstado = document.getElementById('infoEstadoBadge');
+            badgeEstado.className = 'badge';
+            if (data.info.estado === 'abierta') {
+                badgeEstado.classList.add('bg-success');
+                badgeEstado.innerHTML = '<i class="bi bi-unlock"></i> Abierta';
+            } else if (data.info.estado === 'cerrada') {
+                badgeEstado.classList.add('bg-secondary');
+                badgeEstado.innerHTML = '<i class="bi bi-lock"></i> Cerrada';
+            } else {
+                badgeEstado.classList.add('bg-warning', 'text-dark');
+                badgeEstado.innerHTML = '<i class="bi bi-arrow-repeat"></i> Reabierta';
+            }
+            
+            // Tarjetas de Resumen
+            document.getElementById('resumenSaldoInicial').innerText = `S/ ${data.info.saldo_inicial.toFixed(2)}`;
+            document.getElementById('resumenIngresos').innerText = `S/ ${data.totales.ingresos.toFixed(2)}`;
+            document.getElementById('resumenEgresos').innerText = `S/ ${data.totales.egresos.toFixed(2)}`;
+            document.getElementById('resumenSaldoFinal').innerText = `S/ ${data.info.saldo_final.toFixed(2)}`;
+            
+            // Rellenar tabla
+            const tbody = document.getElementById('tbodyMovimientosCaja');
+            tbody.innerHTML = '';
+            
+            if (data.movimientos.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                            <p class="mt-3 mb-0">No se encontraron transacciones registradas en esta apertura.</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.movimientos.forEach((mov, index) => {
+                    const badgeTipo = mov.tipo === 'ingreso' 
+                        ? `<span class="badge bg-success"><i class="bi bi-arrow-up-circle me-1"></i>Ingreso</span>`
+                        : `<span class="badge bg-danger"><i class="bi bi-arrow-down-circle me-1"></i>Egreso</span>`;
+                        
+                    const montoClase = mov.tipo === 'ingreso' ? 'text-success' : 'text-danger';
+                    const montoPrefijo = mov.tipo === 'ingreso' ? '+' : '-';
+                    
+                    // Badges premium para Formas de Pago
+                    const badgeForma = mov.forma_pago === 'Crédito'
+                        ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>Crédito</span>`
+                        : `<span class="badge bg-info text-dark"><i class="bi bi-cash me-1"></i>Contado</span>`;
+                        
+                    // Badges para Métodos de Pago
+                    let badgeMetodo = `<span class="badge bg-light text-dark border"><i class="bi bi-wallet2 me-1"></i>${mov.metodo_pago}</span>`;
+                    if (mov.metodo_pago === 'Múltiple' && mov.detalles_metodo) {
+                        badgeMetodo = `
+                            <div class="d-flex flex-column align-items-center" style="font-size: 0.85rem;">
+                                <span class="badge bg-secondary mb-1 px-3 rounded-pill text-white"><i class="bi bi-wallet2 me-1"></i>Múltiple</span>
+                                <div class="text-muted small text-wrap text-center" style="line-height: 1.1; max-width: 160px; font-size: 0.75rem;">
+                                    ${mov.detalles_metodo}
+                                </div>
+                            </div>
+                        `;
+                    } else if (mov.metodo_pago.toLowerCase().includes('yape')) {
+                        badgeMetodo = `<span class="badge text-white" style="background-color: #8A2BE2;"><i class="bi bi-phone me-1"></i>Yape</span>`;
+                    } else if (mov.metodo_pago.toLowerCase().includes('efectivo')) {
+                        badgeMetodo = `<span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-cash-stack me-1"></i>Efectivo</span>`;
+                    } else if (mov.metodo_pago.toLowerCase().includes('depósito') || mov.metodo_pago.toLowerCase().includes('transferencia')) {
+                        badgeMetodo = `<span class="badge bg-primary-subtle text-primary border border-primary"><i class="bi bi-bank me-1"></i>Banco</span>`;
+                    }
+                    
+                    const comprobanteHtml = mov.comprobante 
+                        ? `<a href="${mov.comprobante.url}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2">
+                               <i class="bi bi-receipt"></i> ${mov.comprobante.numero}
+                           </a>`
+                        : `<span class="text-muted">---</span>`;
+                        
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${index + 1}</strong></td>
+                            <td><small>${mov.fecha}</small></td>
+                            <td>${badgeTipo}</td>
+                            <td><span class="fw-semibold text-dark" style="font-size: 0.85rem;">${mov.tercero}</span></td>
+                            <td>${badgeForma}</td>
+                            <td>${badgeMetodo}</td>
+                            <td><code class="text-dark" style="font-size: 0.8rem;">${mov.nro_operacion}</code></td>
+                            <td><span style="font-size: 0.85rem; max-width: 180px; display: inline-block;" class="text-truncate" title="${mov.descripcion}">${mov.descripcion}</span></td>
+                            <td class="text-end fw-bold ${montoClase}" style="font-size: 0.9rem;">
+                                ${montoPrefijo} S/ ${mov.monto.toFixed(2)}
+                            </td>
+                            <td>${comprobanteHtml}</td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            // Instanciar y abrir el Modal de Bootstrap
+            const modal = new bootstrap.Modal(document.getElementById('modalVerMovimientos'));
+            modal.show();
+        } else {
+            Swal.fire('Error', data.error || 'No se pudieron recuperar los movimientos de la caja', 'error');
+        }
+    })
+    .catch(error => {
+        Swal.close();
+        console.error('Error:', error);
+        Swal.fire('Error', 'No fue posible conectar con el servidor para obtener los datos.', 'error');
     });
 }
 

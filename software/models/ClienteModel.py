@@ -15,8 +15,18 @@ class Cliente(models.Model):
         related_name='clientes',
         verbose_name="Tipo de Entidad"
     )
-    telefono = models.CharField(max_length=10, blank=True, null=True, verbose_name="Teléfono")
+    telefono = models.CharField(max_length=150, blank=True, null=True, verbose_name="Teléfono")
+    email = models.CharField(max_length=255, blank=True, null=True, verbose_name="Email")
+    
+    # Ubicación
+    id_region = models.ForeignKey('Region', on_delete=models.DO_NOTHING, db_column='id_region', blank=True, null=True, verbose_name="Departamento")
+    id_provincia = models.ForeignKey('Provincia', on_delete=models.DO_NOTHING, db_column='id_provincia', blank=True, null=True, verbose_name="Provincia")
+    id_distrito = models.ForeignKey('Distrito', on_delete=models.DO_NOTHING, db_column='iddistrito', blank=True, null=True, verbose_name="Distrito")
     nombre_comercial_cliente = models.CharField(max_length=255, blank=True, null=True, verbose_name="Nombre Comercial")
+    
+    # Información del Cónyuge
+    conyuge_nombre = models.CharField(max_length=255, blank=True, null=True, verbose_name="Nombre del Cónyuge")
+    conyuge_dni = models.CharField(max_length=20, blank=True, null=True, verbose_name="DNI del Cónyuge")
     
     class Meta:
         managed = True  

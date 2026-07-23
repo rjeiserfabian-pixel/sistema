@@ -1,5 +1,4 @@
-
-
+from django.core.cache import cache
 from django.http import JsonResponse
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
 from software.models.empresaModel import Empresa
@@ -10,32 +9,43 @@ from software.models.UsuarioModel import Usuario
 from software.models.AperturaCierreCajaModel import AperturaCierreCaja
 
 
+# Tiempo de vida de la caché para los context processors (en segundos)
+_CTX_CACHE_TTL = 60
+
+
 def modulos_sidebar(request):
     """
-    Context processor para agregar módulos organizados a todas las plantillas
+    Context processor para agregar módulos organizados a todas las plantillas.
+    Resultado cacheado por tipo de usuario durante 60 segundos.
     """
     id_tipousuario = request.session.get('idtipousuario')
-    
+
     if not id_tipousuario:
         return {'modulos_organizados': {}}
-    
+
+    cache_key = f'ctx_modulos_{id_tipousuario}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         # Obtener permisos del usuario
         permisos = Detalletipousuarioxmodulos.objects.filter(
-            idtipousuario=id_tipousuario
+            idtipousuario=id_tipousuario,
+            idmodulo__estado=1
         ).select_related('idmodulo', 'idmodulo__idmodulo_padre')
-        
+
         # Organizar módulos en estructura jerárquica
         modulos_organizados = {}
-        
+
         for permiso in permisos:
             modulo = permiso.idmodulo
-            
+
             # Si el módulo tiene padre
             if modulo.idmodulo_padre:
                 padre = modulo.idmodulo_padre
                 padre_nombre = padre.nombremodulo
-                
+
                 if padre_nombre not in modulos_organizados:
                     modulos_organizados[padre_nombre] = {
                         'padre': padre,
@@ -49,21 +59,31 @@ def modulos_sidebar(request):
                         'padre': modulo,
                         'hijos': []
                     }
-        
+
         # Ordenar hijos por orden
         for nombre, grupo in modulos_organizados.items():
-            grupo['hijos'].sort(key=lambda x: x.orden)
-        
-        return {'modulos_organizados': modulos_organizados}
-    
+            grupo['hijos'].sort(key=lambda x: x.orden if x.orden is not None else 0)
+
+        # Ordenar el diccionario principal por el orden del padre
+        modulos_organizados = dict(sorted(
+            modulos_organizados.items(),
+            key=lambda item: item[1]['padre'].orden if item[1]['padre'].orden is not None else 0
+        ))
+
+        result = {'modulos_organizados': modulos_organizados}
+        cache.set(cache_key, result, timeout=_CTX_CACHE_TTL)
+        return result
+
     except Exception as e:
         print(f"Error en context processor: {e}")
         return {'modulos_organizados': {}}
-    
+
 
 def empresa_context(request):
     """
-    Agrega información de empresa, sucursal, caja, almacén y apertura actual
+    Agrega información de empresa, sucursal, caja, almacén y apertura actual.
+    Resultado cacheado por usuario + combinación de sesión durante 60 segundos.
+    La apertura de caja se consulta siempre (es estado operativo que cambia con frecuencia).
     """
     empresa = None
     sucursal = None
@@ -71,46 +91,65 @@ def empresa_context(request):
     almacen = None
     apertura_actual = None
     tiene_caja_abierta = False
-    
-    if request.session.get('idusuario'):
-        try:
-            # Obtener empresa
-            idempresa = request.session.get('idempresa')
+
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return {
+            'empresa': None,
+            'sucursal': None,
+            'caja': None,
+            'almacen': None,
+            'apertura_actual': None,
+            'tiene_caja_abierta': False,
+        }
+
+    try:
+        idempresa = request.session.get('idempresa')
+        id_sucursal = request.session.get('id_sucursal')
+        id_caja = request.session.get('id_caja')
+        id_almacen = request.session.get('id_almacen')
+
+        # ── Empresa, Sucursal, Caja y Almacén: datos estables → se cachean ──
+        datos_cache_key = f'ctx_empresa_{idusuario}_{idempresa}_{id_sucursal}_{id_caja}_{id_almacen}'
+        datos_cached = cache.get(datos_cache_key)
+
+        if datos_cached is not None:
+            empresa = datos_cached.get('empresa')
+            sucursal = datos_cached.get('sucursal')
+            caja = datos_cached.get('caja')
+            almacen = datos_cached.get('almacen')
+        else:
             if idempresa:
                 empresa = Empresa.objects.get(idempresa=idempresa)
-            
-            # Obtener sucursal
-            id_sucursal = request.session.get('id_sucursal')
             if id_sucursal:
                 sucursal = Sucursales.objects.get(id_sucursal=id_sucursal)
-            
-            # Obtener caja desde la sesión
-            id_caja = request.session.get('id_caja')
             if id_caja:
                 caja = Caja.objects.get(id_caja=id_caja)
-            
-            # Obtener almacén desde la sesión
-            id_almacen = request.session.get('id_almacen')
             if id_almacen:
                 almacen = Almacenes.objects.get(id_almacen=id_almacen)
-            
-            # Obtener apertura de la caja seleccionada
-            idusuario = request.session.get('idusuario')
-            
-            if id_caja:
-                apertura_actual = AperturaCierreCaja.objects.filter(
-                    idusuario_id=idusuario,
-                    id_caja_id=id_caja,
-                    estado__in=['abierta', 'reabierta']
-                ).select_related('id_caja').first()
-            else:
-                apertura_actual = None
 
-            tiene_caja_abierta = apertura_actual is not None
-                
-        except Exception as e:
-            print(f"❌ Error en context_processor: {e}")
-    
+            cache.set(datos_cache_key, {
+                'empresa': empresa,
+                'sucursal': sucursal,
+                'caja': caja,
+                'almacen': almacen,
+            }, timeout=_CTX_CACHE_TTL)
+
+        # ── Apertura de caja: estado operativo → NO se cachea (cambia al abrir/cerrar) ──
+        if id_caja:
+            apertura_actual = AperturaCierreCaja.objects.filter(
+                idusuario_id=idusuario,
+                id_caja_id=id_caja,
+                estado__in=['abierta', 'reabierta']
+            ).select_related('id_caja').first()
+        else:
+            apertura_actual = None
+
+        tiene_caja_abierta = apertura_actual is not None
+
+    except Exception as e:
+        print(f"❌ Error en context_processor: {e}")
+
     return {
         'empresa': empresa,
         'sucursal': sucursal,
@@ -123,17 +162,18 @@ def empresa_context(request):
 
 def cambiar_contexto(request):
     """
-    Permite cambiar sucursal, caja y almacén (para todos los usuarios)
+    Permite cambiar sucursal, caja y almacén (para todos los usuarios).
+    Invalida la caché del empresa_context al cambiar de contexto.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     idusuario = request.session.get('idusuario')
     es_admin = request.session.get('es_admin', False)
-    
+
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
-    
+
     # Aceptar datos JSON o POST normales
     import json
     try:
@@ -145,10 +185,10 @@ def cambiar_contexto(request):
         id_sucursal = request.POST.get('id_sucursal')
         id_caja = request.POST.get('id_caja')
         id_almacen = request.POST.get('id_almacen')
-    
+
     try:
         usuario = Usuario.objects.get(idusuario=idusuario)
-        
+
         # Actualizar sucursal
         if id_sucursal:
             if es_admin:
@@ -166,10 +206,10 @@ def cambiar_contexto(request):
                         'ok': False,
                         'error': 'No tienes permiso para cambiar a esta sucursal'
                     }, status=403)
-            
+
             request.session['id_sucursal'] = sucursal.id_sucursal
             print(f"✅ Sucursal cambiada a: {sucursal.nombre_sucursal}")
-        
+
         # Actualizar caja (sin aperturar)
         if id_caja:
             caja = Caja.objects.get(id_caja=id_caja)
@@ -177,7 +217,7 @@ def cambiar_contexto(request):
             print(f"✅ Caja seleccionada: {caja.nombre_caja}")
         else:
             request.session.pop('id_caja', None)
-        
+
         # Actualizar almacén
         if id_almacen:
             almacen = Almacenes.objects.get(id_almacen=id_almacen)
@@ -185,7 +225,20 @@ def cambiar_contexto(request):
             print(f"✅ Almacén seleccionado: {almacen.nombre_almacen}")
         else:
             request.session.pop('id_almacen', None)
-        
+
+        # ── Invalidar caché de empresa_context para este usuario ──
+        # (el nuevo contexto se recalculará en el próximo request)
+        idempresa = request.session.get('idempresa')
+        # Limpiar todas las variantes posibles de clave para este usuario
+        cache.delete_pattern(f'ctx_empresa_{idusuario}_*') if hasattr(cache, 'delete_pattern') else (
+            cache.delete(
+                f'ctx_empresa_{idusuario}_{idempresa}'
+                f'_{request.session.get("id_sucursal")}'
+                f'_{request.session.get("id_caja")}'
+                f'_{request.session.get("id_almacen")}'
+            )
+        )
+
         return JsonResponse({
             'ok': True,
             'success': True,
@@ -196,7 +249,7 @@ def cambiar_contexto(request):
                 'id_almacen': request.session.get('id_almacen')
             }
         })
-        
+
     except (Sucursales.DoesNotExist, Caja.DoesNotExist, Almacenes.DoesNotExist):
         return JsonResponse({
             'ok': False,
@@ -212,3 +265,25 @@ def cambiar_contexto(request):
         }, status=500)
 
 
+def usuario_context(request):
+    """
+    Agrega el objeto usuario completo a todas las plantillas.
+    Resultado cacheado por usuario durante 60 segundos.
+    """
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return {'user_obj': None}
+
+    cache_key = f'ctx_usuario_{idusuario}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        usuario_obj = Usuario.objects.get(idusuario=idusuario)
+        result = {'user_obj': usuario_obj}
+        cache.set(cache_key, result, timeout=_CTX_CACHE_TTL)
+        return result
+    except Usuario.DoesNotExist:
+        pass
+    return {'user_obj': None}

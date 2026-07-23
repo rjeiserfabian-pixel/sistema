@@ -6,7 +6,8 @@
         <h1 class="fw-bold text-primary mb-1">
             <i class="bi bi-people-fill me-2"></i>Usuarios
         </h1>
-        <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#myModaAgregar">
+        <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal"
+            data-bs-target="#myModaAgregar">
             <i class="fa-solid fa-circle-plus me-2"></i>Agregar Usuario
         </button>
     </div>
@@ -23,7 +24,7 @@
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <h5 class="card-title">Listado de Usuarios</h5>
-                
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle datatable">
                         <thead class="table-dark">
@@ -31,9 +32,10 @@
                                 <th scope="col">#</th>
                                 <th scope="col">Nombre</th>
                                 <th scope="col">Tipo Usuario</th>
-                                <th scope="col">Correo</th>
+                                <th scope="col">Usuario</th>
                                 <th scope="col">Celular</th>
                                 <th scope="col">DNI</th>
+                                <th scope="col">Gmail</th>
                                 <th scope="col">Empresa</th>
                                 <th scope="col">Sucursal</th>
                                 <th scope="col" class="text-center">Acciones</th>
@@ -48,106 +50,38 @@
                                 <td>{{ usuario.correo_descifrado }}</td>
                                 <td>{{ usuario.celular }}</td>
                                 <td>{{ usuario.dni }}</td>
+                                <td>{{ usuario.gmail|default:'-' }}</td>
                                 <td>
                                     {% if usuario.idempresa %}
-                                        <span class="badge bg-primary">{{ usuario.idempresa.razonsocial }}</span>
+                                    <span class="badge bg-primary">{{ usuario.idempresa.razonsocial }}</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Sin empresa</span>
+                                    <span class="badge bg-secondary">Sin empresa</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if usuario.id_sucursal %}
-                                        <span class="badge bg-info">{{ usuario.id_sucursal.nombre_sucursal }}</span>
+                                    <span class="badge bg-info">{{ usuario.id_sucursal.nombre_sucursal }}</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Sin sucursal</span>
+                                    <span class="badge bg-secondary">Sin sucursal</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill me-1" data-bs-toggle="modal" data-bs-target="#myModal2{{ usuario.idusuario }}" title="Editar usuario">
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill me-1"
+                                            data-bs-toggle="modal" data-bs-target="#myModal2{{ usuario.idusuario }}"
+                                            title="Editar usuario">
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </button>
-                                        <a href="{% url 'usuarioEliminar' id=usuario.idusuario %}" class="btn btn-sm btn-outline-danger rounded-pill eliminar" onclick="return confirmarEliminar('{{ usuario.idusuario }}', this)" title="Eliminar usuario">
+                                        <a href="{% url 'usuarioEliminar' id=usuario.idusuario %}"
+                                            class="btn btn-sm btn-outline-danger rounded-pill eliminar"
+                                            onclick="return confirmarEliminar('{{ usuario.idusuario }}', this)"
+                                            title="Eliminar usuario">
                                             <i class="fa-solid fa-trash"></i>
                                         </a>
                                     </div>
                                 </td>
                             </tr>
 
-                            <!-- Modal Editar -->
-                            <div class="modal fade" id="myModal2{{ usuario.idusuario }}" tabindex="-1">
-                                <div class="modal-dialog modal-dialog-centered modal-lg">
-                                    <div class="modal-content rounded-3 shadow-lg">
-                                        <div class="modal-header bg-primary text-white">
-                                            <h5 class="modal-title"><i class="fa-solid fa-user-edit me-2"></i>Editar Usuario</h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <form id="formEditar{{ usuario.idusuario }}" action="{% url 'usuarioEditar' %}" method="post" enctype="multipart/form-data">
-                                                {% csrf_token %}
-                                                <input type="hidden" value="{{ usuario.idusuario }}" name="idusuario">
-                                                
-                                                <div class="row">
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label fw-semibold">Nombre Completo</label>
-                                                        <input type="text" value="{{ usuario.nombrecompleto }}" name="nombreUsuario" class="form-control rounded-pill" required>
-                                                    </div>
-                                                    
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label fw-semibold">Correo Electrónico</label>
-                                                        <input type="email" value="{{ usuario.correo_descifrado }}" name="correoUsuario" class="form-control rounded-pill" required>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="row">
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label fw-semibold">Contraseña</label>
-                                                        <input type="password" value="" name="contrasenaUsuario" class="form-control rounded-pill" placeholder="Nueva contraseña (opcional)">
-                                                        <input type="hidden" value="{{ usuario.contrasena }}" name="contrasenaActual">
-                                                        <small class="text-muted">Dejar en blanco para no cambiar</small>
-                                                    </div>
-                                                    
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label fw-semibold">Tipo de Usuario</label>
-                                                        <select class="form-select rounded-pill" name="tipoUsuario" required>
-                                                            {% for tipoUsuario in tipoUsuarios %}
-                                                                <option value="{{ tipoUsuario.idtipousuario }}" {% if tipoUsuario.idtipousuario == usuario.idtipousuario.idtipousuario %}selected{% endif %}>
-                                                                    {{ tipoUsuario.nombretipousuario }}
-                                                                </option>
-                                                            {% endfor %}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="row">
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label fw-semibold">Celular</label>
-                                                        <input type="text" value="{{ usuario.celular }}" name="celularUsuario" class="form-control rounded-pill" required>
-                                                    </div>
-                                                    
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label fw-semibold">DNI</label>
-                                                        <input type="text" value="{{ usuario.dni }}" name="dniUsuario" class="form-control rounded-pill" required>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold">Sucursal</label>
-                                                    <input type="text" value="{{ usuario.id_sucursal.nombre_sucursal|default:'Sin sucursal' }}" class="form-control rounded-pill" readonly disabled>
-                                                    <small class="text-muted"><i class="fa-solid fa-info-circle"></i> La sucursal no se puede cambiar después de crear el usuario</small>
-                                                </div>
-                                                
-                                                <div class="modal-footer border-0">
-                                                    <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar" data-form-id="formEditar{{ usuario.idusuario }}">
-                                                        <i class="fa-solid fa-save me-2"></i>Guardar Cambios
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -155,6 +89,104 @@
             </div>
         </div>
     </section>
+
+    <!-- Modales de edición (fuera de la sección para evitar problemas de overflow con glassmorphism) -->
+    {% for usuario in usuarios %}
+    <div class="modal fade" id="myModal2{{ usuario.idusuario }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-3 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa-solid fa-user-edit me-2"></i>Editar Usuario</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditar{{ usuario.idusuario }}" action="{% url 'usuarioEditar' %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" value="{{ usuario.idusuario }}" name="idusuario">
+                        <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">Nombre Completo</label>
+                                                        <input type="text" value="{{ usuario.nombrecompleto }}"
+                                                            name="nombreUsuario" class="form-control rounded-pill"
+                                                            required>
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">Usuario</label>
+                                                        <input type="text" value="{{ usuario.correo_descifrado }}"
+                                                            name="correoUsuario" class="form-control rounded-pill"
+                                                            required>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">Contraseña</label>
+                                                        <input type="password" value="" name="contrasenaUsuario"
+                                                            class="form-control rounded-pill"
+                                                            placeholder="Nueva contraseña (opcional)">
+                                                        <input type="hidden" value="{{ usuario.contrasena }}"
+                                                            name="contrasenaActual">
+                                                        <small class="text-muted">Dejar en blanco para no
+                                                            cambiar</small>
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">Tipo de Usuario</label>
+                                                        <select class="form-select rounded-pill" name="tipoUsuario" required>
+                                                            {% for tipoUsuario in tipoUsuarios %}
+                                                                <option value="{{ tipoUsuario.idtipousuario }}" {% if tipoUsuario.idtipousuario == usuario.idtipousuario.idtipousuario %}selected{% endif %}>
+                                                                {{ tipoUsuario.nombretipousuario }}
+                                                            </option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">Celular</label>
+                                                        <input type="text" value="{{ usuario.celular }}"
+                                                            name="celularUsuario" class="form-control rounded-pill"
+                                                            required>
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">DNI</label>
+                                                        <input type="text" value="{{ usuario.dni }}" name="dniUsuario"
+                                                            class="form-control rounded-pill" required>
+                                                    </div>
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label fw-semibold">Gmail</label>
+                                                        <input type="text" value="{{ usuario.gmail|default:'' }}" name="gmailUsuario"
+                                                            class="form-control rounded-pill">
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-semibold">Sucursal</label>
+                                                    <input type="text"
+                                                        value="{{ usuario.id_sucursal.nombre_sucursal|default:'Sin sucursal' }}"
+                                                        class="form-control rounded-pill" readonly disabled>
+                                                    <small class="text-muted"><i class="fa-solid fa-info-circle"></i> La
+                                                        sucursal no se puede cambiar después de crear el usuario</small>
+                                                </div>
+
+                                                <div class="modal-footer border-0">
+                                                    <button type="button"
+                                                        class="btn btn-primary rounded-pill px-4 btn-editar"
+                                                        data-form-id="formEditar{{ usuario.idusuario }}">
+                                                        <i class="fa-solid fa-save me-2"></i>Guardar Cambios
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary rounded-pill"
+                                                        data-bs-dismiss="modal">Cerrar</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
 </main>
 
 <!-- Modal Agregar -->
@@ -168,59 +200,69 @@
             <div class="modal-body">
                 <form id="formAgregar" action="{% url 'usuarioAgregar' %}" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Nombre Completo</label>
-                            <input type="text" name="nombreUsuario2" class="form-control rounded-pill" autocomplete="off" required>
+                            <input type="text" name="nombreUsuario2" class="form-control rounded-pill"
+                                autocomplete="off" required>
                         </div>
-                        
+
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Correo Electrónico</label>
-                            <input type="email" name="correoUsuario2" class="form-control rounded-pill" required>
+                            <label class="form-label fw-semibold">Usuario</label>
+                            <input type="text" name="correoUsuario2" class="form-control rounded-pill"
+                                autocomplete="off" required>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Contraseña</label>
-                            <input type="password" name="contrasenaUsuario2" class="form-control rounded-pill" required>
+                            <input type="password" name="contrasenaUsuario2" class="form-control rounded-pill"
+                                autocomplete="new-password" required>
                         </div>
-                        
+
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Tipo de Usuario</label>
                             <select class="form-select rounded-pill" name="tipoUsuario2" required>
                                 {% for tipoUsuario in tipoUsuarios %}
-                                    <option value="{{ tipoUsuario.idtipousuario }}">{{ tipoUsuario.nombretipousuario }}</option>
+                                <option value="{{ tipoUsuario.idtipousuario }}">{{ tipoUsuario.nombretipousuario }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Celular</label>
                             <input type="text" name="celularUsuario2" class="form-control rounded-pill" required>
                         </div>
-                        
+
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">DNI</label>
                             <input type="text" name="dniUsuario2" class="form-control rounded-pill" required>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Gmail</label>
+                            <input type="text" name="gmailUsuario2" class="form-control rounded-pill">
+                        </div>
                     </div>
-                    
+
                     <div class="alert alert-info rounded-3 d-flex align-items-center" role="alert">
                         <i class="fa-solid fa-info-circle me-3 fs-4"></i>
                         <div>
-                            <strong>Información:</strong> El usuario se creará en la sucursal que tienes seleccionada actualmente.
+                            <strong>Información:</strong> El usuario se creará en la sucursal que tienes seleccionada
+                            actualmente.
                         </div>
                     </div>
-                    
+
                     <div class="modal-footer border-0">
                         <button type="button" class="btn btn-success rounded-pill px-4" id="btnAgregar">
                             <i class="fa-solid fa-plus-circle me-2"></i>Agregar Usuario
                         </button>
-                        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill"
+                            data-bs-dismiss="modal">Cerrar</button>
                     </div>
                 </form>
             </div>
@@ -243,59 +285,59 @@
         justify-content: center;
         flex-wrap: wrap;
     }
-    
+
     .btn-sm {
         padding: 0.375rem 0.75rem;
         font-size: 0.875rem;
         transition: all 0.3s ease;
     }
-    
+
     .btn-outline-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 94, 255, 0.3);
     }
-    
+
     .btn-outline-danger:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(247, 27, 2, 0.3);
     }
-    
+
     /* Responsive para tablets y móviles */
     @media (max-width: 768px) {
         .btn-group {
             flex-direction: column;
             gap: 3px;
         }
-        
+
         .btn-sm {
             width: 100%;
             min-width: 80px;
         }
-        
+
         .table-responsive {
             font-size: 0.85rem;
         }
-        
+
         .badge {
             font-size: 0.7rem;
         }
     }
-    
+
     /* Mejoras visuales adicionales */
     .card {
         border-radius: 15px;
         overflow: hidden;
     }
-    
+
     .table-hover tbody tr:hover {
         background-color: rgba(0, 123, 255, 0.05);
         transition: background-color 0.3s ease;
     }
-    
+
     .modal-content {
         border: none;
     }
-    
+
     .badge {
         padding: 0.5em 0.75em;
         font-weight: 500;
@@ -321,7 +363,7 @@
     const csrftoken = getCookie('csrftoken');
 
     // Inicializar DataTable
-    $(document).ready(function() {
+    $(document).ready(function () {
         $('.datatable').DataTable({
             language: {
                 url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
@@ -331,10 +373,15 @@
             responsive: true,
             order: [[0, 'asc']]
         });
+
+        // Limpiar formulario cuando se abre el modal de agregar
+        $('#myModaAgregar').on('show.bs.modal', function () {
+            $('#formAgregar')[0].reset();
+        });
     });
 
     // Agregar usuario
-    $('#btnAgregar').click(function() {
+    $('#btnAgregar').click(function () {
         var formData = new FormData($('#formAgregar')[0]);
         $.ajax({
             type: 'POST',
@@ -345,7 +392,7 @@
             headers: {
                 'X-CSRFToken': csrftoken
             },
-            success: function(response) {
+            success: function (response) {
                 Swal.fire({
                     title: 'Usuario agregado exitosamente',
                     icon: 'success',
@@ -357,7 +404,7 @@
                     }
                 });
             },
-            error: function(response) {
+            error: function (response) {
                 Swal.fire({
                     title: 'Error al guardar el usuario',
                     text: response.responseJSON ? response.responseJSON.error : response.responseText,
@@ -370,18 +417,18 @@
     });
 
     // Editar usuario
-    $('.btn-editar').click(function() {
+    $('.btn-editar').click(function () {
         var formId = $(this).data('form-id');
         var form = $('#' + formId);
         var formData = new FormData(form[0]);
-        
+
         // Si el campo de contraseña está vacío, enviamos la contraseña actual (hasheada)
         var nuevaContrasena = form.find('input[name="contrasenaUsuario"]').val();
         if (!nuevaContrasena || nuevaContrasena.trim() === '') {
             var contrasenaActual = form.find('input[name="contrasenaActual"]').val();
             formData.set('contrasenaUsuario', contrasenaActual);
         }
-        
+
         $.ajax({
             type: 'POST',
             url: "{% url 'usuarioEditar' %}",
@@ -391,7 +438,7 @@
             headers: {
                 'X-CSRFToken': csrftoken
             },
-            success: function(response) {
+            success: function (response) {
                 Swal.fire({
                     title: 'Usuario editado exitosamente',
                     icon: 'success',
@@ -403,7 +450,7 @@
                     }
                 });
             },
-            error: function(response) {
+            error: function (response) {
                 Swal.fire({
                     title: 'Error al editar el usuario',
                     text: response.responseJSON ? response.responseJSON.error : response.responseText,
@@ -434,10 +481,10 @@
                     headers: {
                         'X-CSRFToken': csrftoken
                     },
-                    success: function(response) {
+                    success: function (response) {
                         window.location.href = "{% url 'usuarios' %}";
                     },
-                    error: function(response) {
+                    error: function (response) {
                         Swal.fire({
                             title: 'Error al eliminar el usuario',
                             text: response.responseText,

@@ -1,0 +1,43 @@
+    <div class="tab-pane fade" id="tab-repuestos" role="tabpanel" aria-labelledby="repuestos-tab">
+    <section class="section dashboard mt-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+          <h6 class="m-0 fw-bold text-warning"><i class="fa-solid fa-gears me-1"></i> Catálogo de Repuestos</h6>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <input type="text" id="buscarRepuesto" class="form-control" placeholder="Buscar por nombre, código de barras, marca...">
+            </div>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" style="width:100%;" id="tablaRepuestos">
+              <thead class="table-dark">
+                <tr>
+                  <th class="text-center" style="width:4%;">#</th>
+                  <th style="width:9%;">Código</th>
+                  <th style="width:16%;">Nombre del Repuesto</th>
+                  <th style="width:12%;">Compatibilidad</th>
+                  <th style="width:11%;">Categoría</th>
+                  <th style="width:9%;">Marca</th>
+                  <th style="width:7%;">Unidad</th>
+                  <th style="width:8%;">Costo Unit.</th>
+                  <th style="width:8%;">Precio x Menor</th>
+                  <th style="width:6%;">St. Mín</th>
+                  <th class="text-center" style="width:10%;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyRepuestos">
+                <tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Paginación Repuestos -->
+          <div id="paginacionRepuestos" class="d-flex justify-content-between align-items-center mt-3">
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>

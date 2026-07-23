@@ -2,6 +2,67 @@
 {% load static %}
 
 {% block main %}
+<style>
+/* ========================================
+   ⭐ AUTOCOMPLETE MODERNO (COPIADO DE VENTAS)
+   ======================================== */
+.autocomplete-wrapper {
+  position: relative;
+}
+.autocomplete-input {
+  width: 100%;
+}
+.autocomplete-with-arrow {
+  padding-right: 40px;
+}
+.autocomplete-arrow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 5px 8px;
+  color: #6c757d;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+.autocomplete-arrow:hover { color: #495057; }
+.autocomplete-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3000 !important; /* Asegurar visibilidad sobre modal */
+  max-height: 250px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ced4da;
+  border-top: none;
+  border-radius: 0 0 0.375rem 0.375rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: none;
+}
+.autocomplete-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.2s ease;
+  color: #333;
+}
+.autocomplete-item:hover { background-color: #e9f5ff; }
+.autocomplete-item.no-results {
+  color: #6c757d;
+  cursor: default;
+  font-style: italic;
+}
+.glass-modal {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+</style>
+
 <main id="main" class="main">
     
     <!-- HEADER -->
@@ -12,10 +73,16 @@
             </h1>
             <p class="text-muted mb-0">Administración de ventas a crédito y cuotas</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'historial_creditos_anulados' %}" class="btn btn-warning rounded-pill">
+                <i class="bi bi-clock-history me-2"></i>Historial Anulados
+            </a>
             <a href="{% url 'reportes_creditos' %}" class="btn btn-info rounded-pill">
                 <i class="bi bi-bar-chart-fill me-2"></i>Reportes
             </a>
+            <button type="button" class="btn btn-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCreditoDirecto">
+                <i class="bi bi-plus-circle me-2"></i>Nuevo Crédito Directo
+            </button>
         </div>
     </div>
 
@@ -26,7 +93,7 @@
         </ol>
     </nav>
 
-    <!-- ESTADÍSTICAS -->
+    <!-- ESTADÍSTICAS (PREMIUM) -->
     <section class="section dashboard mt-4">
         <div class="row mb-4">
             <div class="col-md-3">
@@ -38,7 +105,7 @@
                                 <i class="bi bi-file-text text-white"></i>
                             </div>
                             <div class="ps-3">
-                                <h6 class="mb-0">{{ total_creditos }}</h6>
+                                <h6 id="stat-total-creditos" class="mb-0 fs-4 fw-bold">0</h6>
                             </div>
                         </div>
                     </div>
@@ -54,7 +121,7 @@
                                 <i class="bi bi-check-circle text-white"></i>
                             </div>
                             <div class="ps-3">
-                                <h6 class="mb-0">{{ total_activos }}</h6>
+                                <h6 id="stat-total-activos" class="mb-0 fs-4 fw-bold text-success">0</h6>
                             </div>
                         </div>
                     </div>
@@ -70,7 +137,7 @@
                                 <i class="bi bi-exclamation-triangle text-white"></i>
                             </div>
                             <div class="ps-3">
-                                <h6 class="mb-0">{{ total_mora }}</h6>
+                                <h6 id="stat-total-mora" class="mb-0 fs-4 fw-bold text-danger">0</h6>
                             </div>
                         </div>
                     </div>
@@ -86,7 +153,7 @@
                                 <i class="bi bi-currency-dollar text-white"></i>
                             </div>
                             <div class="ps-3">
-                                <h6 class="mb-0 text-primary">S/ {{ saldo_total_pendiente|floatformat:2 }}</h6>
+                                <h6 id="stat-saldo-pendiente" class="mb-0 fs-5 fw-bold text-primary">S/ 0.00</h6>
                             </div>
                         </div>
                     </div>
@@ -94,7 +161,7 @@
             </div>
         </div>
 
-        <!-- FILTROS -->
+        <!-- FILTROS COMPLETOS RESTAURADOS -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-bold">Filtros de Búsqueda</h6>
@@ -104,38 +171,35 @@
             </div>
             <div class="collapse" id="filtrosCollapse">
                 <div class="card-body">
-                    <form method="GET" action="{% url 'creditos' %}">
+                    <form id="formFiltrosCredito">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Estado:</label>
-                                <select name="estado" class="form-select">
+                                <select id="filtroEstado" name="estado" class="form-select">
                                     <option value="todos" {% if estado_filtro == 'todos' %}selected{% endif %}>Todos</option>
                                     <option value="activo" {% if estado_filtro == 'activo' %}selected{% endif %}>Activos</option>
                                     <option value="mora" {% if estado_filtro == 'mora' %}selected{% endif %}>En Mora</option>
                                     <option value="pagado" {% if estado_filtro == 'pagado' %}selected{% endif %}>Pagados</option>
                                 </select>
                             </div>
-
                             <div class="col-md-3">
                                 <label class="form-label">Búsqueda:</label>
-                                <input type="text" name="busqueda" class="form-control" 
-                                       placeholder="Código, cliente, DNI..." value="{{ busqueda }}">
+                                <input type="text" id="filtroBusqueda" name="busqueda" class="form-control" placeholder="Código, cliente, DNI..." value="{{ busqueda }}">
                             </div>
-
+                            <div class="col-md-3">
+                                <label class="form-label">Producto:</label>
+                                <input type="text" id="filtroProducto" name="producto" class="form-control" placeholder="Nombre, chasis, motor, código barras..." value="{{ producto }}">
+                            </div>
                             <div class="col-md-2">
                                 <label class="form-label">Desde:</label>
-                                <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde }}">
+                                <input type="date" id="filtroDesde" name="fecha_desde" class="form-control" value="{{ fecha_desde }}">
                             </div>
-
                             <div class="col-md-2">
                                 <label class="form-label">Hasta:</label>
-                                <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
+                                <input type="date" id="filtroHasta" name="fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
                             </div>
-
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="bi bi-search"></i> Buscar
-                                </button>
+                            <div class="col-md-2 d-flex align-items-end ms-auto" style="display: none !important;">
+                                <!-- El botón Buscar ya no es necesario, pero lo ocultamos por si acaso -->
                             </div>
                         </div>
                     </form>
@@ -143,13 +207,12 @@
             </div>
         </div>
 
-        <!-- TABLA DE CRÉDITOS -->
+        <!-- TABLA DE CRÉDITOS (CORREGIDA) -->
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <h5 class="card-title">Listado de Créditos</h5>
-                
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle datatable">
+                    <table class="table table-hover align-middle">
                         <thead class="table-dark">
                             <tr>
                                 <th>Código</th>
@@ -157,102 +220,1504 @@
                                 <th>Comprobante</th>
                                 <th>Fecha</th>
                                 <th class="text-end">Monto Total</th>
-                                <th class="text-end">Adelanto</th>
+                                <th class="text-end">Monto Inicial</th>
                                 <th class="text-end">Saldo</th>
                                 <th class="text-center">Cuotas</th>
                                 <th class="text-center">Estado</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for credito in creditos %}
-                            <tr>
-                                <td>
-                                    <span class="badge bg-primary">{{ credito.codigo_credito }}</span>
-                                </td>
-                                <td>
-                                    <strong>{{ credito.idventa.idcliente.razonsocial|truncatewords:4 }}</strong><br>
-                                    <small class="text-muted">{{ credito.idventa.idcliente.numdoc }}</small>
-                                </td>
-                                <td>{{ credito.idventa.numero_comprobante }}</td>
-                                <td>{{ credito.fecha_credito|date:"d/m/Y" }}</td>
-                                <td class="text-end fw-bold">S/ {{ credito.monto_total|floatformat:2 }}</td>
-                                <td class="text-end text-success">S/ {{ credito.monto_adelanto|floatformat:2 }}</td>
-                                <td class="text-end">
-                                    <strong class="text-danger">S/ {{ credito.saldo_pendiente|floatformat:2 }}</strong>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-info">{{ credito.cantidad_cuotas }}</span>
-                                </td>
-                                <td class="text-center">
-                                    {% if credito.estado_credito == 'activo' %}
-                                        <span class="badge bg-success">ACTIVO</span>
-                                    {% elif credito.estado_credito == 'mora' %}
-                                        <span class="badge bg-danger">MORA</span>
-                                    {% elif credito.estado_credito == 'pagado' %}
-                                        <span class="badge bg-info">PAGADO</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    <a href="{% url 'detalle_credito' credito.idcredito %}" 
-                                       class="btn btn-sm btn-info" title="Ver Detalle">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{% url 'imprimir_cronograma' credito.idventa.idventa %}" 
-                                       class="btn btn-sm btn-secondary" title="Imprimir Cronograma" target="_blank">
-                                        <i class="bi bi-printer"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="10" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox" style="font-size: 3rem;"></i><br>
-                                    No se encontraron créditos con los filtros aplicados
-                                </td>
-                            </tr>
-                            {% endfor %}
+                        <tbody id="tbodyCreditos">
+                            <tr><td colspan="10" class="text-center py-4 text-muted"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Paginación -->
+                <div id="paginacionCreditos" class="d-flex justify-content-between align-items-center mt-3">
                 </div>
             </div>
         </div>
     </section>
-
 </main>
 
-<style>
-.info-card {
-    border: none;
-    box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
-}
+<!-- MODAL CRÉDITO DIRECTO (VERSION PREMIUM) -->
+<div class="modal fade" id="modalCreditoDirecto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content glass-modal border-0">
+            <div class="modal-header border-0 bg-primary bg-opacity-10 py-3">
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="bi bi-patch-plus me-2"></i>Registrar Nuevo Crédito Directo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formCreditoDirecto">
+                    {% csrf_token %}
+                    <div class="row g-4">
+                        <!-- CLIENTE AUTOCOMPLETE -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Cliente <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <div class="autocomplete-wrapper flex-grow-1">
+                                    <input type="text" id="cliente_search" class="form-control autocomplete-input autocomplete-with-arrow" 
+                                           placeholder="Buscar por nombre o DNI/RUC..." autocomplete="off" required>
+                                    <button type="button" class="autocomplete-arrow" onclick="toggleAutocomplete(event, 'cliente_search', 'cliente_results')">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <input type="hidden" name="idcliente_directo" id="idcliente_directo">
+                                    <div class="autocomplete-results" id="cliente_results"></div>
+                                </div>
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal"
+                                        data-bs-target="#modalAgregarClienteDirecto" title="Agregar nuevo cliente"
+                                        style="border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem; z-index: 0;">
+                                    <i class="fa-solid fa-user-plus"></i>
+                                </button>
+                            </div>
+                        </div>
 
-.card-icon {
-    font-size: 32px;
-    line-height: 0;
-    width: 64px;
-    height: 64px;
-}
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Almacén / Stock</label>
+                            <select name="id_almacen_directo" id="id_almacen_directo" class="form-select" required>
+                                <option value="">Seleccione Almacén...</option>
+                                {% for a in almacenes %}
+                                    <option value="{{ a.id_almacen }}" {% if a.id_almacen|slugify == id_almacen_session|slugify %}selected{% endif %}>
+                                        {{ a.nombre_almacen }} ({{ a.id_sucursal.nombre_sucursal }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Fecha de Crédito</label>
+                            <input type="date" class="form-control" name="fecha_credito_directo" id="fecha_credito_directo" required>
+                        </div>
 
-.card-title {
-    padding: 20px 0 15px 0;
-    font-size: 18px;
-    font-weight: 500;
-    color: #012970;
-}
-</style>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">Tipo Producto</label>
+                            <select name="tipo_item_directo" id="tipo_item_directo" class="form-select">
+                                <option value="vehiculo">Vehículo</option>
+                                <option value="repuesto">Repuesto</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Producto (Autocomplete) <span class="text-danger">*</span></label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="producto_autocomplete" class="form-control autocomplete-input autocomplete-with-arrow" 
+                                       placeholder="Primero seleccione almacén..." autocomplete="off" disabled required>
+                                <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteProducto(event, 'producto_autocomplete', 'producto_results')">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <div class="autocomplete-results" id="producto_results"></div>
+                            </div>
+                            <input type="hidden" name="id_item_directo" id="id_item_directo">
+                            <input type="hidden" name="monto_total_directo" id="monto_total_directo">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Serie / Código <span class="text-danger">*</span></label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="detalle_item_autocomplete" class="form-control autocomplete-input autocomplete-with-arrow" 
+                                       placeholder="Primero seleccione almacén..." autocomplete="off" disabled required>
+                                <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteDetalle(event, 'detalle_item_autocomplete', 'detalle_item_results')">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <div class="autocomplete-results" id="detalle_item_results"></div>
+                            </div>
+                            <small class="text-muted" id="detalle_item_hint">Puede buscar por serie o código sin seleccionar producto</small>
+                            <input type="hidden" id="detalle_item_selected_val">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Precio al Crédito <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" id="precio_credito_directo" name="precio_credito_directo" class="form-control" placeholder="0.00" disabled required>
+                        </div>
 
+                        <!-- RESUMEN DE PRODUCTO SELECCIONADO -->
+                        <div id="resumen_producto_container" class="col-12 d-none">
+                            <div class="card bg-light border-0 shadow-sm mb-0" style="border-radius: 8px;">
+                                <div class="card-body py-2 px-3">
+                                    <div class="row text-dark text-center align-items-center">
+                                        <div class="col-md-4 py-1">
+                                            <i class="bi bi-tag-fill text-warning me-1"></i>
+                                            <strong>Precio Mínimo:</strong> <span id="resumen_precio_minimo" class="text-danger fw-bold">S/ 0.00</span>
+                                        </div>
+                                        <div class="col-md-4 py-1">
+                                            <i class="bi bi-tags-fill text-success me-1"></i>
+                                            <strong>Precio Máximo/Venta:</strong> <span id="resumen_precio_maximo" class="text-success fw-bold">S/ 0.00</span>
+                                        </div>
+                                        <div class="col-md-4 py-1">
+                                            <i class="bi bi-box-seam-fill text-info me-1"></i>
+                                            <strong>Stock Disponible:</strong> <span id="resumen_stock" class="text-info fw-bold">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CONFIGURACION CUOTAS -->
+                        <div class="col-12 mt-4">
+                            <div class="card shadow-none border-warning">
+                                <div class="card-header bg-warning py-2 fw-bold text-dark">
+                                    <i class="bi bi-calendar-check me-2"></i>Configurar Cuotas
+                                </div>
+                                <div class="card-body pt-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold">Cantidad de Cuotas</label>
+                                            <input type="number" id="cantidad_cuotas_directo" name="cantidad_cuotas_directo" class="form-control" value="4" min="1">
+                                            <small class="text-muted" style="font-size: 0.75rem;">Total de pagos en el cronograma</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold">Interés Total (S/)</label>
+                                            <input type="number" id="tasa_interes_directo" class="form-control" value="0" step="0.01" min="0">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold">Monto Inicial (S/) <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Este monto será la Cuota 0 del cronograma"></i></label>
+                                            <input type="number" id="monto_adelanto_directo" name="monto_adelanto_directo" class="form-control" value="0" step="0.01" min="0" placeholder="0.00">
+                                            <small class="text-muted" style="font-size: 0.75rem;">Se registra como Cuota 0 del crédito</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold">Tipo de Periodo</label>
+                                            <select id="tipo_periodo_directo" class="form-select">
+                                                <option value="dias" selected>Días</option>
+                                                <option value="meses">Meses</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-1">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold">Fecha Base (1ra Cuota)</label>
+                                            <input type="date" id="fecha_base_cuotas_directo" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-3" id="container_dias_directo">
+                                            <label class="form-label fw-bold">Días entre cuotas</label>
+                                            <input type="number" id="dias_cuotas_directo" class="form-control" value="30" min="1" max="40" oninput="if(this.value>40)this.value=40; if(this.value<1&&this.value!=='')this.value=1;">
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end ms-auto">
+                                            <button type="button" class="btn btn-success w-100" id="btnGenerarCuotasDirecto">
+                                                <i class="bi bi-calculator me-2"></i>Generar Cuotas
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive mt-3 d-none" id="cronograma_container">
+                                        <!-- RESUMEN DE TOTALES (PREMIUM TABS) -->
+                                        <div class="card border-0 shadow-sm mb-3" style="background-color: #e3f2fd; border-radius: 12px; border-left: 5px solid #0d6efd !important;">
+                                            <div class="card-body py-3">
+                                                <div class="row text-center">
+                                                    <div class="col-md-3 border-end">
+                                                        <div class="text-muted small fw-bold"><i class="bi bi-cart-fill me-1"></i>Total Venta:</div>
+                                                        <div class="h5 fw-bold text-primary mt-1" id="resumen_total_venta">S/ 0.00</div>
+                                                    </div>
+                                                    <div class="col-md-3 border-end">
+                                                        <div class="text-muted small fw-bold"><i class="bi bi-wallet2 me-1"></i>Adelanto:</div>
+                                                        <div class="h5 fw-bold text-success mt-1" id="resumen_total_adelanto">S/ 0.00</div>
+                                                    </div>
+                                                    <div class="col-md-3 border-end">
+                                                        <div class="text-muted small fw-bold"><i class="bi bi-calendar3 me-1"></i>Total A Financiar:</div>
+                                                        <div class="h5 fw-bold text-warning mt-1" id="resumen_total_financiar">S/ 0.00</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="text-muted small fw-bold"><i class="bi bi-percent me-1"></i>Financiar + Interés:</div>
+                                                        <div class="h5 fw-bold text-danger mt-1 mb-0" id="resumen_total_con_interes">S/ 0.00</div>
+                                                        <div class="text-muted small" style="font-size: 0.75rem;" id="resumen_interes_monto_texto">(+S/ 0.00 en intereses)</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- TABLE WITH FOOTER -->
+                                        <table class="table table-bordered table-sm">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>Cuota</th>
+                                                    <th>Vencimiento</th>
+                                                    <th>Monto</th>
+                                                    <th>Interés</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbodyCronogramaDirecto"></tbody>
+                                            <tfoot class="bg-light fw-bold" id="tfootCronogramaDirecto">
+                                                <tr>
+                                                    <td colspan="2" class="text-end text-uppercase">Totales:</td>
+                                                    <td id="total_footer_monto" class="text-end">S/ 0.00</td>
+                                                    <td id="total_footer_interes" class="text-end text-danger">S/ 0.00</td>
+                                                    <td id="total_footer_total" class="text-end text-success">S/ 0.00</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                        <!-- Contenedor de Paginación para Crédito Directo -->
+                                        <div id="paginacionCuotasDirecto" class="d-flex justify-content-between align-items-center mt-2 d-none">
+                                            <div class="text-muted small" id="infoPaginacionCuotasDirecto"></div>
+                                            <nav>
+                                                <ul class="pagination pagination-sm mb-0">
+                                                    <li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cambiarPaginaCuotasDirecto('prev')">Anterior</a></li>
+                                                    <li class="page-item active"><a class="page-link" href="javascript:void(0)" id="paginaActualCuotasDirecto">1</a></li>
+                                                    <li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cambiarPaginaCuotasDirecto('next')">Siguiente</a></li>
+                                                </ul>
+                                            </nav>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 p-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-5 shadow" id="btnGuardarCreditoDirecto">
+                    <i class="bi bi-save me-2"></i>Guardar Crédito
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================
+     ⭐ MODAL AGREGAR CLIENTE DIRECTO (NUEVO)
+     ======================================== -->
+<div class="modal fade" id="modalAgregarClienteDirecto" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-3 shadow-lg">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fa-solid fa-user-plus me-2"></i>Agregar Nuevo Cliente</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="cerrarModalClienteDirecto()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          <i class="fa-solid fa-circle-info me-2"></i>
+          <strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) o RUC (11 dígitos) y los datos se completarán automáticamente.
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="alert alert-primary d-none" id="alertCargandoDirecto" role="alert">
+          <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <div>Consultando documento en RENIEC/SUNAT...</div>
+          </div>
+        </div>
+
+        <div class="alert alert-danger d-none" id="alertErrorDirecto" role="alert">
+          <i class="fa-solid fa-circle-exclamation me-2"></i><span id="mensajeErrorDirecto"></span>
+        </div>
+
+        <div class="alert alert-success d-none" id="alertExitoDirecto" role="alert">
+          <i class="fa-solid fa-circle-check me-2"></i><span id="mensajeExitoDirecto"></span>
+        </div>
+
+        <form id="formAgregarClienteDirecto">
+          {% csrf_token %}
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Tipo de Entidad <span class="text-danger">*</span></label>
+              <select name="tipoEntidadCliente" id="tipoEntidadClienteDirecto" class="form-select rounded-pill" required>
+                <option value="">Seleccione...</option>
+                <option value="1">Persona Natural</option>
+                <option value="6">Persona Jurídica</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Número de Documento <span class="text-danger">*</span> <span id="badgeTipoDocDirecto" class="badge bg-secondary ms-2" style="display: none;"></span></label>
+              <div class="input-group">
+                <input type="text" name="numdocCliente" id="numdocClienteDirecto" class="form-control rounded-start" maxlength="11" placeholder="DNI (8) o RUC (11)" required>
+                <button class="btn btn-primary rounded-end" type="button" id="btnConsultarDocDirecto" title="Consultar documento">
+                  <i class="fa-solid fa-search"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row d-none" id="infoRucDirecto">
+            <div class="col-md-12 mb-3">
+              <div class="alert alert-light border" role="alert">
+                <strong>Estado SUNAT:</strong> <span id="estadoSunatDirecto" class="badge"></span>
+                <strong class="ms-3">Condición:</strong> <span id="condicionSunatDirecto"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label fw-semibold">Razón Social / Nombre Completo <span class="text-danger">*</span></label>
+              <input type="text" name="razonsocialCliente" id="razonsocialClienteDirecto" class="form-control rounded-pill" maxlength="255" required>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label fw-semibold">Nombre Comercial</label>
+              <input type="text" name="nombreComercialCliente" id="nombreComercialClienteDirecto" class="form-control rounded-pill" maxlength="255">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Teléfono</label>
+              <input type="text" name="telefonoCliente" id="telefonoClienteDirecto" class="form-control rounded-pill" maxlength="150">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" name="emailCliente" id="emailClienteDirecto" class="form-control rounded-pill" maxlength="255">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label fw-semibold">Dirección</label>
+              <input type="text" name="direccionCliente" id="direccionClienteDirecto" class="form-control rounded-pill" maxlength="255">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-semibold">Departamento</label>
+              <select name="idRegion" id="idRegionDirecto" class="form-select rounded-pill">
+                <option value="">Seleccione...</option>
+                {% for region in regiones %}
+                <option value="{{ region.id_region }}">{{ region.nombre_region }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-semibold">Provincia</label>
+              <select name="idProvincia" id="idProvinciaDirecto" class="form-select rounded-pill">
+                <option value="">Seleccione...</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-semibold">Distrito</label>
+              <select name="idDistrito" id="idDistritoDirecto" class="form-select rounded-pill">
+                <option value="">Seleccione...</option>
+              </select>
+            </div>
+          </div>
+
+          <hr>
+          <h6 class="mb-3 text-muted fw-bold"><i class="bi bi-people-fill"></i> Datos del Cónyuge (Opcional)</h6>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="conyugeNombreDirecto" class="form-label fw-semibold">Nombre del Cónyuge</label>
+                <input type="text" class="form-control rounded-pill" id="conyugeNombreDirecto" name="conyugeNombre">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="conyugeDniDirecto" class="form-label fw-semibold">DNI del Cónyuge</label>
+                <div class="input-group">
+                    <input type="text" class="form-control rounded-start" id="conyugeDniDirecto" name="conyugeDni" maxlength="8">
+                    <button class="btn btn-primary rounded-end" type="button" id="btnConsultarConyugeDirecto" title="Consultar DNI Cónyuge">
+                        <i class="fa-solid fa-search"></i>
+                    </button>
+                </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarClienteDirecto">
+              <i class="fa-solid fa-save me-2"></i>Guardar Cliente
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="cerrarModalClienteDirecto()">
+              <i class="fa-solid fa-xmark me-2"></i>Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
+// ========================================
+// ⭐ DATOS PARA AUTOCOMPLETE
+// ========================================
+const clientesData = [
+    {% for c in clientes %}
+        { id: {{ c.idcliente }}, text: "{{ c.razonsocial|escapejs }} - {{ c.numdoc|escapejs }}" },
+    {% endfor %}
+];
+
+let productosData = { vehiculos: {}, repuestos: {} };
+let activeProductItems = [];
+
+// ========================================
+// ⭐ LÓGICA AUTOCOMPLETE
+// ========================================
+function setupAutocomplete(inputId, resultsId, data, hiddenId) {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    const hidden = document.getElementById(hiddenId);
+    if (!input) return;
+
+    const handleInput = function() {
+        const val = this.value.toLowerCase().trim();
+        results.innerHTML = '';
+        if (val.length < 1) { results.style.display = 'none'; if(hidden) hidden.value = ''; return; }
+        
+        const filtered = data.filter(i => i.text.toLowerCase().includes(val));
+        if (filtered.length === 0) {
+            results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron resultados</div>';
+            results.style.display = 'block';
+            return;
+        }
+        
+        filtered.forEach(i => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.textContent = i.text;
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                input.value = i.text;
+                if(hidden) hidden.value = i.id;
+                results.style.display = 'none';
+            });
+            results.appendChild(div);
+        });
+        results.style.display = 'block';
+    };
+
+    input.addEventListener('input', handleInput);
+    input.addEventListener('keyup', handleInput);
+    document.addEventListener('click', (e) => {
+        const arrow = input.parentElement.querySelector('.autocomplete-arrow');
+        if (!input.contains(e.target) && !results.contains(e.target) && (!arrow || !arrow.contains(e.target))) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+window.toggleAutocomplete = function(e, inputId, resultsId) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    let hId = (inputId === 'cliente_search') ? 'idcliente_directo' : '';
+    const hidden = document.getElementById(hId);
+    if (results.style.display === 'block') { results.style.display = 'none'; return; }
+    results.innerHTML = '';
+    clientesData.forEach(i => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = i.text;
+        div.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            input.value = i.text;
+            if (hidden) hidden.value = i.id;
+            results.style.display = 'none';
+        });
+        results.appendChild(div);
+    });
+    results.style.display = 'block';
+    input.focus();
+}
+
+function setupAutocompleteProducto(inputId, resultsId) {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    if (!input) return;
+
+    const handleInput = function() {
+        const val = this.value.toLowerCase().trim();
+        results.innerHTML = '';
+        if (val.length < 1) { 
+            results.style.display = 'none'; 
+            activeProductItems = [];
+            // Al limpiar el producto, el campo de detalle pasa a modo búsqueda global
+            $("#detalle_item_autocomplete").val('').prop('disabled', false).attr('placeholder', 'Buscar serie/código en todo el stock...');
+            $("#detalle_item_results").hide();
+            $("#detalle_item_selected_val").val('');
+            $("#resumen_producto_container").addClass('d-none');
+            $("#precio_credito_directo").prop('disabled', true).val('');
+            $("#id_item_directo").val('');
+            $("#monto_total_directo").val('');
+            return; 
+        }
+        
+        const tipo = document.getElementById("tipo_item_directo").value;
+        const d = (tipo === 'vehiculo') ? productosData.vehiculos : productosData.repuestos;
+        const keys = Object.keys(d);
+        const filtered = keys.filter(n => n.toLowerCase().includes(val));
+        
+        if (filtered.length === 0) {
+            results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron resultados</div>';
+            results.style.display = 'block';
+            return;
+        }
+        
+        filtered.forEach(name => {
+            const tipo = document.getElementById("tipo_item_directo").value;
+            const d = (tipo === 'vehiculo') ? productosData.vehiculos : productosData.repuestos;
+            const items = d[name] || [];
+            const disponibles = items.filter(it => (it.stock_disponible || 0) > 0).length;
+            
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>${name}</span>
+                    <span class="badge ${disponibles > 0 ? 'bg-success' : 'bg-secondary'}" style="font-size:0.7rem;">
+                        ${disponibles} disponible(s)
+                    </span>
+                </div>`;
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                input.value = name;
+                results.style.display = 'none';
+                seleccionarProducto(name);
+            });
+            results.appendChild(div);
+        });
+        results.style.display = 'block';
+    };
+
+    input.addEventListener('input', handleInput);
+    input.addEventListener('keyup', handleInput);
+    
+    document.addEventListener('click', (e) => {
+        const arrow = input.parentElement.querySelector('.autocomplete-arrow');
+        if (!input.contains(e.target) && !results.contains(e.target) && (!arrow || !arrow.contains(e.target))) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+window.toggleAutocompleteProducto = function(e, inputId, resultsId) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    if (input.disabled) return;
+    
+    if (results.style.display === 'block') { results.style.display = 'none'; return; }
+    results.innerHTML = '';
+    
+    const tipo = document.getElementById("tipo_item_directo").value;
+    const d = (tipo === 'vehiculo') ? productosData.vehiculos : productosData.repuestos;
+    const keys = Object.keys(d);
+    
+    if (keys.length === 0) {
+        results.innerHTML = '<div class="autocomplete-item no-results">No hay productos cargados en stock</div>';
+        results.style.display = 'block';
+        return;
+    }
+    
+    keys.forEach(name => {
+        const items = d[name] || [];
+        const disponibles = items.filter(it => (it.stock_disponible || 0) > 0).length;
+        
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <span>${name}</span>
+                <span class="badge ${disponibles > 0 ? 'bg-success' : 'bg-secondary'}" style="font-size:0.7rem;">
+                    ${disponibles} disponible(s)
+                </span>
+            </div>`;
+        div.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            input.value = name;
+            results.style.display = 'none';
+            seleccionarProducto(name);
+        });
+        results.appendChild(div);
+    });
+    results.style.display = 'block';
+    input.focus();
+}
+
+function seleccionarProducto(name) {
+    const tipo = $("#tipo_item_directo").val();
+    activeProductItems = (tipo === 'vehiculo') ? productosData.vehiculos[name] : productosData.repuestos[name];
+    // Guardar el nombre del producto seleccionado para referencia en búsqueda global
+    window._productoSeleccionadoNombre = name;
+    
+    const $input = $("#detalle_item_autocomplete");
+    $input.prop('disabled', false).val('').attr('placeholder', 'Buscar serie/código...');
+    $("#detalle_item_selected_val").val('');
+    
+    $("#resumen_producto_container").addClass('d-none');
+    $("#precio_credito_directo").prop('disabled', true).val('');
+    $("#id_item_directo").val('');
+    $("#monto_total_directo").val('');
+}
+
+// ============================================================
+// ⭐ FUNCIÓN AUXILIAR: Renderiza un item en el desplegable de
+//    Serie/Código con badges visuales (stock + precio)
+// ============================================================
+function _renderItemDetalleCredito(it, tipo, input, results, nombreProducto) {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+
+    const stock = it.stock_disponible || 0;
+    const precioMaximo = parseFloat(it.precio_maximo) || 0;
+    const precioMinimo = parseFloat(it.precio_minimo) || 0;
+
+    let badgeStock;
+    if (tipo === 'repuesto' && stock <= 3) {
+        badgeStock = `<span class="badge bg-warning text-dark" title="Stock bajo"><i class="bi bi-exclamation-triangle"></i> Stock: ${stock}</span>`;
+    } else {
+        badgeStock = `<span class="badge bg-info">Stock: ${stock}</span>`;
+    }
+
+    let textoDetalle = '';
+    if (tipo === 'vehiculo') {
+        textoDetalle = `
+        <div>
+            <div><strong>Motor:</strong> ${it.serie_motor} | <strong>Chasis:</strong> ${it.serie_chasis}</div>
+            <div class="mt-1">
+                ${badgeStock}
+                <span class="badge ms-1" style="background-color:#6f42c1;">P. Crédito: S/ ${precioMaximo.toFixed(2)}</span>
+                <span class="badge bg-secondary ms-1">P. Min: S/ ${precioMinimo.toFixed(2)}</span>
+            </div>
+        </div>`;
+    } else {
+        textoDetalle = `
+        <div>
+            <div><strong>Código:</strong> ${it.codigo_barras}</div>
+            <div class="mt-1">
+                ${badgeStock}
+                <span class="badge ms-1" style="background-color:#6f42c1;">P. Crédito: S/ ${precioMaximo.toFixed(2)}</span>
+                <span class="badge bg-secondary ms-1">P. Min: S/ ${precioMinimo.toFixed(2)}</span>
+            </div>
+        </div>`;
+    }
+
+    div.innerHTML = textoDetalle;
+
+    div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        let displayText = '';
+        if (tipo === 'vehiculo') {
+            displayText = `Motor: ${it.serie_motor} | Chasis: ${it.serie_chasis}`;
+        } else {
+            displayText = `Código: ${it.codigo_barras}`;
+        }
+        input.value = displayText;
+        results.style.display = 'none';
+
+        // ⭐ Si viene de búsqueda global (nombreProducto provisto), auto-rellenar el campo producto
+        if (nombreProducto) {
+            $("#producto_autocomplete").val(nombreProducto);
+            window._productoSeleccionadoNombre = nombreProducto;
+            const tipoActual = $("#tipo_item_directo").val();
+            activeProductItems = (tipoActual === 'vehiculo') ? productosData.vehiculos[nombreProducto] : productosData.repuestos[nombreProducto];
+        }
+
+        seleccionarItemEspecifico(it);
+    });
+    results.appendChild(div);
+}
+
+function setupAutocompleteDetalle(inputId, resultsId) {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    if (!input) return;
+
+    const handleInput = function() {
+        const val = this.value.toLowerCase().trim();
+        results.innerHTML = '';
+        if (val.length < 1) { 
+            results.style.display = 'none'; 
+            $("#detalle_item_selected_val").val('');
+            $("#id_item_directo").val('');
+            $("#monto_total_directo").val('');
+            $("#resumen_producto_container").addClass('d-none');
+            $("#precio_credito_directo").prop('disabled', true).val('');
+            return; 
+        }
+        
+        const tipo = document.getElementById("tipo_item_directo").value;
+        const productoSeleccionado = window._productoSeleccionadoNombre || '';
+
+        // ⭐ BÚSQUEDA GLOBAL: si no hay producto seleccionado, busca en todo el stock del almacén
+        if (!productoSeleccionado || activeProductItems.length === 0) {
+            const d = (tipo === 'vehiculo') ? productosData.vehiculos : productosData.repuestos;
+            let encontrados = [];
+            Object.keys(d).forEach(nombreProd => {
+                (d[nombreProd] || []).forEach(it => {
+                    if ((it.stock_disponible || 0) <= 0) return;
+                    let match = false;
+                    if (tipo === 'vehiculo') {
+                        match = (it.serie_motor && it.serie_motor.toLowerCase().includes(val)) ||
+                                (it.serie_chasis && it.serie_chasis.toLowerCase().includes(val));
+                    } else {
+                        match = (it.codigo_barras && it.codigo_barras.toLowerCase().includes(val));
+                    }
+                    if (match) encontrados.push({ it, nombreProd });
+                });
+            });
+
+            if (encontrados.length === 0) {
+                results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron resultados</div>';
+                results.style.display = 'block';
+                return;
+            }
+            encontrados.slice(0, 50).forEach(({ it, nombreProd }) => {
+                _renderItemDetalleCredito(it, tipo, input, results, nombreProd);
+            });
+            results.style.display = 'block';
+            return;
+        }
+
+        // ⭐ BÚSQUEDA DENTRO DEL PRODUCTO YA SELECCIONADO
+        const filtered = activeProductItems.filter(it => {
+            if (tipo === 'vehiculo') {
+                return it.serie_motor.toLowerCase().includes(val) || it.serie_chasis.toLowerCase().includes(val);
+            } else {
+                return it.codigo_barras.toLowerCase().includes(val);
+            }
+        });
+        
+        if (filtered.length === 0) {
+            results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron resultados</div>';
+            results.style.display = 'block';
+            return;
+        }
+        
+        filtered.forEach(it => {
+            _renderItemDetalleCredito(it, tipo, input, results, null);
+        });
+        results.style.display = 'block';
+    };
+
+    input.addEventListener('input', handleInput);
+    input.addEventListener('keyup', handleInput);
+    // ⭐ ENTER: seleccionar el primer resultado
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            if (results.style.display === 'block') {
+                const items = results.querySelectorAll('.autocomplete-item:not(.no-results)');
+                if (items.length > 0) items[0].click();
+            }
+        }
+    });
+    
+    document.addEventListener('click', (e) => {
+        const arrow = input.parentElement.querySelector('.autocomplete-arrow');
+        if (!input.contains(e.target) && !results.contains(e.target) && (!arrow || !arrow.contains(e.target))) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+window.toggleAutocompleteDetalle = function(e, inputId, resultsId) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    if (input.disabled) return;
+    
+    if (results.style.display === 'block') { results.style.display = 'none'; return; }
+    results.innerHTML = '';
+    
+    const tipo = document.getElementById("tipo_item_directo").value;
+
+    // ⭐ MODO GLOBAL: si no hay producto seleccionado, mostrar todo el stock del almacén
+    if (activeProductItems.length === 0) {
+        const d = (tipo === 'vehiculo') ? productosData.vehiculos : productosData.repuestos;
+        const keys = Object.keys(d);
+        if (keys.length === 0) {
+            results.innerHTML = '<div class="autocomplete-item no-results">No hay series disponibles en este almacén</div>';
+            results.style.display = 'block';
+            return;
+        }
+        let allItems = [];
+        keys.forEach(nombreProd => {
+            (d[nombreProd] || []).forEach(it => {
+                if ((it.stock_disponible || 0) > 0) allItems.push({ it, nombreProd });
+            });
+        });
+        allItems.slice(0, 50).forEach(({ it, nombreProd }) => {
+            _renderItemDetalleCredito(it, tipo, input, results, nombreProd);
+        });
+        results.style.display = 'block';
+        input.focus();
+        return;
+    }
+    
+    // ⭐ MODO NORMAL: mostrar series del producto ya seleccionado
+    activeProductItems.forEach(it => {
+        _renderItemDetalleCredito(it, tipo, input, results, null);
+    });
+    results.style.display = 'block';
+    input.focus();
+}
+
+function seleccionarItemEspecifico(it) {
+    const tipo = $("#tipo_item_directo").val();
+    const val = (tipo === 'vehiculo') ? it.id_vehiculo : it.id_repuesto_comprado;
+    
+    $("#id_item_directo").val(val);
+    $("#monto_total_directo").val(it.precio_venta);
+    $("#detalle_item_selected_val").val(val);
+    
+    $("#precio_credito_directo").prop('disabled', false).val(it.precio_venta.toFixed(2));
+    
+    $("#resumen_precio_minimo").text(`S/ ${parseFloat(it.precio_minimo).toFixed(2)}`);
+    $("#resumen_precio_maximo").text(`S/ ${parseFloat(it.precio_maximo).toFixed(2)}`);
+    $("#resumen_stock").text(it.stock_disponible);
+    $("#resumen_producto_container").removeClass('d-none');
+}
+
+// ⭐ Obtiene la fecha de hoy en hora local (no UTC) para evitar desfase en Lima (UTC-5)
+function fechaLocalHoy() {
+    const hoy = new Date();
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
 $(document).ready(function() {
-    if ($('.datatable').length) {
-        $('.datatable').DataTable({
-            language: {
-                url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-            },
-            pageLength: 25,
-            order: [[3, 'desc']]
+    setupAutocomplete('cliente_search', 'cliente_results', clientesData, 'idcliente_directo');
+    setupAutocompleteProducto('producto_autocomplete', 'producto_results');
+    setupAutocompleteDetalle('detalle_item_autocomplete', 'detalle_item_results');
+
+    // Inicializar la fecha base de cuotas a hoy si no tiene valor
+    const today = fechaLocalHoy();
+    const baseDateInput = document.getElementById('fecha_base_cuotas_directo');
+    if (baseDateInput && !baseDateInput.value) {
+        baseDateInput.value = today;
+    }
+
+    function cargarStock(id) {
+        if (!id) return;
+        $.get("{% url 'obtener_stock_almacen_credito' %}", { id_almacen: id }, function(res) {
+            if (res.ok) {
+                productosData.vehiculos = res.productos_stock;
+                productosData.repuestos = res.repuestos_stock;
+                $("#producto_autocomplete").prop('disabled', false).attr('placeholder', 'Escriba nombre del producto...');
+                // ⭐ Habilitar búsqueda global de series/código desde que hay stock cargado
+                $("#detalle_item_autocomplete").prop('disabled', false).attr('placeholder', 'Buscar serie/código en todo el stock...');
+            }
         });
     }
+    const sA = $("#id_almacen_directo").val();
+    if (startAlmacen = sA) cargarStock(sA);
+    
+    $("#id_almacen_directo").change(function() { 
+        cargarStock($(this).val());
+        $("#producto_autocomplete").val('').prop('disabled', true).attr('placeholder', 'Primero seleccione almacén...');
+        $("#producto_results").hide();
+        activeProductItems = [];
+        window._productoSeleccionadoNombre = '';
+        // ⭐ Al cambiar almacén, deshabilitar el campo de serie hasta que cargue el nuevo stock
+        $("#detalle_item_autocomplete").val('').prop('disabled', true).attr('placeholder', 'Primero seleccione almacén...');
+        $("#detalle_item_results").hide();
+        $("#detalle_item_selected_val").val('');
+        $("#resumen_producto_container").addClass('d-none');
+        $("#precio_credito_directo").prop('disabled', true).val('');
+        $("#id_item_directo").val('');
+        $("#monto_total_directo").val('');
+    });
+
+    $("#tipo_item_directo").change(function() {
+        $("#producto_autocomplete").val('');
+        $("#producto_results").hide();
+        activeProductItems = [];
+        window._productoSeleccionadoNombre = '';
+        // ⭐ Al cambiar tipo, permitir búsqueda global si hay stock cargado
+        const hayStock = Object.keys(productosData.vehiculos).length > 0 || Object.keys(productosData.repuestos).length > 0;
+        if (hayStock) {
+            $("#detalle_item_autocomplete").val('').prop('disabled', false).attr('placeholder', 'Buscar serie/código en todo el stock...');
+        } else {
+            $("#detalle_item_autocomplete").val('').prop('disabled', true).attr('placeholder', 'Primero seleccione almacén...');
+        }
+        $("#detalle_item_results").hide();
+        $("#detalle_item_selected_val").val('');
+        $("#resumen_producto_container").addClass('d-none');
+        $("#precio_credito_directo").prop('disabled', true).val('');
+        $("#id_item_directo").val('');
+        $("#monto_total_directo").val('');
+    });
+
+    $("#precio_credito_directo").on('input change', function() {
+        $("#monto_total_directo").val($(this).val());
+    });
+
+    // Inicializar por defecto con la fecha de hoy
+    const fechaHoyInit = new Date();
+    $("#credito_mes_directo").val(fechaHoyInit.getMonth() + 1);
+    let diaInitCredito = fechaHoyInit.getDate();
+    if (diaInitCredito > 28) diaInitCredito = 28;
+    $("#credito_dia_mes_directo").val(diaInitCredito);
+
+    $("#tipo_periodo_directo").change(function() {
+        if ($(this).val() === 'meses') {
+            $("#container_dias_directo").addClass('d-none');
+        } else {
+            $("#container_dias_directo").removeClass('d-none');
+        }
+    });
+
+    window.cronogramaDirectoData = [];
+    window.paginaActualCuotasDirecto = 1;
+    window.cuotasDirectoPorPagina = 20;
+
+    $("#btnGenerarCuotasDirecto").click(function() {
+        const total = parseFloat($("#precio_credito_directo").val()) || 0;
+        const adelanto = parseFloat($("#monto_adelanto_directo").val()) || 0;
+        const cuotas = parseInt($("#cantidad_cuotas_directo").val()) || 1;
+        const tasaPorcentaje = parseFloat($("#tasa_interes_directo").val()) || 0;
+        const tipoPeriodo = $("#tipo_periodo_directo").val();
+        
+        if (total <= 0) { Swal.fire('Error', 'Seleccione un producto y establezca su precio', 'warning'); return; }
+        if (adelanto >= total) { Swal.fire('Error', 'El monto inicial no puede ser mayor o igual al precio al crédito', 'warning'); return; }
+        
+        const montoFinanciar = total - adelanto;
+        const interesTotal = parseFloat($("#tasa_interes_directo").val()) || 0;
+        const totalConIntereses = montoFinanciar + interesTotal;
+
+        const interesCuota = Math.round((interesTotal / cuotas) * 100) / 100;
+        const montoCuotaBase = Math.round((montoFinanciar / cuotas) * 100) / 100;
+
+        const difCapital = Math.round((montoFinanciar - (montoCuotaBase * cuotas)) * 100) / 100;
+        const difInteres = Math.round((interesTotal - (interesCuota * cuotas)) * 100) / 100;
+        
+        let baseDay = 1;
+        let fechaBaseVal = document.getElementById('fecha_base_cuotas_directo').value;
+        let fechaActual = new Date();
+
+        if (fechaBaseVal) {
+            let [y, m, d] = fechaBaseVal.split('-');
+            fechaActual = new Date(y, m - 1, d);
+            baseDay = parseInt(d);
+        } else {
+            baseDay = fechaActual.getDate();
+        }
+
+        window.cronogramaDirectoData = [];
+        for(let i=1; i<=cuotas; i++) {
+            const fechaVencimiento = new Date(fechaActual);
+            
+            let montoCuotaActual = montoCuotaBase;
+            let interesCuotaActual = interesCuota;
+            
+            if (i === cuotas) {
+                montoCuotaActual += difCapital;
+                interesCuotaActual += difInteres;
+            }
+            
+            const totalCuotaActual = montoCuotaActual + interesCuotaActual;
+            
+            window.cronogramaDirectoData.push({
+                numero: i,
+                fecha_vencimiento: fechaVencimiento.toISOString().split('T')[0],
+                monto: montoCuotaActual,
+                interes: interesCuotaActual,
+                total: totalCuotaActual
+            });
+
+            // ADVANCE DATE FOR NEXT ITERATION
+            if (tipoPeriodo === 'meses') {
+                let currentMonth = fechaActual.getMonth();
+                let currentYear = fechaActual.getFullYear();
+                let nextMonth = currentMonth + 1;
+                
+                let lastDayOfNextMonth = new Date(currentYear, nextMonth + 1, 0).getDate();
+                let targetDay = Math.min(baseDay, lastDayOfNextMonth);
+                
+                fechaActual = new Date(currentYear, nextMonth, targetDay);
+            } else {
+                const dias = parseInt($("#dias_cuotas_directo").val()) || 30;
+                fechaActual.setDate(fechaActual.getDate() + dias);
+            }
+        }
+        
+        $("#cronograma_container").removeClass('d-none');
+        window.renderizarPaginaCuotasDirecto(1);
+        recalcularTotalesCronogramaDirecto();
+    });
+
+    window.renderizarPaginaCuotasDirecto = function(pagina) {
+        window.paginaActualCuotasDirecto = pagina;
+        const inicio = (pagina - 1) * window.cuotasDirectoPorPagina;
+        const fin = inicio + window.cuotasDirectoPorPagina;
+        const cuotasPagina = window.cronogramaDirectoData.slice(inicio, fin);
+        
+        let h = '';
+        cuotasPagina.forEach(it => {
+            h += `<tr data-cuota-idx="${it.numero}">
+                <td class="text-center"><strong>Cuota ${it.numero}</strong></td>
+                <td><input type="date" class="form-control form-control-sm f-venc" value="${it.fecha_vencimiento}"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end m-c" value="${it.monto.toFixed(2)}"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end m-i text-danger" value="${it.interes.toFixed(2)}"></td>
+                <td class="text-end fw-bold text-success t-c">S/ ${it.total.toFixed(2)}</td>
+            </tr>`;
+        });
+        
+        $("#tbodyCronogramaDirecto").html(h);
+        $("#paginaActualCuotasDirecto").text(pagina);
+        
+        const totalPaginas = Math.ceil(window.cronogramaDirectoData.length / window.cuotasDirectoPorPagina);
+        $("#infoPaginacionCuotasDirecto").text(`Mostrando cuotas ${inicio + 1} - ${Math.min(fin, window.cronogramaDirectoData.length)} de ${window.cronogramaDirectoData.length}`);
+        
+        if (totalPaginas > 1) {
+            $("#paginacionCuotasDirecto").removeClass('d-none');
+        } else {
+            $("#paginacionCuotasDirecto").addClass('d-none');
+        }
+        
+        vincularEventosInputsCronogramaDirecto();
+    }
+
+    window.cambiarPaginaCuotasDirecto = function(direccion) {
+        const totalPaginas = Math.ceil(window.cronogramaDirectoData.length / window.cuotasDirectoPorPagina);
+        let p = window.paginaActualCuotasDirecto;
+        if (direccion === 'prev' && p > 1) {
+            p--;
+        } else if (direccion === 'next' && p < totalPaginas) {
+            p++;
+        }
+        window.renderizarPaginaCuotasDirecto(p);
+    }
+
+    function vincularEventosInputsCronogramaDirecto() {
+        $("#tbodyCronogramaDirecto .f-venc").off('change input').on('change input', function() {
+            const num = parseInt($(this).closest('tr').data('cuota-idx'));
+            const val = $(this).val();
+            const item = window.cronogramaDirectoData.find(x => x.numero === num);
+            if (item) {
+                item.fecha_vencimiento = val;
+            }
+        });
+        
+        $("#tbodyCronogramaDirecto .m-c, #tbodyCronogramaDirecto .m-i").off('change input').on('change input', function() {
+            const tr = $(this).closest('tr');
+            const num = parseInt(tr.data('cuota-idx'));
+            const mc = parseFloat(tr.find('.m-c').val()) || 0;
+            const mi = parseFloat(tr.find('.m-i').val()) || 0;
+            const tt = mc + mi;
+            
+            tr.find('.t-c').text(`S/ ${tt.toFixed(2)}`);
+            
+            const item = window.cronogramaDirectoData.find(x => x.numero === num);
+            if (item) {
+                item.monto = mc;
+                item.interes = mi;
+                item.total = tt;
+            }
+            recalcularTotalesCronogramaDirecto();
+        });
+    }
+
+    window.recalcularTotalesCronogramaDirecto = function() {
+        let totalMonto = 0;
+        let totalInteres = 0;
+        let totalTotal = 0;
+        
+        window.cronogramaDirectoData.forEach(item => {
+            totalMonto += item.monto;
+            totalInteres += item.interes;
+            totalTotal += item.total;
+        });
+        
+        $("#total_footer_monto").text(`S/ ${totalMonto.toFixed(2)}`);
+        $("#total_footer_interes").text(`S/ ${totalInteres.toFixed(2)}`);
+        $("#total_footer_total").text(`S/ ${totalTotal.toFixed(2)}`);
+        
+        const totalVenta = parseFloat($("#precio_credito_directo").val()) || 0;
+        const adelanto = parseFloat($("#monto_adelanto_directo").val()) || 0;
+        
+        $("#resumen_total_venta").text(`S/ ${totalVenta.toFixed(2)}`);
+        $("#resumen_total_adelanto").text(`S/ ${adelanto.toFixed(2)}`);
+        $("#resumen_total_financiar").text(`S/ ${totalMonto.toFixed(2)}`);
+        $("#resumen_total_con_interes").text(`S/ ${totalTotal.toFixed(2)}`);
+        $("#resumen_interes_monto_texto").text(`(+S/ ${totalInteres.toFixed(2)} en intereses)`);
+    }
+
+    $("#btnGuardarCreditoDirecto").click(function() {
+        const $f = $("#formCreditoDirecto");
+        if (!$f[0].checkValidity()) { $f[0].reportValidity(); return; }
+        
+        if (!window.cronogramaDirectoData || window.cronogramaDirectoData.length === 0) {
+            Swal.fire('Error', 'Debe generar el cronograma de cuotas antes de guardar', 'warning');
+            return;
+        }
+        
+        const cj = [];
+        const ad = parseFloat($("#monto_adelanto_directo").val()) || 0;
+        if (ad > 0) {
+            cj.push({ 
+                numero: 0, 
+                fecha_vencimiento: fechaLocalHoy(), 
+                monto: ad.toFixed(2), 
+                interes: "0.00", 
+                total: ad.toFixed(2) 
+            });
+        }
+        
+        let sumCuotasTotal = ad;
+        window.cronogramaDirectoData.forEach(item => {
+            sumCuotasTotal += item.total;
+            cj.push({ 
+                numero: item.numero, 
+                fecha_vencimiento: item.fecha_vencimiento, 
+                monto: item.monto.toFixed(2), 
+                interes: item.interes.toFixed(2), 
+                total: item.total.toFixed(2) 
+            });
+        });
+        
+        // Sync the hidden input to the actual computed sum of all installments + initial payment
+        $("#monto_total_directo").val(sumCuotasTotal.toFixed(2));
+        
+        const d = new FormData($f[0]);
+        d.append('cuotas_json', JSON.stringify(cj));
+        $.ajax({ 
+            url: "{% url 'registrar_credito_directo' %}", 
+            type: "POST", 
+            data: d, 
+            processData: false, 
+            contentType: false, 
+            success: (r) => { 
+                if (r.ok) { 
+                    Swal.fire('Ok', r.message, 'success').then(()=>location.reload()); 
+                } else { 
+                    Swal.fire('Error', r.error, 'error'); 
+                } 
+            } 
+        });
+    });
+    // ========================================
+    // ⭐ LÓGICA DEL MODAL AGREGAR CLIENTE DIRECTO
+    // ========================================
+    async function consultarDocumentoTokenPeruDirecto(numero) {
+        const alertCargando = $('#alertCargandoDirecto');
+        const alertError = $('#alertErrorDirecto');
+        const alertExito = $('#alertExitoDirecto');
+
+        alertCargando.removeClass('d-none');
+        alertError.addClass('d-none');
+        alertExito.addClass('d-none');
+
+        try {
+            const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
+            const data = await response.json();
+
+            alertCargando.addClass('d-none');
+
+            if (data.success) {
+                $('#razonsocialClienteDirecto').val(data.razonsocial).addClass('campo-autocompletado');
+                $('#direccionClienteDirecto').val(data.direccion || '').addClass('campo-autocompletado');
+                $('#nombreComercialClienteDirecto').val(data.nombre_comercial || '').addClass('campo-autocompletado');
+                $('#tipoEntidadClienteDirecto').val(data.id_tipo_entidad);
+
+                if (data.tipo === 'RUC') {
+                    $('#infoRucDirecto').removeClass('d-none');
+                    $('#estadoSunatDirecto').text(data.estado || 'N/A')
+                        .removeClass('bg-success bg-danger')
+                        .addClass(data.estado === 'ACTIVO' ? 'bg-success' : 'bg-danger');
+                    $('#condicionSunatDirecto').text(data.condicion || 'N/A');
+                    $('#badgeTipoDocDirecto').text('RUC').removeClass('bg-secondary bg-info').addClass('bg-info').show();
+
+                    if (data.estado !== 'ACTIVO') {
+                        alertExito.removeClass('d-none');
+                        $('#mensajeExitoDirecto').html(`<strong>RUC encontrado:</strong> ${data.razonsocial}<br><small class="text-warning">⚠️ Advertencia: El RUC no está ACTIVO en SUNAT</small>`);
+                    } else {
+                        alertExito.removeClass('d-none');
+                        $('#mensajeExitoDirecto').html(`<strong>RUC encontrado:</strong> ${data.razonsocial}`);
+                    }
+                } else {
+                    $('#infoRucDirecto').addClass('d-none');
+                    $('#badgeTipoDocDirecto').text('DNI').removeClass('bg-secondary bg-info').addClass('bg-secondary').show();
+                    alertExito.removeClass('d-none');
+                    $('#mensajeExitoDirecto').html(`<strong>DNI encontrado:</strong> ${data.razonsocial}`);
+                }
+
+                setTimeout(() => { $('.campo-autocompletado').removeClass('campo-autocompletado'); }, 600);
+            } else {
+                alertError.removeClass('d-none');
+                $('#mensajeErrorDirecto').text(data.error || 'No se encontró el documento');
+                limpiarCamposClienteDirecto();
+            }
+        } catch (error) {
+            alertCargando.addClass('d-none');
+            alertError.removeClass('d-none');
+            $('#mensajeErrorDirecto').text('Error de conexión. Intente nuevamente.');
+        }
+    }
+
+    function limpiarCamposClienteDirecto() {
+        $('#razonsocialClienteDirecto').val('');
+        $('#nombreComercialClienteDirecto').val('');
+        $('#direccionClienteDirecto').val('');
+        $('#infoRucDirecto').addClass('d-none');
+        $('#badgeTipoDocDirecto').hide();
+    }
+
+    window.cerrarModalClienteDirecto = function() {
+        $('#modalAgregarClienteDirecto').modal('hide');
+        setTimeout(() => {
+            $('#modalCreditoDirecto').modal('show');
+        }, 150);
+    }
+
+    $('#numdocClienteDirecto').on('input', function () {
+        const valor = this.value.replace(/[^0-9]/g, '');
+        this.value = valor;
+        const badge = $('#badgeTipoDocDirecto');
+        if (valor.length === 8) {
+            badge.text('DNI').removeClass('bg-info').addClass('bg-secondary').show();
+            $('#tipoEntidadClienteDirecto').val(1);
+        } else if (valor.length === 11) {
+            badge.text('RUC').removeClass('bg-secondary').addClass('bg-info').show();
+            $('#tipoEntidadClienteDirecto').val(6);
+        } else {
+            badge.hide();
+        }
+    });
+
+    $('#numdocClienteDirecto').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            const numero = $(this).val().trim();
+            if (numero.length === 8 || numero.length === 11) {
+                consultarDocumentoTokenPeruDirecto(numero);
+            }
+        }
+    });
+
+    $('#btnConsultarDocDirecto').on('click', function () {
+        const numero = $('#numdocClienteDirecto').val().trim();
+        if (numero.length === 8 || numero.length === 11) {
+            consultarDocumentoTokenPeruDirecto(numero);
+        } else {
+            Swal.fire({ title: 'Documento inválido', text: 'Ingrese un DNI (8 dígitos) o RUC (11 dígitos)', icon: 'warning' });
+        }
+    });
+
+    $('#btnGuardarClienteDirecto').on('click', function () {
+        const form = $('#formAgregarClienteDirecto')[0];
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        Swal.fire({ title: 'Guardando cliente...', allowOutsideClick: false, willOpen: () => { Swal.showLoading(); } });
+
+        const formData = new FormData(form);
+        $.ajax({
+            type: "POST",
+            url: "{% url 'agregar_cliente' %}",
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function (response) {
+                Swal.close();
+                if (response.ok) {
+                    Swal.fire({ title: '¡Cliente guardado!', text: 'El cliente se ha registrado correctamente', icon: 'success', timer: 2000, showConfirmButton: false }).then(() => {
+                        clientesData.push({ id: response.idcliente, text: `${response.razonsocial} - ${response.numdoc}` });
+                        $('#cliente_search').val(`${response.razonsocial} - ${response.numdoc}`);
+                        $('#idcliente_directo').val(response.idcliente);
+                        $('#formAgregarClienteDirecto')[0].reset();
+                        limpiarCamposClienteDirecto();
+                        cerrarModalClienteDirecto();
+                    });
+                } else {
+                    Swal.fire('Error al guardar', response.error || 'Ocurrió un error al guardar el cliente', 'error');
+                }
+            },
+            error: function (xhr) {
+                Swal.fire('Error al guardar', xhr.responseText || 'Ocurrió un error al guardar el cliente', 'error');
+            }
+        });
+    });
+
+    // Lógica Ubigeo para Crédito Directo
+    $('#idRegionDirecto').on('change', function() {
+        const idRegion = $(this).val();
+        $('#idProvinciaDirecto').html('<option value="">Cargando...</option>');
+        $('#idDistritoDirecto').html('<option value="">Seleccione...</option>');
+        if (!idRegion) { $('#idProvinciaDirecto').html('<option value="">Seleccione...</option>'); return; }
+        $.get('/sucursales/obtener-provincias/', { id_region: idRegion }, function(data) {
+            let options = '<option value="">Seleccione...</option>';
+            data.forEach(item => { options += `<option value="${item.id_provincia}">${item.nombre_provincia}</option>`; });
+            $('#idProvinciaDirecto').html(options);
+        });
+    });
+
+    $('#idProvinciaDirecto').on('change', function() {
+        const idProvincia = $(this).val();
+        $('#idDistritoDirecto').html('<option value="">Cargando...</option>');
+        if (!idProvincia) { $('#idDistritoDirecto').html('<option value="">Seleccione...</option>'); return; }
+        $.get('/sucursales/obtener-distritos/', { id_provincia: idProvincia }, function(data) {
+            let options = '<option value="">Seleccione...</option>';
+            data.forEach(item => { options += `<option value="${item.id_distrito}">${item.nombre_distrito}</option>`; });
+            $('#idDistritoDirecto').html(options);
+        });
+    });
+
+    // Cónyuge
+    $('#btnConsultarConyugeDirecto').on('click', async function() {
+        const numero = $('#conyugeDniDirecto').val().trim();
+        if (numero.length !== 8) return;
+        $('#conyugeNombreDirecto').val('Buscando...');
+        try {
+            const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
+            const data = await response.json();
+            if (data.success && data.razonsocial) {
+                $('#conyugeNombreDirecto').val(data.razonsocial).addClass('campo-autocompletado');
+            } else {
+                $('#conyugeNombreDirecto').val('');
+                Swal.fire('No encontrado', 'No se encontró información del cónyuge con ese DNI.', 'warning');
+            }
+        } catch (error) {
+            $('#conyugeNombreDirecto').val('');
+            Swal.fire('Error', 'Hubo un error al consultar el DNI del cónyuge.', 'error');
+        }
+    });
+
+    // ==========================================
+    // SERVER-SIDE PROCESSING (CRÉDITOS AJAX)
+    // ==========================================
+    let timerBusqueda;
+    const bodyCreditos = document.getElementById('tbodyCreditos');
+    const paginacionCreditos = document.getElementById('paginacionCreditos');
+
+    function cargarCreditos(page = 1) {
+        const estado = document.getElementById('filtroEstado').value;
+        const busqueda = document.getElementById('filtroBusqueda').value;
+        const producto = document.getElementById('filtroProducto').value;
+        const desde = document.getElementById('filtroDesde').value;
+        const hasta = document.getElementById('filtroHasta').value;
+
+        bodyCreditos.innerHTML = `<tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>`;
+
+        const queryParams = new URLSearchParams({
+            page: page,
+            estado: estado,
+            busqueda: busqueda,
+            producto: producto,
+            fecha_desde: desde,
+            fecha_hasta: hasta
+        });
+
+        fetch(`/creditos/api/listar/?${queryParams.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    renderizarTablaCreditos(data.creditos);
+                    renderizarPaginacionCreditos(data.pagination, data.stats.total_creditos);
+                    actualizarEstadisticas(data.stats);
+                } else {
+                    bodyCreditos.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">Error: ${data.error}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                bodyCreditos.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">Error de red.</td></tr>`;
+            });
+    }
+
+    function renderizarTablaCreditos(creditos) {
+        if (creditos.length === 0) {
+            bodyCreditos.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-inbox me-2"></i>No se encontraron créditos registrados</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        creditos.forEach(c => {
+            let badgeComprobante = c.comprobante === 'DIRECTO' ? `<span class="badge bg-secondary">DIRECTO</span>` : c.comprobante;
+            let badgeEstado = '';
+            if (c.estado === 'ACTIVO') badgeEstado = `<span class="badge bg-success">ACTIVO</span>`;
+            else if (c.estado === 'MORA') badgeEstado = `<span class="badge bg-danger">MORA</span>`;
+            else badgeEstado = `<span class="badge bg-info">${c.estado}</span>`;
+            
+            let btnImprimir = c.es_directo 
+                ? `<a href="/creditos/imprimir-cronograma-directo/${c.id_imprimir}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir"><i class="bi bi-printer"></i></a>`
+                : `<a href="/ventas/imprimir-cronograma/${c.id_imprimir}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir"><i class="bi bi-printer"></i></a>`;
+
+            html += `
+            <tr>
+                <td><span class="badge bg-primary">${c.codigo_credito}</span></td>
+                <td>
+                    <strong>${c.cliente_nombre}</strong><br>
+                    <small class="text-muted">${c.cliente_doc}</small>
+                </td>
+                <td>${badgeComprobante}</td>
+                <td>${c.fecha}</td>
+                <td class="text-end fw-bold">S/ ${c.monto_total.toFixed(2)}</td>
+                <td class="text-end text-success">S/ ${c.monto_adelanto.toFixed(2)}</td>
+                <td class="text-end text-danger fw-bold">S/ ${c.saldo_pendiente.toFixed(2)}</td>
+                <td class="text-center"><span class="badge bg-info">${c.cuotas}</span></td>
+                <td class="text-center">${badgeEstado}</td>
+                <td class="text-center">
+                    <div class="d-flex gap-1 justify-content-center">
+                        <a href="/creditos/detalle/${c.idcredito}/" class="btn btn-sm btn-info text-white" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                        ${btnImprimir}
+                    </div>
+                </td>
+            </tr>`;
+        });
+        bodyCreditos.innerHTML = html;
+    }
+
+    function renderizarPaginacionCreditos(pag, totalRegistros) {
+        if (pag.total_pages <= 1 && totalRegistros === 0) {
+            paginacionCreditos.innerHTML = '';
+            return;
+        }
+        
+        let html = `
+            <div class="text-muted small">Página <b>${pag.current_page}</b> de <b>${pag.total_pages}</b> <span class="ms-2">| Total: <b>${totalRegistros}</b> registros</span></div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+        `;
+
+        // Botón Anterior
+        html += `<li class="page-item ${pag.current_page === 1 ? 'disabled' : ''}">
+                   <button class="page-link" onclick="cargarCreditos(${pag.current_page - 1})">Anterior</button>
+                 </li>`;
+
+        // Números de página
+        let startPage = Math.max(1, pag.current_page - 2);
+        let endPage = Math.min(pag.total_pages, pag.current_page + 2);
+
+        if (startPage > 1) {
+            html += `<li class="page-item"><button class="page-link" onclick="cargarCreditos(1)">1</button></li>`;
+            if (startPage > 2) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<li class="page-item ${i === pag.current_page ? 'active' : ''}">
+                       <button class="page-link" onclick="cargarCreditos(${i})">${i}</button>
+                     </li>`;
+        }
+
+        if (endPage < pag.total_pages) {
+            if (endPage < pag.total_pages - 1) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            html += `<li class="page-item"><button class="page-link" onclick="cargarCreditos(${pag.total_pages})">${pag.total_pages}</button></li>`;
+        }
+
+        // Botón Siguiente
+        html += `<li class="page-item ${pag.current_page === pag.total_pages ? 'disabled' : ''}">
+                   <button class="page-link" onclick="cargarCreditos(${pag.current_page + 1})">Siguiente</button>
+                 </li>`;
+
+        html += `
+                </ul>
+            </nav>
+        `;
+        
+        paginacionCreditos.innerHTML = html;
+    }
+
+    function actualizarEstadisticas(stats) {
+        document.getElementById('stat-total-creditos').innerText = stats.total_creditos;
+        document.getElementById('stat-total-activos').innerText = stats.total_activos;
+        document.getElementById('stat-total-mora').innerText = stats.total_mora;
+        document.getElementById('stat-saldo-pendiente').innerText = 'S/ ' + stats.saldo_total_pendiente.toFixed(2);
+    }
+
+    // Eventos (Prevent Default para no recargar la página entera)
+    document.getElementById('formFiltrosCredito').addEventListener('submit', function(e) { e.preventDefault(); });
+    $('#filtroEstado, #filtroDesde, #filtroHasta').on('change', () => cargarCreditos(1));
+    $('#filtroBusqueda, #filtroProducto').on('input', function() {
+        clearTimeout(timerBusqueda);
+        timerBusqueda = setTimeout(() => cargarCreditos(1), 400);
+    });
+
+    // Llamada inicial
+    cargarCreditos(1);
+
+    // Hacer funciones globales
+    window.cargarCreditos = cargarCreditos;
 });
 </script>
 {% endblock %}

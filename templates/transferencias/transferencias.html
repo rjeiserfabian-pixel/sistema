@@ -2,313 +2,396 @@
 {% block main %}
 <main id="main" class="main">
 
-  <!-- Encabezado -->
-  <div class="pagetitle d-flex justify-content-between align-items-center">
-    <h1 class="fw-bold text-primary">
-      <i class="bi bi-arrow-left-right me-2"></i>Transferencias entre Sucursales
-    </h1>
+  <!-- Encabezado Estilo Dashboard -->
+  <div class="pagetitle d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="fw-bold text-primary">
+        <i class="bi bi-truck me-2"></i>Gestión de Transferencias y Logística
+      </h1>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Inicio</a></li>
+          <li class="breadcrumb-item active">Transferencias</li>
+        </ol>
+      </nav>
+    </div>
     {% if es_admin %}
-    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaTransferencia">
+    <button type="button" class="btn btn-primary btn-lg rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#modalNuevaTransferencia">
       <i class="bi bi-plus-circle me-2"></i>Nueva Transferencia
     </button>
     {% endif %}
   </div>
 
-  <nav aria-label="breadcrumb" class="mt-2">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
-      <li class="breadcrumb-item active">Transferencias</li>
-    </ol>
-  </nav>
+  <!-- Tarjetas de Resumen (Dashboard Stats) -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card info-card sales-card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+          <h5 class="card-title">Pendientes</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-warning-light text-warning">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="stat-pendientes" class="mb-0">{{ stats.pendientes }}</h6>
+              <span class="text-muted small pt-2">Por procesar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card info-card revenue-card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+          <h5 class="card-title">En Tránsito</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-primary-light text-primary">
+              <i class="bi bi-truck"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="stat-transito" class="mb-0">{{ stats.en_transito }}</h6>
+              <span class="text-muted small pt-2">En camino</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card info-card customers-card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+          <h5 class="card-title">Recibidas</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-success-light text-success">
+              <i class="bi bi-check-all"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="stat-recibidas" class="mb-0">{{ stats.recibidas }}</h6>
+              <span class="text-muted small pt-2">Completadas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card info-card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+          <h5 class="card-title">Conductores</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center bg-info-light text-info">
+              <i class="bi bi-person-badge"></i>
+            </div>
+            <div class="ps-3">
+              <h6 class="mb-0">{{ conductores|length }}</h6>
+              <span class="text-muted small pt-2">Disponibles</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <!-- Contenido -->
-  <section class="section dashboard mt-4">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">Listado de Transferencias</h5>
+  <!-- Tabla de Transferencias -->
+  <section class="section">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-body pt-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="card-title mb-0">Historial de Movimientos</h5>
+        </div>
         
+        <!-- FILTROS AVANZADOS -->
+        <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
+          <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Desde</label>
+            <input type="date" id="filtro-desde" class="form-control form-control-sm border-0 shadow-sm">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Hasta</label>
+            <input type="date" id="filtro-hasta" class="form-control form-control-sm border-0 shadow-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted">Estado</label>
+            <select id="filtro-estado" class="form-select form-select-sm border-0 shadow-sm">
+              <option value="">Todos los Estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="en_transito">En Tránsito</option>
+              <option value="recibido">Recibido (En Feria)</option>
+              <option value="en_retorno">En Retorno</option>
+              <option value="completada">Completada</option>
+              <option value="rechazada">Rechazada</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted">Almacén</label>
+            <select id="filtro-almacen" class="form-select form-select-sm border-0 shadow-sm">
+              <option value="">Todos los Almacenes</option>
+              {% for almacen in almacenes %}
+              <option value="{{ almacen.id_almacen }}">{{ almacen.nombre_almacen }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Solicitante</label>
+            <input type="text" id="filtro-solicitante" class="form-control form-control-sm border-0 shadow-sm" placeholder="Nombre...">
+          </div>
+        </div>
+
         <div class="table-responsive">
-          <table class="table table-hover align-middle datatable">
-            <thead class="table-dark">
+          <table class="table table-hover align-middle w-100" id="tabla-transferencias">
+            <thead class="bg-light">
               <tr>
-                <th scope="col">#</th>
-                <th scope="col">Fecha</th>
-                <th scope="col">Origen</th>
-                <th scope="col">Destino</th>
-                <th scope="col">Solicitante</th>
-                <th scope="col">N° Guía</th>
-                <th scope="col" class="text-center">Estado</th>
-                <th scope="col" class="text-center">Acciones</th>
+                <th>#</th>
+                <th>Fecha</th>
+                <th>Tipo Movimiento</th>
+                <th>Origen / Destino</th>
+                <th>Solicitante</th>
+                <th>N° Guía</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              {% for trans in transferencias %}
-              <tr>
-                <td class="fw-semibold">{{ forloop.counter }}</td>
-                <td>{{ trans.fecha_transferencia|date:"d/m/Y" }}</td>
-                <td>
-                  <small class="text-muted">{{ trans.id_almacen_origen.id_sucursal.nombre_sucursal }}</small><br>
-                  {{ trans.id_almacen_origen.nombre_almacen }}
-                </td>
-                <td>
-                  <small class="text-muted">{{ trans.id_almacen_destino.id_sucursal.nombre_sucursal }}</small><br>
-                  {{ trans.id_almacen_destino.nombre_almacen }}
-                </td>
-                <td>{{ trans.idusuario_solicita.nombrecompleto }}</td>
-                <td>{{ trans.numero_guia|default:"---" }}</td>
-                <td class="text-center">
-                  {% if trans.estado == 'pendiente' %}
-                    <span class="badge bg-warning text-dark">Pendiente</span>
-                  {% elif trans.estado == 'confirmada' %}
-                    <span class="badge bg-success">Confirmada</span>
-                  {% else %}
-                    <span class="badge bg-danger">Rechazada</span>
-                  {% endif %}
-                </td>
-                <td class="text-center">
-                  <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#modalDetalle{{ trans.id_transferencia }}">
-                    <i class="bi bi-eye"></i>
-                  </button>
-                  
-                  {% if trans.estado == 'pendiente' and es_admin %}
-                  <button type="button" class="btn btn-sm btn-success" onclick="confirmarTransferencia({{ trans.id_transferencia }})">
-                    <i class="bi bi-check-circle"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-danger" onclick="rechazarTransferencia({{ trans.id_transferencia }})">
-                    <i class="bi bi-x-circle"></i>
-                  </button>
-                  {% endif %}
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="8" class="text-center text-muted">No hay transferencias registradas</td>
-              </tr>
-              {% endfor %}
+            <tbody id="tbody-transferencias">
             </tbody>
           </table>
+        </div>
+        <div id="paginacionTransferencias" class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4">
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Modales de Detalle -->
-  {% for trans in transferencias %}
-  <div class="modal fade" id="modalDetalle{{ trans.id_transferencia }}" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content rounded-3 shadow-lg">
-        <div class="modal-header bg-info text-white">
-          <h5 class="modal-title">Detalle de Transferencia #{{ trans.id_transferencia }}</h5>
+  <!-- CONTENEDOR PARA MODAL DINAMICO -->
+  <div id="modalDetalleContainer"></div>
+
+  <!-- MODAL REGISTRAR SALIDA (LOGÍSTICA) -->
+  <div class="modal fade" id="modalLogistica" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-dark text-white rounded-top-4">
+          <h5 class="modal-title fw-bold">Asignación Logística</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <p><strong>Origen:</strong> {{ trans.id_almacen_origen.nombre_almacen }}</p>
-              <p><small class="text-muted">{{ trans.id_almacen_origen.id_sucursal.nombre_sucursal }}</small></p>
+        <div class="modal-body p-4">
+          <form id="formLogistica">
+            {% csrf_token %}
+            <input type="hidden" name="id_transferencia" id="logistica_id_trans">
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold">Vehículo de Transporte</label>
+              <div class="autocomplete-wrapper">
+                <input type="text" 
+                       id="vehiculo_search" 
+                       class="form-control autocomplete-input autocomplete-with-arrow" 
+                       placeholder="Buscar placa o marca..." 
+                       autocomplete="off"
+                       required>
+                <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteLogistica('vehiculo_search', 'vehiculo_results', 'vehiculo')">
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                <input type="hidden" name="id_transporte_vehiculo" id="id_transporte_vehiculo">
+                <div class="autocomplete-results" id="vehiculo_results"></div>
+              </div>
             </div>
-            <div class="col-md-6">
-              <p><strong>Destino:</strong> {{ trans.id_almacen_destino.nombre_almacen }}</p>
-              <p><small class="text-muted">{{ trans.id_almacen_destino.id_sucursal.nombre_sucursal }}</small></p>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold">Conductor Responsable</label>
+              <div class="autocomplete-wrapper">
+                <input type="text" 
+                       id="conductor_search" 
+                       class="form-control autocomplete-input autocomplete-with-arrow" 
+                       placeholder="Buscar nombre o DNI..." 
+                       autocomplete="off"
+                       required>
+                <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteLogistica('conductor_search', 'conductor_results', 'conductor')">
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                <input type="hidden" name="id_transporte_conductor" id="id_transporte_conductor">
+                <div class="autocomplete-results" id="conductor_results"></div>
+              </div>
             </div>
-          </div>
-          
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <p><strong>Fecha:</strong> {{ trans.fecha_transferencia|date:"d/m/Y" }}</p>
-              <p><strong>Solicitante:</strong> {{ trans.idusuario_solicita.nombrecompleto }}</p>
+
+            <div class="d-grid">
+              <button type="button" class="btn btn-dark btn-lg rounded-pill" onclick="enviarSalida()">
+                <i class="bi bi-send me-2"></i>Registrar Salida y Enviar
+              </button>
             </div>
-            <div class="col-md-6">
-              <p><strong>Estado:</strong> 
-                {% if trans.estado == 'pendiente' %}
-                  <span class="badge bg-warning text-dark">Pendiente</span>
-                {% elif trans.estado == 'confirmada' %}
-                  <span class="badge bg-success">Confirmada</span>
-                {% else %}
-                  <span class="badge bg-danger">Rechazada</span>
-                {% endif %}
-              </p>
-              {% if trans.estado == 'confirmada' %}
-              <p><strong>Confirmada por:</strong> {{ trans.idusuario_confirma.nombrecompleto }}</p>
-              <p><strong>Fecha confirmación:</strong> {{ trans.fecha_confirmacion|date:"d/m/Y H:i" }}</p>
-              {% endif %}
-            </div>
-          </div>
-          
-          {% if trans.numero_guia %}
-          <p><strong>N° Guía:</strong> {{ trans.numero_guia }}</p>
-          {% endif %}
-          
-          {% if trans.observaciones %}
-          <p><strong>Observaciones:</strong> {{ trans.observaciones }}</p>
-          {% endif %}
-          
-          <hr>
-          
-          <h6 class="fw-bold">Productos Transferidos:</h6>
-          <table class="table table-bordered table-sm">
-            <thead class="table-light">
-              <tr>
-                <th>Tipo</th>
-                <th>Producto</th>
-                <th>Detalle</th>
-                <th>Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for detalle in trans.detalles.all %}
-              <tr>
-                {% if detalle.id_vehiculo %}
-                  <td><span class="badge bg-success">Vehículo</span></td>
-                  <td>{{ detalle.id_vehiculo.idproducto.nomproducto }}</td>
-                  <td>
-                    <small>Motor: {{ detalle.id_vehiculo.serie_motor }}</small><br>
-                    <small>Chasis: {{ detalle.id_vehiculo.serie_chasis }}</small>
-                  </td>
-                {% elif detalle.id_repuesto_comprado %}
-                  <td><span class="badge bg-primary">Repuesto</span></td>
-                  <td>{{ detalle.id_repuesto_comprado.id_repuesto.nombre }}</td>
-                  <td><small>Código: {{ detalle.id_repuesto_comprado.codigo_barras }}</small></td>
-                {% endif %}
-                <td>{{ detalle.cantidad }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </form>
         </div>
       </div>
     </div>
   </div>
-  {% endfor %}
 
-  <!-- Modal Nueva Transferencia -->
+  <!-- MODAL NUEVA TRANSFERENCIA (SIMPLIFICADO) -->
   {% if es_admin %}
   <div class="modal fade" id="modalNuevaTransferencia" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title">
-            <i class="bi bi-arrow-left-right me-2"></i>Nueva Transferencia
-          </h5>
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-success text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Nueva Transferencia de Mercancía</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body p-4">
           <form id="formNuevaTransferencia" action="{% url 'nueva_transferencia' %}" method="post">
             {% csrf_token %}
             
-            <!-- CABECERA -->
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                <h6 class="mb-0 fw-bold">Datos de la Transferencia</h6>
+            <div class="row g-4 mb-4">
+              <div class="col-md-6">
+                <div class="card h-100 border shadow-none rounded-3">
+                  <div class="card-body">
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Ubicación Origen</h6>
+                    
+                    <div id="origin_warehouse_container">
+                      <label class="form-label fw-semibold text-primary"><i class="bi bi-box-arrow-up me-1"></i>Almacén de Salida</label>
+                      <select name="id_almacen_origen" id="id_almacen_origen" class="form-select border-primary">
+                        <option value="">-- Seleccionar Origen --</option>
+                        {% for almacen in almacenes %}
+                        <option value="{{ almacen.id_almacen }}">{{ almacen.nombre_almacen }} ({{ almacen.id_sucursal.nombre_sucursal }})</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+
+                    <!-- LUGAR ORIGEN (Para Retornos) -->
+                    <div id="exhibition_origin_fields" style="display:none;">
+                      <div class="mb-3">
+                        <label class="form-label fw-bold text-warning"><i class="bi bi-geo-alt me-1"></i>Viene de (Lugar/Evento)</label>
+                        <input type="text" name="lugar_origen" class="form-control border-warning bg-warning-light" placeholder="Ej: Feria Plaza Norte">
+                      </div>
+                      <div>
+                        <label class="form-label fw-bold text-warning"><i class="bi bi-map me-1"></i>Dirección de Recojo</label>
+                        <input type="text" name="direccion_origen" class="form-control border-warning bg-warning-light" placeholder="Ej: Av. Tomas Valle, Independencia">
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <!-- Almacén Origen -->
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold">Almacén Origen (Sucursal Principal) <span class="text-danger">*</span></label>
-                    <select name="id_almacen_origen" id="id_almacen_origen" class="form-select" required>
-                      <option value="">-- Seleccionar --</option>
-                      {% for almacen in almacenes_principal %}
-                      <option value="{{ almacen.id_almacen }}">{{ almacen.nombre_almacen }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  
-                  <!-- Almacén Destino -->
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold">Almacén Destino <span class="text-danger">*</span></label>
-                    <select name="id_almacen_destino" id="id_almacen_destino" class="form-select" required>
-                      <option value="">-- Seleccionar --</option>
-                      {% for almacen in almacenes %}
-                        {% if not almacen.id_sucursal.es_principal %}
-                        <option value="{{ almacen.id_almacen }}">
-                          {{ almacen.nombre_almacen }} ({{ almacen.id_sucursal.nombre_sucursal }})
-                        </option>
-                        {% endif %}
-                      {% endfor %}
-                    </select>
-                  </div>
-                  
-                  <!-- Fecha -->
-                  <div class="col-md-4">
-                    <label class="form-label fw-semibold">Fecha Transferencia <span class="text-danger">*</span></label>
-                    <input type="date" name="fecha_transferencia" class="form-control" value="2025-10-31" required>
-                  </div>
-                  
-                  <!-- N° Guía -->
-                  <div class="col-md-4">
-                    <label class="form-label fw-semibold">N° Guía (opcional)</label>
-                    <input type="text" name="numero_guia" class="form-control" placeholder="Ej: G-001-2025">
-                  </div>
-                  
-                  <!-- Observaciones -->
-                  <div class="col-md-12">
-                    <label class="form-label fw-semibold">Observaciones</label>
-                    <textarea name="observaciones" class="form-control" rows="2" placeholder="Ingrese observaciones adicionales (opcional)"></textarea>
+
+              <div class="col-md-6">
+                <div class="card h-100 border shadow-none rounded-3">
+                  <div class="card-body">
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3">Ubicación Destino</h6>
+                    
+                    <div id="dest_warehouse_container">
+                      <label class="form-label fw-semibold text-success"><i class="bi bi-box-arrow-in-down me-1"></i>Almacén de Destino</label>
+                      <select name="id_almacen_destino" id="id_almacen_destino" class="form-select border-success">
+                        <option value="">-- Seleccionar Destino --</option>
+                        {% for almacen in almacenes %}
+                          <option value="{{ almacen.id_almacen }}">
+                            {{ almacen.nombre_almacen }} ({{ almacen.id_sucursal.nombre_sucursal }})
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+
+                    <!-- LUGAR DESTINO (Para Salidas) -->
+                    <div id="exhibition_dest_fields" style="display:none;">
+                      <div class="mb-3">
+                        <label class="form-label fw-bold text-warning"><i class="bi bi-geo-alt me-1"></i>Va a (Lugar/Evento)</label>
+                        <input type="text" name="lugar_destino" class="form-control border-warning bg-warning-light" placeholder="Ej: Feria Plaza Norte">
+                      </div>
+                      <div>
+                        <label class="form-label fw-bold text-warning"><i class="bi bi-map me-1"></i>Dirección de Entrega</label>
+                        <input type="text" name="direccion_destino" class="form-control border-warning bg-warning-light" placeholder="Ej: Av. Tomas Valle, Independencia">
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- DETALLE -->
-            <div class="card mb-3">
+            <div class="card border-primary-light shadow-none rounded-3 mb-4">
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold"><i class="bi bi-list-check me-1"></i>Tipo de Traslado</label>
+                    <select name="tipo_transferencia" id="tipo_transferencia_select" class="form-select bg-primary-light fw-bold text-primary" onchange="toggleExhibitionFields()">
+                      <option value="sucursal_a_sucursal">Sucursal a Sucursal</option>
+                      <option value="sucursal_a_exhibicion">Salida a Exhibición</option>
+                      <option value="exhibicion_a_sucursal">Retorno de Exhibición</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-semibold text-muted">Fecha</label>
+                    <input type="date" name="fecha_transferencia" class="form-control" value="{% now 'Y-m-d' %}" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold text-muted">Observaciones / Motivo</label>
+                    <input type="text" name="observaciones" class="form-control" placeholder="Ej: Evento en plaza, Retorno por fin de feria...">
+                  </div>
+                </div>
+
+                <!-- CAMPOS DINÁMICOS REMOVIDOS DE AQUÍ -->
+              </div>
+            </div>
+
+            <!-- SECCIÓN PRODUCTOS -->
+            <div class="card border shadow-none rounded-3">
               <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Productos a Transferir</h6>
-                <button type="button" class="btn btn-sm btn-primary" onclick="cargarStockOrigen()">
-                  <i class="bi bi-arrow-clockwise me-1"></i>Cargar Stock Disponible
+                <h6 class="mb-0 fw-bold">Items a Transferir</h6>
+                <button type="button" class="btn btn-sm btn-dark" onclick="cargarStockOrigen()">
+                  <i class="bi bi-search me-1"></i>Buscar Stock
                 </button>
               </div>
               <div class="card-body">
-                <!-- Selector de productos -->
-                <div class="row mb-3" id="selectorProductos" style="display:none;">
-                  <div class="col-md-12">
-                    <label class="form-label fw-semibold">Seleccionar Producto del Stock:</label>
-                    <div class="row">
-                      <div class="col-md-3">
-                        <select id="tipo_producto" class="form-select">
-                          <option value="">-- Tipo --</option>
-                          <option value="vehiculo">Vehículo</option>
-                          <option value="repuesto">Repuesto</option>
-                        </select>
-                      </div>
-                      <div class="col-md-6">
-                        <select id="producto_seleccionado" class="form-select" disabled>
-                          <option value="">Primero seleccione el tipo</option>
-                        </select>
-                      </div>
-                      <div class="col-md-2">
-                        <input type="number" id="cantidad_transferir" class="form-control" value="1" min="1" disabled>
-                      </div>
-                      <div class="col-md-1">
-                        <button type="button" class="btn btn-success w-100" onclick="agregarItemTransferencia()" disabled id="btnAgregarItem">
-                          <i class="bi bi-plus"></i>
+                <div id="selectorProductos" style="display:none;" class="mb-4 p-3 bg-light rounded-3 border">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Tipo</label>
+                      <select id="tipo_producto" class="form-select">
+                        <option value="">-- Seleccionar --</option>
+                        <option value="vehiculo">Vehículo</option>
+                        <option value="repuesto">Repuesto</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Producto</label>
+                      <div class="d-flex">
+                        <div class="autocomplete-wrapper" style="flex: 1;">
+                          <input type="text" 
+                                 id="producto_search" 
+                                 class="form-control autocomplete-input autocomplete-with-arrow" 
+                                 placeholder="Primero seleccione el tipo..." 
+                                 autocomplete="off"
+                                 disabled
+                                 style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                          <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteProducto()">
+                            <i class="bi bi-chevron-down"></i>
+                          </button>
+                          <div class="autocomplete-results" id="producto_results"></div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBuscador()" title="Limpiar búsqueda" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                          <i class="bi bi-x-lg"></i>
                         </button>
                       </div>
                     </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Cant.
+                        <span id="cant_lock_hint" class="text-muted small fw-normal" style="display:none;" title="Cada vehículo es una unidad única identificada por serie motor/chasis">
+                          <i class="bi bi-lock-fill"></i>
+                        </span>
+                      </label>
+                      <input type="number" id="cantidad_transferir" class="form-control" value="1" min="1" disabled>
+                    </div>
+                    <div class="col-md-1">
+                      <button type="button" class="btn btn-success w-100" onclick="agregarItemTransferencia()" disabled id="btnAgregarItem">
+                        <i class="bi bi-plus-lg"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                
-                <!-- Tabla de productos -->
+
                 <div class="table-responsive">
-                  <table class="table table-sm table-bordered">
-                    <thead class="table-light">
+                  <table class="table table-hover table-bordered">
+                    <thead class="bg-light">
                       <tr>
                         <th>Tipo</th>
                         <th>Producto</th>
                         <th>Detalle</th>
-                        <th>Stock Disp.</th>
-                        <th>Cantidad</th>
-                        <th>Acción</th>
+                        <th class="text-center">Cant.</th>
+                        <th class="text-center">Eliminar</th>
                       </tr>
                     </thead>
                     <tbody id="tbodyTransferencia">
                       <tr>
-                        <td colspan="6" class="text-center text-muted">
-                          Seleccione un almacén origen y cargue el stock disponible
-                        </td>
+                        <td colspan="5" class="text-center text-muted p-4">Cargue el stock origen para añadir productos</td>
                       </tr>
                     </tbody>
                   </table>
@@ -316,14 +399,12 @@
                 <input type="hidden" name="items_count" id="items_count_transferencia" value="0">
               </div>
             </div>
-
-            <div class="modal-footer">
-              <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarTransferencia">
-                <i class="bi bi-save me-2"></i>Guardar Transferencia
-              </button>
-              <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-            </div>
           </form>
+        </div>
+        <div class="modal-footer border-0 p-4">
+          <button type="button" class="btn btn-success btn-lg rounded-pill px-5 shadow-sm" id="btnGuardarTransferencia">
+            <i class="bi bi-save2 me-2"></i>Guardar Borrador
+          </button>
         </div>
       </div>
     </div>
@@ -332,54 +413,287 @@
 
 </main>
 
-<!-- jQuery -->
+<!-- LIBRERÍAS -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-
-<!-- DataTables -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
-<!-- SweetAlert -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-// Variables globales
-let stockDisponible = {
-  vehiculos: [],
-  repuestos: []
-};
+let stockDisponible = { vehiculos: [], repuestos: [] };
 let itemCounterTransferencia = 0;
+let productoSeleccionadoActual = null;
 
-// Inicializar DataTable
 $(document).ready(function() {
-  if ($('.datatable').length) {
-    $('.datatable').DataTable({
-      language: {
-        url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-      },
-      pageLength: 10,
-      order: [[0, 'desc']]
-    });
-  }
+  // Inicialización de DataTable server-side manejada al final del archivo
 });
 
-// Cargar stock del almacén origen
+function toggleExhibitionFields() {
+  const tipo = $('#tipo_transferencia_select').val();
+  
+  // Resetear todo primero
+  $('#origin_warehouse_container, #dest_warehouse_container').show();
+  $('#exhibition_origin_fields, #exhibition_dest_fields').hide();
+  $('#id_almacen_origen, #id_almacen_destino').prop('required', true);
+  $('input[name^="lugar_"], input[name^="direccion_"]').prop('required', false);
+
+  if (tipo === 'sucursal_a_exhibicion') {
+    // SALIDA: Ocultar Destino Warehouse, Mostrar Destino Exhibition
+    $('#dest_warehouse_container').hide();
+    $('#id_almacen_destino').val('').prop('required', false);
+    
+    $('#exhibition_dest_fields').fadeIn();
+    $('input[name="lugar_destino"], input[name="direccion_destino"]').prop('required', true);
+    
+  } else if (tipo === 'exhibicion_a_sucursal') {
+    // RETORNO: Ocultar Origen Warehouse, Mostrar Origen Exhibition
+    $('#origin_warehouse_container').hide();
+    $('#id_almacen_origen').val('').prop('required', false);
+    
+    $('#exhibition_origin_fields').fadeIn();
+    $('input[name="lugar_origen"], input[name="direccion_origen"]').prop('required', true);
+    
+  }
+}
+
+function iniciarRetorno(id) {
+  Swal.fire({
+    title: '¿Iniciar retorno al almacén?',
+    text: "El estado de este registro cambiará a 'Retornando' y el vehículo se considerará en camino de regreso.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#ffc107',
+    confirmButtonText: 'Sí, iniciar retorno',
+    cancelButtonText: 'Cancelar'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.ajax({
+        url: `/transferencias/iniciar-retorno/${id}/`,
+        method: 'POST',
+        data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
+        success: function(res) {
+          if (res.ok) {
+            Swal.fire('En Retorno', res.message, 'success').then(() => {
+                cargarTransferencias(currentPage);
+            });
+          } else {
+            Swal.fire('Error', res.error, 'error');
+          }
+        }
+      });
+    }
+  });
+}
+
+// LOGÍSTICA
+function abrirModalLogistica(id) {
+  // Limpiar campos antes de abrir
+  $('#vehiculo_search').val('');
+  $('#id_transporte_vehiculo').val('');
+  $('#conductor_search').val('');
+  $('#id_transporte_conductor').val('');
+  $('.autocomplete-results').hide();
+  
+  $('#logistica_id_trans').val(id);
+  $('#modalLogistica').modal('show');
+}
+
+// ========================================
+// ⭐ LÓGICA DE AUTOCOMPLETE LOGÍSTICA
+// ========================================
+function setupLogisticsAutocomplete(inputId, resultsId, type, hiddenId) {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    let timeout = null;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const term = this.value.trim();
+        
+        // Si borra el texto, limpiar el ID oculto
+        if (term.length === 0) {
+            document.getElementById(hiddenId).value = '';
+        }
+
+        if (term.length < 1) {
+            results.style.display = 'none';
+            return;
+        }
+
+        timeout = setTimeout(() => {
+            const url = type === 'vehiculo' 
+                ? `/api/buscar-vehiculos-transporte/?term=${term}` 
+                : `/api/buscar-conductores-transporte/?term=${term}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    results.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'autocomplete-item';
+                            div.textContent = item.text;
+                            div.addEventListener('click', () => {
+                                input.value = item.text;
+                                document.getElementById(hiddenId).value = item.id;
+                                results.style.display = 'none';
+                            });
+                            results.appendChild(div);
+                        });
+                        results.style.display = 'block';
+                    } else {
+                        results.style.display = 'none';
+                    }
+                });
+        }, 300);
+    });
+
+    // Cerrar al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+function toggleAutocompleteLogistica(inputId, resultsId, type) {
+    const results = document.getElementById(resultsId);
+    const isVisible = results.style.display === 'block';
+    
+    $('.autocomplete-results').hide();
+    
+    if (isVisible) {
+        results.style.display = 'none';
+        return;
+    }
+    
+    const url = type === 'vehiculo' 
+            ? `/api/buscar-vehiculos-transporte/?term=` 
+            : `/api/buscar-conductores-transporte/?term=`;
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            results.innerHTML = '';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.textContent = item.text;
+                div.addEventListener('click', () => {
+                    document.getElementById(inputId).value = item.text;
+                    const hiddenId = inputId === 'vehiculo_search' ? 'id_transporte_vehiculo' : 'id_transporte_conductor';
+                    document.getElementById(hiddenId).value = item.id;
+                    results.style.display = 'none';
+                });
+                results.appendChild(div);
+            });
+            results.style.display = 'block';
+        });
+}
+
+// Inicializar autocompletes
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('vehiculo_search')) {
+        setupLogisticsAutocomplete('vehiculo_search', 'vehiculo_results', 'vehiculo', 'id_transporte_vehiculo');
+        setupLogisticsAutocomplete('conductor_search', 'conductor_results', 'conductor', 'id_transporte_conductor');
+    }
+});
+
+function enviarSalida() {
+  const id = $('#logistica_id_trans').val();
+  const vehiculo = $('#id_transporte_vehiculo').val();
+  const conductor = $('#id_transporte_conductor').val();
+  
+  if (!vehiculo || !conductor) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Información incompleta',
+      text: 'Debe seleccionar tanto el vehículo como el conductor responsable.',
+      confirmButtonColor: '#212529'
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: 'Registrando Salida...',
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  $.ajax({
+    url: `/transferencias/registrar-salida/${id}/`,
+    method: 'POST',
+    data: $('#formLogistica').serialize(),
+    success: function(res) {
+      if (res.ok) {
+        Swal.fire('¡En Camino!', res.message, 'success').then(() => {
+            $('#modalLogistica').modal('hide');
+            $('#formLogistica')[0].reset();
+            cargarTransferencias(currentPage);
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'No se pudo registrar la salida',
+          text: res.error,
+          confirmButtonColor: '#dc3545'
+        });
+      }
+    },
+    error: function(xhr) {
+      let msg = 'Ocurrió un error inesperado en el servidor.';
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data.error) msg = data.error;
+      } catch(e) {}
+      Swal.fire({
+        icon: 'error',
+        title: 'Error del servidor',
+        text: msg,
+        confirmButtonColor: '#dc3545'
+      });
+    }
+  });
+}
+
+function confirmarRecepcion(id) {
+  Swal.fire({
+    title: '¿Confirmar Recepción?',
+    text: "La mercancía ingresará formalmente al almacén destino.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#198754',
+    confirmButtonText: 'Sí, recibir stock'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.ajax({
+        url: `/transferencias/confirmar-recepcion/${id}/`,
+        method: 'POST',
+        data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
+        success: function(res) {
+          if (res.ok) {
+            Swal.fire('Recibido', res.message, 'success').then(() => {
+                cargarTransferencias(currentPage);
+            });
+          } else {
+            Swal.fire('Error', res.error, 'error');
+          }
+        }
+      });
+    }
+  });
+}
+
+// LÓGICA DE CREACIÓN (HEREDADA Y MEJORADA)
 function cargarStockOrigen() {
   const idAlmacenOrigen = $('#id_almacen_origen').val();
-  
   if (!idAlmacenOrigen) {
-    Swal.fire('Error', 'Debe seleccionar un almacén origen primero', 'warning');
+    Swal.fire('Origen requerido', 'Seleccione el almacén de donde saldrá la mercancía', 'warning');
     return;
   }
   
-  Swal.fire({
-    title: 'Cargando stock...',
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading();
-    }
-  });
+  Swal.fire({ title: 'Buscando stock...', didOpen: () => { Swal.showLoading(); } });
   
   $.ajax({
     url: '/api/obtener-stock-almacen/',
@@ -388,287 +702,581 @@ function cargarStockOrigen() {
     success: function(data) {
       stockDisponible.vehiculos = data.vehiculos || [];
       stockDisponible.repuestos = data.repuestos || [];
-      
-      $('#selectorProductos').show();
-      $('#tipo_producto').prop('disabled', false);
-      
+      $('#selectorProductos').fadeIn();
       Swal.close();
       
-      if (stockDisponible.vehiculos.length === 0 && stockDisponible.repuestos.length === 0) {
-        Swal.fire('Atención', 'No hay stock disponible en este almacén', 'info');
-      } else {
-        Swal.fire('Éxito', `Stock cargado: ${stockDisponible.vehiculos.length} vehículos, ${stockDisponible.repuestos.length} repuestos`, 'success');
-      }
-    },
-    error: function(xhr) {
-      Swal.fire('Error', 'No se pudo cargar el stock del almacén', 'error');
-      console.error(xhr);
+      // Limpiar tabla si se cambia de almacén
+      $('#tbodyTransferencia').html('<tr><td colspan="5" class="text-center text-muted p-4">Stock cargado. Use el buscador de arriba para añadir items.</td></tr>');
+      itemCounterTransferencia = 0;
+      $('#items_count_transferencia').val(0);
     }
   });
 }
 
-// Cambiar tipo de producto
 $('#tipo_producto').change(function() {
   const tipo = $(this).val();
-  const $select = $('#producto_seleccionado');
+  const $search = $('#producto_search');
   
-  $select.empty().append('<option value="">-- Seleccionar --</option>');
-  
-  if (tipo === 'vehiculo') {
-    stockDisponible.vehiculos.forEach(function(veh) {
-      $select.append(`
-        <option value="${veh.id_vehiculo}" data-tipo="vehiculo" data-stock="${veh.cantidad_disponible}" 
-                data-nombre="${veh.nombre}" data-motor="${veh.serie_motor}" data-chasis="${veh.serie_chasis}">
-          ${veh.nombre} - Motor: ${veh.serie_motor} (Stock: ${veh.cantidad_disponible})
-        </option>
-      `);
-    });
-    $select.prop('disabled', false);
-  } else if (tipo === 'repuesto') {
-    stockDisponible.repuestos.forEach(function(rep) {
-      $select.append(`
-        <option value="${rep.id_repuesto_comprado}" data-tipo="repuesto" data-stock="${rep.cantidad_disponible}"
-                data-nombre="${rep.nombre}" data-codigo="${rep.codigo_barras}">
-          ${rep.nombre} - Código: ${rep.codigo_barras} (Stock: ${rep.cantidad_disponible})
-        </option>
-      `);
-    });
-    $select.prop('disabled', false);
-  } else {
-    $select.prop('disabled', true);
-  }
-  
-  $('#cantidad_transferir').val(1).prop('disabled', true);
+  // Limpiar selección actual
+  $search.val('');
+  productoSeleccionadoActual = null;
+  $('#producto_results').hide();
+  $('#cantidad_transferir').prop('disabled', true).val(1);
   $('#btnAgregarItem').prop('disabled', true);
-});
-
-// Seleccionar producto
-$('#producto_seleccionado').change(function() {
-  const selected = $(this).find(':selected');
-  const stock = parseInt(selected.data('stock')) || 0;
   
-  if (stock > 0) {
-    $('#cantidad_transferir').prop('disabled', false).attr('max', stock);
-    $('#btnAgregarItem').prop('disabled', false);
+  if (tipo) {
+    $search.prop('disabled', false).attr('placeholder', `Buscar ${tipo === 'vehiculo' ? 'vehículo por motor/chasis' : 'repuesto por nombre/código'}...`);
   } else {
-    $('#cantidad_transferir').prop('disabled', true);
-    $('#btnAgregarItem').prop('disabled', true);
+    $search.prop('disabled', true).attr('placeholder', 'Primero seleccione el tipo...');
   }
 });
 
-// Agregar item a la transferencia
+// ========================================
+// ⭐ LÓGICA DE AUTOCOMPLETE PRODUCTO (LOCAL)
+// ========================================
+function setupProductAutocomplete() {
+    const input = document.getElementById('producto_search');
+    const results = document.getElementById('producto_results');
+    
+    input.addEventListener('input', function() {
+        const tipo = $('#tipo_producto').val();
+        if (!tipo) return;
+        
+        const term = this.value.toLowerCase().trim();
+        const data = tipo === 'vehiculo' ? stockDisponible.vehiculos : stockDisponible.repuestos;
+        
+        results.innerHTML = '';
+        if (term.length === 0) {
+            results.style.display = 'none';
+            return;
+        }
+
+        const filtered = data.filter(item => {
+            const searchStr = tipo === 'vehiculo' 
+                ? `${item.nombre} ${item.serie_motor} ${item.serie_chasis}` 
+                : `${item.nombre} ${item.codigo_barras}`;
+            return searchStr.toLowerCase().includes(term);
+        });
+
+        if (filtered.length > 0) {
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                const text = tipo === 'vehiculo' 
+                    ? `${item.nombre} | Motor: ${item.serie_motor} | Chasis: ${item.serie_chasis}` 
+                    : `${item.nombre} | Cód: ${item.codigo_barras}`;
+                div.textContent = `${text} (Stock: ${item.cantidad_disponible})`;
+                
+                div.addEventListener('click', () => {
+                    input.value = text;
+                    productoSeleccionadoActual = { ...item, tipo: tipo };
+                    results.style.display = 'none';
+                    
+                    // Activar lógica de cantidad
+                    const stock = parseInt(item.cantidad_disponible) || 0;
+                    if (tipo === 'vehiculo') {
+                      // Un vehículo = 1 unidad única (serie motor/chasis única)
+                      $('#cantidad_transferir').val(1).prop('disabled', true).attr('max', 1);
+                      $('#cant_lock_hint').show();
+                    } else {
+                      $('#cantidad_transferir').prop('disabled', stock <= 0).attr('max', stock).val(1);
+                      $('#cant_lock_hint').hide();
+                    }
+                    $('#btnAgregarItem').prop('disabled', stock <= 0);
+                });
+                results.appendChild(div);
+            });
+            results.style.display = 'block';
+        } else {
+            results.style.display = 'none';
+        }
+    });
+
+    // Cerrar al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        const wrapper = input.closest('.autocomplete-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+function toggleAutocompleteProducto() {
+    const tipo = $('#tipo_producto').val();
+    if (!tipo) {
+        Swal.fire('Atención', 'Primero debe seleccionar el tipo (Vehículo o Repuesto)', 'info');
+        return;
+    }
+    
+    const results = document.getElementById('producto_results');
+    const isVisible = results.style.display === 'block';
+    
+    // Cerrar todos los demás primero
+    $('.autocomplete-results').hide();
+    
+    if (isVisible) {
+        results.style.display = 'none';
+        return;
+    }
+    
+    const data = tipo === 'vehiculo' ? stockDisponible.vehiculos : stockDisponible.repuestos;
+    results.innerHTML = '';
+    
+    if (data.length === 0) {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item text-muted small';
+        div.textContent = 'No hay stock disponible en este almacén';
+        results.appendChild(div);
+    } else {
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            const text = tipo === 'vehiculo' 
+                ? `${item.nombre} | Motor: ${item.serie_motor} | Chasis: ${item.serie_chasis}` 
+                : `${item.nombre} | Cód: ${item.codigo_barras}`;
+            div.textContent = `${text} (Stock: ${item.cantidad_disponible})`;
+            
+            div.addEventListener('click', () => {
+                document.getElementById('producto_search').value = text;
+                productoSeleccionadoActual = { ...item, tipo: tipo };
+                results.style.display = 'none';
+                
+                const stock = parseInt(item.cantidad_disponible) || 0;
+                if (tipo === 'vehiculo') {
+                  // Un vehículo = 1 unidad única (serie motor/chasis única)
+                  $('#cantidad_transferir').val(1).prop('disabled', true).attr('max', 1);
+                  $('#cant_lock_hint').show();
+                } else {
+                  $('#cantidad_transferir').prop('disabled', stock <= 0).attr('max', stock).val(1);
+                  $('#cant_lock_hint').hide();
+                }
+                $('#btnAgregarItem').prop('disabled', stock <= 0);
+            });
+            results.appendChild(div);
+        });
+    }
+    results.style.display = 'block';
+}
+
+// Inicializar
+$(document).ready(function() {
+    if (document.getElementById('producto_search')) {
+        setupProductAutocomplete();
+    }
+});
+
 function agregarItemTransferencia() {
-  const $selected = $('#producto_seleccionado').find(':selected');
-  const tipo = $selected.data('tipo');
-  const id = $selected.val();
-  const nombre = $selected.data('nombre');
-  const stockDisp = parseInt($selected.data('stock')) || 0;
-  const cantidad = parseInt($('#cantidad_transferir').val()) || 1;
+  if (!productoSeleccionadoActual) return;
   
-  if (!tipo || !id) {
-    Swal.fire('Error', 'Debe seleccionar un producto', 'warning');
-    return;
+  const tipo = productoSeleccionadoActual.tipo;
+  const id = tipo === 'vehiculo' ? productoSeleccionadoActual.id_vehiculo : productoSeleccionadoActual.id_repuesto_comprado;
+  const nombre = productoSeleccionadoActual.nombre;
+  const cant = parseInt($('#cantidad_transferir').val()) || 1;
+
+  // VALIDACIÓN: Evitar duplicados de vehículos
+  if (tipo === 'vehiculo') {
+    let existe = false;
+    $('input[name^="id_vehiculo_"]').each(function() {
+      if ($(this).val() == id) {
+        existe = true;
+        return false;
+      }
+    });
+    if (existe) {
+      Swal.fire('Error', 'Este vehículo ya ha sido agregado al detalle.', 'error');
+      limpiarBuscador();
+      return;
+    }
   }
-  
-  if (cantidad > stockDisp) {
-    Swal.fire('Error', `Stock insuficiente. Disponible: ${stockDisp}`, 'warning');
-    return;
+
+  // VALIDACIÓN: Control de stock de repuestos
+  if (tipo === 'repuesto') {
+    let cantidadActual = 0;
+    $('#tbodyTransferencia tr').each(function() {
+      let idInput = $(this).find('input[name^="id_repuesto_"]');
+      if (idInput.length > 0 && idInput.val() == id) {
+        let qtyInput = $(this).find('input[name^="cantidad_"]');
+        cantidadActual += parseInt(qtyInput.val()) || 0;
+      }
+    });
+    
+    let stockMaximo = parseInt(productoSeleccionadoActual.cantidad_disponible) || 0;
+    if ((cantidadActual + cant) > stockMaximo) {
+      Swal.fire('Stock excedido', `La cantidad total excede el stock disponible. Ya tienes ${cantidadActual} en el detalle y el stock es ${stockMaximo}.`, 'error');
+      limpiarBuscador();
+      return;
+    }
   }
-  
+
   itemCounterTransferencia++;
   $('#items_count_transferencia').val(itemCounterTransferencia);
   
-  let detalle = '';
-  let inputsHidden = `
-    <input type="hidden" name="tipo_item_${itemCounterTransferencia}" value="${tipo}">
-    <input type="hidden" name="cantidad_${itemCounterTransferencia}" value="${cantidad}">
-  `;
-  
-  if (tipo === 'vehiculo') {
-    const motor = $selected.data('motor');
-    const chasis = $selected.data('chasis');
-    detalle = `<small>Motor: ${motor}<br>Chasis: ${chasis}</small>`;
-    inputsHidden += `<input type="hidden" name="id_vehiculo_${itemCounterTransferencia}" value="${id}">`;
-  } else {
-    const codigo = $selected.data('codigo');
-    detalle = `<small>Código: ${codigo}</small>`;
-    inputsHidden += `<input type="hidden" name="id_repuesto_${itemCounterTransferencia}" value="${id}">`;
-  }
-  
-  const badge = tipo === 'vehiculo' ? 'bg-success' : 'bg-primary';
-  const label = tipo === 'vehiculo' ? 'Vehículo' : 'Repuesto';
-  
-  // Limpiar mensaje inicial si existe
-  if ($('#tbodyTransferencia tr td[colspan]').length) {
-    $('#tbodyTransferencia').empty();
-  }
-  
-  const fila = `
-    <tr id="item_trans_${itemCounterTransferencia}">
-      <td><span class="badge ${badge}">${label}</span></td>
+  if ($('#tbodyTransferencia tr td[colspan]').length) $('#tbodyTransferencia').empty();
+
+  let detalle = tipo === 'vehiculo' ? `Motor: ${productoSeleccionadoActual.serie_motor}` : `Código: ${productoSeleccionadoActual.codigo_barras}`;
+  let inputs = `<input type="hidden" name="tipo_item_${itemCounterTransferencia}" value="${tipo}"><input type="hidden" name="cantidad_${itemCounterTransferencia}" value="${cant}">`;
+  inputs += tipo === 'vehiculo' ? `<input type="hidden" name="id_vehiculo_${itemCounterTransferencia}" value="${id}">` : `<input type="hidden" name="id_repuesto_${itemCounterTransferencia}" value="${id}">`;
+
+  $('#tbodyTransferencia').append(`
+    <tr id="row_${itemCounterTransferencia}">
+      <td><span class="badge ${tipo==='vehiculo'?'bg-success':'bg-primary'}">${tipo}</span></td>
       <td>${nombre}</td>
       <td>${detalle}</td>
-      <td>${stockDisp}</td>
-      <td>${cantidad}</td>
-      <td>
-        <button type="button" class="btn btn-sm btn-danger" onclick="eliminarItemTransferencia(${itemCounterTransferencia})">
-          <i class="bi bi-trash"></i>
-        </button>
-        ${inputsHidden}
-      </td>
+      <td class="text-center">${cant}</td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="$('#row_${itemCounterTransferencia}').remove()">${inputs}<i class="bi bi-trash"></i></button></td>
     </tr>
-  `;
-  
-  $('#tbodyTransferencia').append(fila);
-  
-  // Resetear formulario
-  $('#tipo_producto').val('');
-  $('#producto_seleccionado').empty().append('<option value="">Primero seleccione el tipo</option>').prop('disabled', true);
+  `);
+
+  // LIMPIEZA DE CAMPOS TRAS AGREGAR
+  limpiarBuscador();
+}
+
+function limpiarBuscador() {
+  $('#producto_search').val('');
   $('#cantidad_transferir').val(1).prop('disabled', true);
   $('#btnAgregarItem').prop('disabled', true);
+  productoSeleccionadoActual = null;
 }
 
-// Eliminar item
-function eliminarItemTransferencia(id) {
-  $(`#item_trans_${id}`).remove();
-  
-  // Si no quedan items, mostrar mensaje
-  if ($('#tbodyTransferencia tr').length === 0) {
-    $('#tbodyTransferencia').html(`
-      <tr>
-        <td colspan="6" class="text-center text-muted">No hay productos agregados</td>
-      </tr>
-    `);
-  }
-}
+$('#btnGuardarTransferencia').click(function() {
+  const items = parseInt($('#items_count_transferencia').val());
+  const origen = $('#id_almacen_origen').val();
+  const destino = $('#id_almacen_destino').val();
+  const tipo = $('#tipo_transferencia_select').val();
 
-// Guardar transferencia
-$('#btnGuardarTransferencia').click(function(e) {
-  e.preventDefault();
-  
-  const itemsCount = parseInt($('#items_count_transferencia').val()) || 0;
-  
-  if (itemsCount === 0) {
-    Swal.fire('Error', 'Debe agregar al menos un producto a la transferencia', 'warning');
+  if (tipo !== 'exhibicion_a_sucursal' && !origen) {
+    Swal.fire('Campos requeridos', 'Debe seleccionar un almacén de origen.', 'warning');
     return;
   }
-  
-  Swal.fire({
-    title: 'Guardando transferencia...',
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading();
-    }
-  });
-  
-  let formData = new FormData($('#formNuevaTransferencia')[0]);
-  
+
+  if (tipo !== 'sucursal_a_exhibicion' && !destino) {
+    Swal.fire('Campos requeridos', 'Debe seleccionar un almacén de destino.', 'warning');
+    return;
+  }
+
+  if (items === 0) { 
+    Swal.fire('Vacío', 'Añada al menos un producto a la transferencia', 'warning'); 
+    return; 
+  }
+
   $.ajax({
     url: $('#formNuevaTransferencia').attr('action'),
     method: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
+    data: new FormData($('#formNuevaTransferencia')[0]),
+    processData: false, contentType: false,
     success: function(res) {
       if (res.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Transferencia registrada',
-          text: res.message,
-          confirmButtonColor: '#198754'
-        }).then(() => {
-          window.location.reload();
+        Swal.fire('Éxito', 'Transferencia creada', 'success').then(() => {
+            $('#modalNuevaTransferencia').modal('hide');
+            $('#formNuevaTransferencia')[0].reset();
+            if ($('#tbody_transferencia').length) $('#tbody_transferencia').empty();
+            if ($('#items_count_transferencia').length) $('#items_count_transferencia').val(0);
+            cargarTransferencias(1);
         });
-      } else {
-        Swal.fire('Error', res.error, 'error');
       }
-    },
-    error: function(xhr) {
-      console.error(xhr);
-      let errorMsg = 'Error al guardar la transferencia';
-      
-      try {
-        const response = JSON.parse(xhr.responseText);
-        errorMsg = response.error || errorMsg;
-      } catch(e) {}
-      
-      Swal.fire('Error', errorMsg, 'error');
+      else Swal.fire('Error', res.error, 'error');
     }
   });
 });
 
-// Confirmar transferencia
-function confirmarTransferencia(id) {
-  Swal.fire({
-    title: '¿Confirmar transferencia?',
-    text: 'El stock se actualizará automáticamente',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, confirmar',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#198754',
-    cancelButtonColor: '#6c757d'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      $.ajax({
-        url: `/transferencias/confirmar/${id}/`,
-        method: 'POST',
-        data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
-        success: function(res) {
-          if (res.ok) {
-            Swal.fire('Confirmada', res.message, 'success').then(() => {
-              window.location.reload();
-            });
-          } else {
-            Swal.fire('Error', res.error, 'error');
-          }
-        },
-        error: function(xhr) {
-          Swal.fire('Error', 'No se pudo confirmar la transferencia', 'error');
-        }
-      });
-    }
-  });
-}
-
-// Rechazar transferencia
 function rechazarTransferencia(id) {
   Swal.fire({
-    title: '¿Rechazar transferencia?',
-    text: 'Esta acción no se puede deshacer',
+    title: '¿Rechazar?',
+    text: "Esta acción anulará la solicitud de transferencia.",
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Sí, rechazar',
-    cancelButtonText: 'Cancelar',
     confirmButtonColor: '#dc3545',
-    cancelButtonColor: '#6c757d'
+    confirmButtonText: 'Sí, rechazar'
   }).then((result) => {
     if (result.isConfirmed) {
       $.ajax({
         url: `/transferencias/rechazar/${id}/`,
         method: 'POST',
         data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
-        success: function(res) {
-          if (res.ok) {
-            Swal.fire('Rechazada', res.message, 'success').then(() => {
-              window.location.reload();
-            });
-          } else {
-            Swal.fire('Error', res.error, 'error');
-          }
-        },
-        error: function(xhr) {
-          Swal.fire('Error', 'No se pudo rechazar la transferencia', 'error');
+        success: function(res) { 
+            cargarTransferencias(currentPage); 
         }
       });
+    }
+  });
+}
+
+// ==========================================
+// LISTADO Y PAGINACIÓN (CUSTOM FETCH)
+// ==========================================
+let currentPage = 1;
+let typingTimer;
+
+function cargarTransferencias(page = 1) {
+    currentPage = page;
+    const bodyTransferencias = document.getElementById('tbody-transferencias');
+    bodyTransferencias.innerHTML = `<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>`;
+    
+    const params = new URLSearchParams({
+        page: page,
+        fecha_desde: document.getElementById('filtro-desde').value,
+        fecha_hasta: document.getElementById('filtro-hasta').value,
+        estado: document.getElementById('filtro-estado').value,
+        almacen: document.getElementById('filtro-almacen').value,
+        solicitante: document.getElementById('filtro-solicitante').value
+    });
+    
+    fetch(`{% url 'api_listar_transferencias' %}?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.ok) {
+                renderizarTabla(data.transferencias);
+                renderizarPaginacion(data.pagination, data.stats.total_registros);
+                
+                // Actualizar los stats dinámicamente
+                if (data.stats) {
+                  document.getElementById('stat-pendientes').textContent = data.stats.pendientes;
+                  document.getElementById('stat-transito').textContent = data.stats.en_transito;
+                  document.getElementById('stat-recibidas').textContent = data.stats.recibidas;
+                }
+            } else {
+                bodyTransferencias.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Error: ${data.error}</td></tr>`;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            bodyTransferencias.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Error de conexión al servidor</td></tr>`;
+        });
+}
+
+function renderizarTabla(transferencias) {
+    const bodyTransferencias = document.getElementById('tbody-transferencias');
+    if(transferencias.length === 0) {
+        bodyTransferencias.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><p class="mt-3 mb-0">No hay transferencias que mostrar</p></td></tr>`;
+        return;
+    }
+    
+    let html = '';
+    transferencias.forEach(row => {
+        let tipoBadge = '<span class="badge rounded-pill bg-light text-dark">Entre Sucursales</span>';
+        if (row.tipo_transferencia === 'sucursal_a_exhibicion') tipoBadge = '<span class="badge rounded-pill bg-info-light text-info">A Exhibición</span>';
+        else if (row.tipo_transferencia === 'exhibicion_a_sucursal') tipoBadge = '<span class="badge rounded-pill bg-secondary-light text-secondary">De Exhibición</span>';
+
+        let estadoBadge = '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rechazada</span>';
+        if (row.estado === 'pendiente') estadoBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pendiente</span>';
+        else if (row.estado === 'en_transito') estadoBadge = '<span class="badge bg-primary animate-pulse"><i class="bi bi-truck me-1"></i>En Tránsito</span>';
+        else if (row.estado === 'recibido') {
+            if (row.tipo_transferencia === 'sucursal_a_sucursal') estadoBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Completada</span>';
+            else estadoBadge = '<span class="badge bg-success"><i class="bi bi-geo-alt-fill me-1"></i>En Feria</span>';
+        }
+        else if (row.estado === 'en_retorno') estadoBadge = '<span class="badge bg-warning animate-pulse"><i class="bi bi-arrow-return-left me-1"></i>Retornando</span>';
+        else if (row.estado === 'completada') estadoBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Completada</span>';
+
+        let btns = `<div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="verDetalles(${row.id_transferencia})" title="Ver Detalles">
+                <i class="bi bi-eye"></i>
+            </button>
+            <a href="/transferencias/guia-pdf/${row.id_transferencia}/" class="btn btn-sm btn-outline-danger" title="Guía de Remisión" target="_blank">
+                <i class="bi bi-file-earmark-pdf"></i>
+            </a>`;
+            
+        if (row.estado === 'pendiente' && row.es_admin) {
+            btns += `
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirModalLogistica(${row.id_transferencia})" title="Registrar Salida">
+                <i class="bi bi-truck"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="rechazarTransferencia(${row.id_transferencia})" title="Rechazar">
+                <i class="bi bi-x-lg"></i>
+            </button>`;
+        }
+        if (row.estado === 'en_transito') {
+            btns += `
+            <button type="button" class="btn btn-sm btn-success" onclick="confirmarRecepcion(${row.id_transferencia})" title="Confirmar Recepción">
+                <i class="bi bi-box-seam me-1"></i> Recibir
+            </button>`;
+        }
+        if (row.estado === 'recibido' && row.tipo_transferencia === 'sucursal_a_exhibicion') {
+            btns += `
+            <button type="button" class="btn btn-sm btn-warning" onclick="iniciarRetorno(${row.id_transferencia})" title="Iniciar Retorno al Almacén">
+                <i class="bi bi-arrow-return-left me-1"></i> Retornar
+            </button>`;
+        }
+        if (row.estado === 'en_retorno') {
+            btns += `
+            <button type="button" class="btn btn-sm btn-success" onclick="confirmarRecepcion(${row.id_transferencia})" title="Confirmar Ingreso a Almacén">
+                <i class="bi bi-check-circle me-1"></i> Recibir Stock
+            </button>`;
+        }
+        btns += `</div>`;
+
+        html += `
+        <tr>
+            <td><span class="fw-bold text-primary">${row.index}</span></td>
+            <td>${row.fecha}</td>
+            <td>${tipoBadge}</td>
+            <td>
+                <div class="d-flex flex-column">
+                    <span class="text-dark fw-semibold"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${row.origen}</span>
+                    <span class="text-muted small"><i class="bi bi-arrow-down ms-1"></i></span>
+                    <span class="text-success fw-semibold"><i class="bi bi-geo-alt-fill me-1"></i>${row.destino}</span>
+                </div>
+            </td>
+            <td>${row.solicitante}</td>
+            <td>${row.numero_guia}</td>
+            <td class="text-center">${estadoBadge}</td>
+            <td class="text-center">${btns}</td>
+        </tr>`;
+    });
+    bodyTransferencias.innerHTML = html;
+}
+
+function renderizarPaginacion(pag, total) {
+    const pagDiv = document.getElementById('paginacionTransferencias');
+    let html = `<div class="text-muted small mb-2 mb-md-0">Mostrando registros ${pag.start_index} al ${pag.end_index} de un total de ${total}</div>`;
+    
+    if (pag.num_pages > 1) {
+        html += `<ul class="pagination pagination-sm mb-0">`;
+        if (pag.has_previous) {
+            html += `<li class="page-item"><button class="page-link" onclick="window.cambiarPagina(${pag.previous_page_number})">Anterior</button></li>`;
+        } else {
+            html += `<li class="page-item disabled"><span class="page-link">Anterior</span></li>`;
+        }
+        
+        html += `<li class="page-item active"><span class="page-link">${pag.current_page} de ${pag.num_pages}</span></li>`;
+        
+        if (pag.has_next) {
+            html += `<li class="page-item"><button class="page-link" onclick="window.cambiarPagina(${pag.next_page_number})">Siguiente</button></li>`;
+        } else {
+            html += `<li class="page-item disabled"><span class="page-link">Siguiente</span></li>`;
+        }
+        html += `</ul>`;
+    } else {
+        html += `<div></div>`;
+    }
+    pagDiv.innerHTML = html;
+}
+
+window.cambiarPagina = function(page) {
+    cargarTransferencias(page);
+};
+
+$(document).ready(function() {
+    // Configurar fechas por defecto: desde el primer día del mes hasta hoy
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    const formatDate = (date) => {
+        let month = '' + (date.getMonth() + 1);
+        let day = '' + date.getDate();
+        const year = date.getFullYear();
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+        return [year, month, day].join('-');
+    };
+
+    document.getElementById('filtro-desde').value = formatDate(primerDia);
+    document.getElementById('filtro-hasta').value = formatDate(hoy);
+
+    $('#filtro-desde, #filtro-hasta, #filtro-estado, #filtro-almacen').on('change', function() {
+        cargarTransferencias(1);
+    });
+    
+    $('#filtro-solicitante').on('keyup', function() {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => cargarTransferencias(1), 500);
+    });
+
+    // Carga inicial
+    cargarTransferencias(1);
+});
+
+function verDetalles(id) {
+  $.ajax({
+    url: `/transferencias/modal-detalle/${id}/`,
+    method: 'GET',
+    success: function(html) {
+      $('#modalDetalleContainer').html(html);
+      $(`#modalDetalle${id}`).modal('show');
+    },
+    error: function() {
+      Swal.fire('Error', 'No se pudieron cargar los detalles de la transferencia', 'error');
     }
   });
 }
 </script>
 
 <style>
-  .table td {
-    vertical-align: middle;
-  }
+.bg-warning-light { background-color: #fff3cd; }
+.bg-primary-light { background-color: #cfe2ff; }
+.bg-success-light { background-color: #d1e7dd; }
+.bg-info-light { background-color: #cff4fc; }
+.bg-secondary-light { background-color: #e2e3e5; }
+.animate-pulse { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+.info-card h6 { font-size: 28px; font-weight: 700; color: #012970; }
+.card-icon { font-size: 32px; line-height: 0; width: 64px; height: 64px; flex-shrink: 0; flex-grow: 0; }
+
+/* AUTOCOMPLETE STYLES */
+.autocomplete-wrapper {
+    position: relative;
+    width: 100%;
+}
+.autocomplete-input {
+    padding-right: 35px !important;
+}
+.autocomplete-with-arrow {
+    cursor: text;
+}
+.autocomplete-arrow {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    z-index: 10;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+.autocomplete-arrow:hover {
+    background-color: rgba(0,0,0,0.05);
+    color: #0d6efd;
+}
+.autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1051; /* Mayor que el modal de Bootstrap */
+    display: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.autocomplete-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+.autocomplete-item:hover {
+    background-color: #f0f4f8;
+    color: #0d6efd;
+}
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
 </style>
 {% endblock %}

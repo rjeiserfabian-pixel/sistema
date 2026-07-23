@@ -15,7 +15,11 @@
 
 body {
   font-family: "Open Sans", sans-serif;
-  background: #f6f9ff;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.45)), url('../img/back_sistema.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: #444444;
 }
 
@@ -222,6 +226,7 @@ h6 {
   border: none;
   border-radius: 5px;
   box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
+  background-color: #ffffff;
 }
 
 .card-header,
@@ -360,7 +365,7 @@ h6 {
 
 @media (min-width: 1200px) {
   .logo {
-    width: 170px;
+    width: 200px;
   }
 }
 
@@ -389,7 +394,7 @@ h6 {
 
 .header .toggle-sidebar-btn {
   font-size: 32px;
-  padding-left: 10px;
+  padding-left: 5px;
   cursor: pointer;
   color: #012970;
 }
@@ -603,10 +608,10 @@ h6 {
   top: 60px;
   left: 0;
   bottom: 0;
-  width: 200px;
+  width: 260px;
   z-index: 996;
   transition: all 0.3s ease;
-  padding: 20px;
+  padding: 15px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #20b2aa transparent;
@@ -637,9 +642,10 @@ h6 {
 }
 
 @media (min-width: 1200px) {
+
   #main,
   #footer {
-    margin-left: 200px;
+    margin-left: 260px;
   }
 }
 
@@ -650,13 +656,53 @@ h6 {
 }
 
 @media (min-width: 1200px) {
+
   .toggle-sidebar #main,
   .toggle-sidebar #footer {
-    margin-left: 0;
+    margin-left: 85px;
   }
 
   .toggle-sidebar .sidebar {
-    left: -300px;
+    left: 0;
+    width: 85px;
+    padding: 15px;
+  }
+
+  /* Ocultar textos y flechas en modo colapsado */
+  .toggle-sidebar .sidebar .nav-heading,
+  .toggle-sidebar .sidebar .nav-link span,
+  .toggle-sidebar .sidebar .nav-link .bi-chevron-down {
+    display: none !important;
+  }
+
+  /* Centrar iconos */
+  .toggle-sidebar .sidebar .nav-link {
+    justify-content: center;
+    padding: 12px 0;
+  }
+
+  .toggle-sidebar .sidebar .nav-link i {
+    margin-right: 0;
+    font-size: 24px;
+  }
+
+  /* Ocultar submenús */
+  .toggle-sidebar .sidebar .nav-content {
+    display: none !important;
+  }
+
+  /* Ajustar Logo */
+  .toggle-sidebar .logo {
+    width: 85px;
+    justify-content: center;
+  }
+
+  .toggle-sidebar .logo span {
+    display: none !important;
+  }
+
+  .toggle-sidebar .logo img {
+    margin-right: 0;
   }
 }
 
@@ -1285,12 +1331,15 @@ h6 {
 }
 
 @media (max-width: 768px) {
-    .btn {
-        font-size: 1rem;  /* Ajusta el tamaño de los botones */
-    }
-    .fa-2xl {
-        font-size: 1.5rem;  /* Ajusta el tamaño de los íconos */
-    }
+  .btn {
+    font-size: 1rem;
+    /* Ajusta el tamaño de los botones */
+  }
+
+  .fa-2xl {
+    font-size: 1.5rem;
+    /* Ajusta el tamaño de los íconos */
+  }
 }
 
 
@@ -1361,3 +1410,543 @@ h6 {
   background-color: #fee2e2;
   color: #991b1b;
 }
+
+/* ==============================================
+   Sidebar Flotante (Hover en modo colapsado)
+   ============================================== */
+.sidebar-floating-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  max-width: 225px;
+  background: #fff;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 6px 8px 28px rgba(0, 0, 0, 0.22);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease, visibility 0.15s;
+  overflow: hidden;
+  border-left: 3px solid #0d9488;
+}
+
+.sidebar-floating-menu.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Cabecera: degradado teal igual que el sidebar */
+.sidebar-floating-menu-header {
+  padding: 11px 16px;
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ocultar el ícono en la cabecera para look limpio */
+.sidebar-floating-menu-header i {
+  display: none;
+}
+
+/* Lista de submenús */
+.sidebar-floating-menu-ul {
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+}
+
+.sidebar-floating-menu-ul li {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Links del submenú - overrides con !important para evitar herencia del sidebar */
+.sidebar-floating-menu-ul a {
+  display: flex !important;
+  align-items: center !important;
+  padding: 9px 15px 9px 18px !important;
+  color: #374151 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  transition: background-color 0.18s, color 0.18s, border-color 0.18s, padding 0.18s !important;
+  transform: none !important;
+  position: relative;
+}
+
+/* Punto decorativo antes de cada item */
+.sidebar-floating-menu-ul a::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+  margin-right: 10px;
+  transition: background-color 0.18s, transform 0.18s;
+}
+
+.sidebar-floating-menu-ul a:hover {
+  background-color: #f0fdfa !important;
+  color: #0d9488 !important;
+  padding-left: 18px !important;
+  border-left-color: #0d9488 !important;
+  transform: none !important;
+  font-weight: 500 !important;
+}
+
+.sidebar-floating-menu-ul a:hover::before {
+  background: #0d9488;
+  transform: scale(1.4);
+}
+
+/* Ocultar íconos de círculo clonados del sidebar - solo mostrar texto */
+.sidebar-floating-menu-ul a i,
+.sidebar-floating-menu-ul a .bi-circle,
+.sidebar-floating-menu-ul a [class*="bi-"],
+.sidebar-floating-menu-ul a [class*="bx-"],
+.sidebar-floating-menu-ul a [class*="ri-"],
+.sidebar-floating-menu-ul a [class*="fa-"] {
+  display: none !important;
+}
+
+/* Mostrar el texto del span correctamente */
+.sidebar-floating-menu-ul a span {
+  color: inherit !important;
+  font-size: 13px !important;
+
+@media (max-width: 768px) {
+  .btn {
+    font-size: 1rem;
+    /* Ajusta el tamaño de los botones */
+  }
+
+  .fa-2xl {
+    font-size: 1.5rem;
+    /* Ajusta el tamaño de los íconos */
+  }
+}
+
+
+
+/* Badge para estado de caja */
+.nav-icon .badge {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 8px;
+}
+
+/* Estilos para el modal */
+#modalGestionCaja .modal-content {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+#modalGestionCaja .modal-header {
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+}
+
+#modalGestionCaja .form-label {
+  font-weight: 600;
+  color: #0d9488;
+}
+
+#modalGestionCaja .form-control,
+#modalGestionCaja .form-select {
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+#modalGestionCaja .form-control:focus,
+#modalGestionCaja .form-select:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.25);
+}
+
+#modalGestionCaja .btn {
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+#modalGestionCaja .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+#modalGestionCaja .alert {
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+#modalGestionCaja .alert-success {
+  border-left-color: #10b981;
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+#modalGestionCaja .alert-danger {
+  border-left-color: #ef4444;
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* ==============================================
+   Sidebar Flotante (Hover en modo colapsado)
+   ============================================== */
+.sidebar-floating-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  max-width: 225px;
+  background: #fff;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 6px 8px 28px rgba(0, 0, 0, 0.22);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease, visibility 0.15s;
+  overflow: hidden;
+  border-left: 3px solid #0d9488;
+}
+
+.sidebar-floating-menu.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Cabecera: degradado teal igual que el sidebar */
+.sidebar-floating-menu-header {
+  padding: 11px 16px;
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ocultar el ícono en la cabecera para look limpio */
+.sidebar-floating-menu-header i {
+  display: none;
+}
+
+/* Lista de submenús */
+.sidebar-floating-menu-ul {
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+}
+
+.sidebar-floating-menu-ul li {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Links del submenú - overrides con !important para evitar herencia del sidebar */
+.sidebar-floating-menu-ul a {
+  display: flex !important;
+  align-items: center !important;
+  padding: 9px 15px 9px 18px !important;
+  color: #374151 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  transition: background-color 0.18s, color 0.18s, border-color 0.18s, padding 0.18s !important;
+  transform: none !important;
+  position: relative;
+}
+
+/* Punto decorativo antes de cada item */
+.sidebar-floating-menu-ul a::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+  margin-right: 10px;
+  transition: background-color 0.18s, transform 0.18s;
+}
+
+.sidebar-floating-menu-ul a:hover {
+  background-color: #f0fdfa !important;
+  color: #0d9488 !important;
+  padding-left: 18px !important;
+  border-left-color: #0d9488 !important;
+  transform: none !important;
+  font-weight: 500 !important;
+}
+
+.sidebar-floating-menu-ul a:hover::before {
+  background: #0d9488;
+  transform: scale(1.4);
+}
+
+/* Ocultar íconos de círculo clonados del sidebar - solo mostrar texto */
+.sidebar-floating-menu-ul a i,
+.sidebar-floating-menu-ul a .bi-circle,
+.sidebar-floating-menu-ul a [class*="bi-"],
+.sidebar-floating-menu-ul a [class*="bx-"],
+.sidebar-floating-menu-ul a [class*="ri-"],
+.sidebar-floating-menu-ul a [class*="fa-"] {
+  display: none !important;
+}
+
+/* Mostrar el texto del span correctamente */
+.sidebar-floating-menu-ul a span {
+  color: inherit !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ajuste específico para cuando el sidebar está colapsado */
+body.toggle-sidebar .sidebar-nav .nav-item {
+  position: relative;
+}
+
+/* ==============================================
+   Sidebar Estilos - Menú Reportes
+   ============================================== */
+
+/* Fondo para el Menú Reportes al estar expandido o enfocado (sin color fuerte para no romper diseño) */
+[data-bs-target="#reportes-nav"]:not(.collapsed),
+[data-bs-target="#reportes-nav"]:hover {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  color: #fff !important;
+}
+
+/* Iconos y textos del padre */
+[data-bs-target="#reportes-nav"] i {
+  color: #fff !important;
+}
+
+/* Contenedor del submenú para aplicar la línea de tiempo vertical */
+#reportes-nav {
+  position: relative;
+  padding-left: 0;
+}
+
+/* Línea vertical tenue (timeline conector) */
+#reportes-nav::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  bottom: 25px;
+  left: 21px; /* Alineación al centro de los círculos */
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.2);
+  z-index: 1;
+}
+
+/* Ajustes a los enlaces de los submenús de reportes */
+#reportes-nav a {
+  position: relative;
+  z-index: 2;
+  padding: 10px 0 10px 45px;
+  background: transparent !important;
+  border: none !important;
+}
+
+#reportes-nav a:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Reemplazar los puntos rellenos por círculos vacíos (estilo anillo) */
+#reportes-nav a i {
+  font-size: 8px;
+  margin-right: 15px;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.6); /* Círculo vacío */
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  line-height: normal;
+  box-shadow: none !important;
+  transform: none !important; /* Prevenir bugs de animación al escalar */
+  margin-left: -20px;
+}
+
+/* Icono activo (anillo más visible) */
+#reportes-nav a.active i {
+  border-color: #ffffff;
+  background: transparent !important;
+}
+
+}
+/* =============================================================
+   ESTILOS PERSONALIZADOS PARA EL DETALLE DE VENTA (PREMIUM)
+   ============================================================= */
+
+.modal-header-teal {
+    background-color: #008080 !important;
+    color: white !important;
+    border-bottom: 2px solid rgba(0,0,0,0.1);
+}
+
+.modal-detalle-venta .card {
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.modal-detalle-venta .section-title {
+    color: #008080;
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    border-left: 5px solid #008080;
+    padding-left: 12px;
+    background: linear-gradient(90deg, rgba(0,128,128,0.05) 0%, transparent 100%);
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.modal-detalle-venta .section-title i {
+    font-size: 1.2rem;
+    margin-right: 0.6rem;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: #718096;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.table-detalle-header th {
+    background-color: #1a202c !important;
+    color: white !important;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 18px 12px !important;
+    border: none !important;
+    text-transform: uppercase;
+}
+
+.product-name-detalle {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 5px;
+}
+
+.product-subinfo {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.product-subinfo i {
+    width: 20px;
+    color: #008080;
+    font-size: 0.9rem;
+}
+
+.badge-cantidad-premium {
+    background-color: #ebf8ff;
+    color: #2b6cb0;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    border: 2px solid #bee3f8;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    display: inline-block;
+}
+
+.table-footer-total {
+    background-color: #f8fafc;
+    font-weight: 800;
+    font-size: 1.2rem;
+    border-top: 3px solid #e2e8f0;
+}
+
+.table-footer-total td {
+    padding: 25px 15px !important;
+}
+
+.cuota-badge-status {
+    font-size: 0.75rem;
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cuota-id-circle {
+    width: 34px;
+    height: 34px;
+    background-color: #f1f5f9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #475569;
+    margin: 0 auto;
+    border: 2px solid #e2e8f0;
+}
+
+.cuota-tipo-badge {
+    background-color: #008080;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    box-shadow: 0 3px 6px rgba(0,128,128,0.25);
+}
+
+.card-summary-premium {
+    border-radius: 18px !important;
+    transition: all 0.3s ease;
+    background: white;
+    border: 1px solid #edf2f7;
+}
+
+.card-summary-premium:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+

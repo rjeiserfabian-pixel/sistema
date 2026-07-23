@@ -57,7 +57,6 @@ class ImposicionPlaca(models.Model):
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     fecha_tramite = models.DateField(blank=True, null=True)
     fecha_entrega = models.DateField(blank=True, null=True)
-    fecha_vencimiento_tramite = models.DateField(blank=True, null=True)
     
     # Costos
     costo_tramite = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -69,6 +68,7 @@ class ImposicionPlaca(models.Model):
     tiene_tarjeta_propiedad = models.BooleanField(default=False)
     tiene_soat = models.BooleanField(default=False)
     tiene_revision_tecnica = models.BooleanField(default=False)
+    con_garantia_mobiliaria = models.BooleanField(default=False)
     numero_expediente = models.CharField(max_length=50, blank=True, null=True)
     
     # Estado y observaciones
@@ -112,10 +112,3 @@ class ImposicionPlaca(models.Model):
             delta = timezone.now() - self.fecha_solicitud
             return delta.days
         return 0
-    
-    @property
-    def esta_vencido(self):
-        "Verifica si el trámite está vencido"
-        if self.fecha_vencimiento_tramite:
-            return timezone.now().date() > self.fecha_vencimiento_tramite
-        return False

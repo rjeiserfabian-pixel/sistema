@@ -1,0 +1,312 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+    
+    <!-- HEADER -->
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold text-primary">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Cuentas por Pagar
+            </h1>
+            <p class="text-muted mb-0">Gestión de deudas por compras al crédito</p>
+        </div>
+        <!-- Buttons optional -->
+        <div class="d-flex gap-2">
+            <a href="{% url 'reporte_compras' %}" class="btn btn-info rounded-pill">
+                <i class="bi bi-bar-chart-fill me-2"></i>Reportes
+            </a>
+        </div>
+    </div>
+
+    <nav aria-label="breadcrumb" class="mt-2">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+            <li class="breadcrumb-item active">Gestión</li>
+            <li class="breadcrumb-item active">Cuentas por Pagar</li>
+        </ol>
+    </nav>
+
+    <!-- ESTADÍSTICAS (PREMIUM) -->
+    <section class="section dashboard mt-4">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card info-card sales-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Compras</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #4154f1;">
+                                <i class="bi bi-cart bg-transparent text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0 fs-4 fw-bold" id="stat-compras">{{ total_compras }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card info-card revenue-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Pendientes</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ff771d;">
+                                <i class="bi bi-hourglass-split bg-transparent text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0 fs-4 fw-bold text-danger" id="stat-pendientes">{{ total_activos }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card info-card customers-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Canceladas</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #2eca6a;">
+                                <i class="bi bi-check-circle bg-transparent text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0 fs-4 fw-bold text-success" id="stat-canceladas">{{ total_canceladas }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card info-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Deuda Total</h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #012970;">
+                                <i class="bi bi-currency-dollar bg-transparent text-white"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 class="mb-0 fs-5 fw-bold text-primary" id="stat-deuda">S/ {{ saldo_total_pendiente|floatformat:2 }}</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTROS COMPLETOS RESTAURADOS -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Filtros de Búsqueda</h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse">
+                    <i class="bi bi-funnel"></i> Mostrar/Ocultar
+                </button>
+            </div>
+            <div class="collapse show" id="filtrosCollapse">
+                <div class="card-body">
+                    <form id="formFiltrosCuentas" onsubmit="return false;">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Estado:</label>
+                                <select name="estado" id="cpp_estado" class="form-select">
+                                    <option value="todos">Todos</option>
+                                    <option value="activo">Pendientes</option>
+                                    <option value="pagado">Pagados / Cancelados</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Búsqueda:</label>
+                                <input type="text" name="busqueda" id="cpp_busqueda" class="form-control" placeholder="Proveedor, RUC, No. Compra...">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Desde:</label>
+                                <input type="date" name="fecha_desde" id="cpp_fecha_desde" class="form-control" value="{{ fecha_desde }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Hasta:</label>
+                                <input type="date" name="fecha_hasta" id="cpp_fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end ms-auto">
+                                <button type="button" id="btnLimpiarCuentas" class="btn btn-outline-secondary w-100" title="Limpiar Filtros">
+                                    <i class="bi bi-arrow-clockwise"></i> 
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLA DE CUENTAS POR PAGAR (ESTILO CRÉDITOS) -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title">Listado de Cuentas por Pagar</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th># Orden</th>
+                                <th>N° Correlativo</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Compra</th>
+                                <th class="text-end">Monto Total</th>
+                                <th class="text-end">Saldo Pendiente</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyCuentasPorPagar">
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                                    <div class="small fw-semibold">Cargando cuentas...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación JS -->
+                <div id="paginacionCuentasPorPagar" class="d-flex justify-content-end align-items-center mt-3 p-3">
+                </div>
+
+            </div>
+        </div>
+    </section>
+</main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentPage = 1;
+let searchTimeout = null;
+
+// ── OBTENER DATOS (AJAX) ─────────────────────────────────────────────────────
+function cargarCuentasPorPagar(page=1) {
+    currentPage = page;
+    const busqueda = document.getElementById('cpp_busqueda').value;
+    const estado = document.getElementById('cpp_estado').value;
+    const fecha_desde = document.getElementById('cpp_fecha_desde').value;
+    const fecha_hasta = document.getElementById('cpp_fecha_hasta').value;
+
+    const tbody = document.getElementById('tbodyCuentasPorPagar');
+    const pagination = document.getElementById('paginacionCuentasPorPagar');
+
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted"><div class="spinner-border text-primary mb-2"></div><div>Cargando...</div></td></tr>`;
+    
+    fetch(`/cuentas-por-pagar/api/listar/?page=${page}&busqueda=${encodeURIComponent(busqueda)}&estado=${estado}&fecha_desde=${fecha_desde}&fecha_hasta=${fecha_hasta}`)
+    .then(response => response.json())
+    .then(data => {
+        if (!data.ok) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">Error cargando datos.</td></tr>`;
+            return;
+        }
+
+        // Actualizar estadísticas
+        document.getElementById('stat-compras').textContent = data.stats.total_compras;
+        document.getElementById('stat-pendientes').textContent = data.stats.total_activos;
+        document.getElementById('stat-canceladas').textContent = data.stats.total_canceladas;
+        document.getElementById('stat-deuda').textContent = 'S/ ' + parseFloat(data.stats.saldo_total_pendiente).toFixed(2);
+
+        // Renderizar Filas
+        if (data.solicitudes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted"><i class="fa-solid fa-inbox fa-2x mb-2 d-block opacity-30"></i>No se encontraron cuentas.</td></tr>`;
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let startIndex = (page - 1) * 10;
+        tbody.innerHTML = data.solicitudes.map((c, i) => renderFilaCuentaPagar(c, startIndex + i + 1)).join('');
+
+        // Renderizar Paginación
+        renderPaginacion(data.pagination);
+    })
+    .catch(error => {
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">Error de conexión.</td></tr>`;
+    });
+}
+
+// ── RENDERIZAR FILA ──────────────────────────────────────────────────────────
+function renderFilaCuentaPagar(c, index) {
+    let estadoHtml = '';
+    if (c.estado_credito === 'activo') {
+        estadoHtml = `<span class="badge bg-warning text-dark">PENDIENTE</span>`;
+    } else {
+        estadoHtml = `<span class="badge bg-success">CANCELADO</span>`;
+    }
+
+    return `
+        <tr>
+            <td><span class="badge bg-primary">${index}</span></td>
+            <td><strong>${c.numcorrelativo}</strong></td>
+            <td>
+                <strong>${c.proveedor_razonsocial.substring(0, 30)}${c.proveedor_razonsocial.length > 30 ? '...' : ''}</strong><br>
+                <small class="text-muted">${c.proveedor_numdoc}</small>
+            </td>
+            <td>${c.fechacompra}</td>
+            <td class="text-end fw-bold text-success">S/ ${parseFloat(c.total_compra).toFixed(2)}</td>
+            <td class="text-end text-danger fw-bold">S/ ${parseFloat(c.saldo_pendiente).toFixed(2)}</td>
+            <td class="text-center">${estadoHtml}</td>
+            <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center">
+                    <a href="/cuentas-por-pagar/detalle/${c.idcompra}/" class="btn btn-sm btn-info text-white" title="Ver Detalle y Cuotas"><i class="bi bi-eye"></i> Detalles</a>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// ── RENDERIZAR PAGINACION ────────────────────────────────────────────────────
+function renderPaginacion(pag) {
+    if (pag.total_pages <= 1) {
+        document.getElementById('paginacionCuentasPorPagar').innerHTML = '';
+        return;
+    }
+
+    let html = `<nav aria-label="Navegación"><ul class="pagination mb-0">`;
+    
+    // Anterior
+    if (pag.has_previous) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarCuentasPorPagar(${pag.previous_page_number}); return false;">Anterior</a></li>`;
+    } else {
+        html += `<li class="page-item disabled"><span class="page-link">Anterior</span></li>`;
+    }
+
+    // Indicador "X de Y"
+    html += `<li class="page-item active" aria-current="page"><span class="page-link">${pag.current_page} de ${pag.total_pages}</span></li>`;
+
+    // Siguiente
+    if (pag.has_next) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarCuentasPorPagar(${pag.next_page_number}); return false;">Siguiente</a></li>`;
+    } else {
+        html += `<li class="page-item disabled"><span class="page-link">Siguiente</span></li>`;
+    }
+
+    html += `</ul></nav>`;
+    document.getElementById('paginacionCuentasPorPagar').innerHTML = html;
+}
+
+// ── EVENTOS (Filtros y Búsqueda) ──────────────────────────────────────────────
+document.getElementById('cpp_busqueda').addEventListener('keyup', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { cargarCuentasPorPagar(1); }, 500);
+});
+document.getElementById('cpp_estado').addEventListener('change', () => cargarCuentasPorPagar(1));
+document.getElementById('cpp_fecha_desde').addEventListener('change', () => cargarCuentasPorPagar(1));
+document.getElementById('cpp_fecha_hasta').addEventListener('change', () => cargarCuentasPorPagar(1));
+document.getElementById('btnLimpiarCuentas').addEventListener('click', () => {
+    document.getElementById('cpp_busqueda').value = '';
+    document.getElementById('cpp_estado').value = 'todos';
+    cargarCuentasPorPagar(1);
+});
+
+// Cargar inicialmente al entrar a la página
+document.addEventListener('DOMContentLoaded', () => {
+    cargarCuentasPorPagar(1);
+});
+</script>
+{% endblock %}

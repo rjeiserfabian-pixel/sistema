@@ -1,0 +1,230 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<main id="main" class="main">
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <h1 class="fw-bold text-primary">
+      <i class="fa-solid fa-percent me-2"></i>Gestión de IGV
+    </h1>
+    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal"
+      data-bs-target="#myModalAgregar">
+      <i class="fa-solid fa-circle-plus me-2"></i>Agregar Tipo IGV
+    </button>
+  </div>
+
+  <nav aria-label="breadcrumb" class="mt-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+      <li class="breadcrumb-item active">Gestión de IGV</li>
+    </ol>
+  </nav>
+
+  <!-- Contenido -->
+  <section class="section dashboard mt-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Listado de Tipos de IGV</h5>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle datatable">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Código</th>
+                <th scope="col">Tipo IGV</th>
+                <th scope="col">Cód. Tributo</th>
+                <th scope="col" class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for registro in registros %}
+              <tr>
+                <td class="fw-semibold">{{ forloop.counter }}</td>
+                <td><span class="badge bg-info text-dark">{{ registro.codigo }}</span></td>
+                <td>{{ registro.tipo_igv }}</td>
+                <td class="fw-bold">{{ registro.codigo_de_tributo }}</td>
+                <td class="text-center">
+                  <!-- Editar -->
+                  <a type="button" class="btn btn-sm btn-light border shadow-sm me-2" data-bs-toggle="modal"
+                    data-bs-target="#myModalEditar{{ registro.id_tipo_igv }}">
+                    <i class="fa-solid fa-pen-to-square text-primary"></i>
+                  </a>
+                  <!-- Eliminar -->
+                  <a href="{% url 'eliminar_igv' id=registro.id_tipo_igv %}"
+                    class="btn btn-sm btn-light border shadow-sm eliminar"
+                    onclick="return confirmarEliminar('{{ registro.id_tipo_igv }}', this)">
+                    <i class="fa-solid fa-trash text-danger"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modales de Edición -->
+  {% for registro in registros %}
+  <div class="modal fade" id="myModalEditar{{ registro.id_tipo_igv }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Tipo IGV</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+            <input type="text" id="codigo{{ registro.id_tipo_igv }}" value="{{ registro.codigo }}" class="form-control rounded-pill">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo IGV <span class="text-danger">*</span></label>
+            <input type="text" id="tipo_igv{{ registro.id_tipo_igv }}" value="{{ registro.tipo_igv }}" class="form-control rounded-pill">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Código de Tributo <span class="text-danger">*</span></label>
+            <input type="number" id="codigo_de_tributo{{ registro.id_tipo_igv }}" value="{{ registro.codigo_de_tributo }}" class="form-control rounded-pill">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar-confirm"
+              data-id="{{ registro.id_tipo_igv }}">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Cambios
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Modal Agregar -->
+  <div class="modal fade" id="myModalAgregar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-circle-plus me-2"></i>Agregar Tipo IGV</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+            <input type="text" id="codigoAgregar" class="form-control rounded-pill" placeholder="Ej: 10">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo IGV <span class="text-danger">*</span></label>
+            <input type="text" id="tipo_igvAgregar" class="form-control rounded-pill" placeholder="Ej: Gravado - Operación Onerosa">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Código de Tributo <span class="text-danger">*</span></label>
+            <input type="number" id="codigo_de_tributoAgregar" class="form-control rounded-pill" placeholder="Ej: 1000">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardar">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'agregar_igv' %}";
+  var URL_EDITAR = "{% url 'editar_igv' %}";
+  var URL_LISTA = "{% url 'gestion_igv' %}";
+
+  $(function () {
+    // ==================== AGREGAR ====================
+    $('#btnGuardar').on('click', function () {
+      var codigo = $('#codigoAgregar').val();
+      var tipo_igv = $('#tipo_igvAgregar').val();
+      var codigo_de_tributo = $('#codigo_de_tributoAgregar').val();
+
+      if (!codigo || !tipo_igv || !codigo_de_tributo) {
+        Swal.fire({ title: 'Campos requeridos', text: 'Por favor complete todos los campos.', icon: 'warning', confirmButtonText: 'OK' });
+        return;
+      }
+
+      $.post(URL_AGREGAR, { 
+        codigo: codigo, 
+        tipo_igv: tipo_igv, 
+        codigo_de_tributo: codigo_de_tributo, 
+        csrfmiddlewaretoken: CSRF_TOKEN 
+      })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Agregado!', text: 'Tipo IGV registrado correctamente.', icon: 'success', confirmButtonText: '¡Ok!' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo agregar.', icon: 'error', confirmButtonText: 'OK' });
+          }
+        })
+        .fail(function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error código: ' + xhr.status;
+          Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'OK' });
+        });
+    });
+
+    // ==================== EDITAR ====================
+    $(document).on('click', '.btn-editar-confirm', function () {
+      var id = $(this).data('id');
+      var codigo = $('#codigo' + id).val();
+      var tipo_igv = $('#tipo_igv' + id).val();
+      var codigo_de_tributo = $('#codigo_de_tributo' + id).val();
+
+      if (!codigo || !tipo_igv || !codigo_de_tributo) {
+        Swal.fire({ title: 'Campos requeridos', text: 'Los campos no pueden estar vacíos.', icon: 'warning', confirmButtonText: 'OK' });
+        return;
+      }
+
+      $.post(URL_EDITAR, { 
+        id_tipo_igv: id, 
+        codigo: codigo, 
+        tipo_igv: tipo_igv, 
+        codigo_de_tributo: codigo_de_tributo, 
+        csrfmiddlewaretoken: CSRF_TOKEN 
+      })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Actualizado!', text: 'Tipo IGV actualizado correctamente.', icon: 'success', confirmButtonText: '¡Ok!' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo actualizar.', icon: 'error', confirmButtonText: 'OK' });
+          }
+        })
+        .fail(function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error código: ' + xhr.status;
+          Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'OK' });
+        });
+    });
+  });
+
+  // Confirmación eliminar
+  function confirmarEliminar(id, enlace) {
+    let urlEliminar = $(enlace).attr('href');
+    Swal.fire({
+      title: '¿Seguro que quieres eliminar este tipo de IGV?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = urlEliminar;
+      }
+    });
+    return false;
+  }
+</script>
+{% endblock %}

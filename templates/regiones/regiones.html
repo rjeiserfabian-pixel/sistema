@@ -6,14 +6,15 @@
     <h1 class="fw-bold text-primary">
       <i class="fas fa-map-location-dot me-2"></i>Regiones
     </h1>
-    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#myModaAgregar">
+    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal"
+      data-bs-target="#myModaAgregar">
       <i class="fa-solid fa-circle-plus me-2"></i>Agregar Región
     </button>
   </div>
 
   <nav aria-label="breadcrumb" class="mt-2">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="index.html">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
       <li class="breadcrumb-item active">Región</li>
     </ol>
   </nav>
@@ -23,59 +24,36 @@
     <div class="card shadow-sm border-0">
       <div class="card-body">
         <h5 class="card-title">Listado de regiones</h5>
-        
+
         <div class="table-responsive">
           <table class="table table-hover align-middle datatable" style="width: 100%;">
             <thead class="table-dark">
               <tr>
                 <th scope="col" style="width: 10%;">#</th>
-                <th scope="col" style="width: 75%;">Región</th>
-                <th scope="col" class="text-center" style="width: 15%;">Acciones</th>
+                <th scope="col" style="width: 70%;">Región</th>
+                <th scope="col" class="text-center" style="width: 20%;">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {% for region_registro in regiones_registros %}
               <tr>
                 <td class="fw-semibold text-center">{{ forloop.counter }}</td>
-                <td>{{ region_registro.nombre_region }}</td>
+                <td>
+                  {{ region_registro.nombre_region }}
+                </td>
                 <td class="text-center">
                   <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
-                    data-bs-target="#myModal2{{ region_registro.id_region }}" title="Editar">
+                    data-bs-target="#myModalEditar{{ region_registro.id_region }}" title="Editar">
                     <i class="fa-solid fa-pen-to-square"></i>
                   </a>
 
-                  <a href="{% url 'regionesEliminar' id=region_registro.id_region %}" class="btn btn-sm btn-outline-danger eliminar"
-                    onclick="return confirmarEliminar('{{ region_registro.id_region }}', this)" title="Eliminar">
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar"
+                    data-id="{{ region_registro.id_region }}" title="Eliminar">
                     <i class="fa-solid fa-trash"></i>
-                  </a>
+                  </button>
                 </td>
               </tr>
 
-              <!-- Modal Editar -->
-              <div class="modal fade" id="myModal2{{ region_registro.id_region }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content rounded-3 shadow-lg">
-                    <div class="modal-header bg-primary text-white">
-                      <h5 class="modal-title">Editar Región</h5>
-                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                      <form id="formEditarRegion{{ region_registro.id_region }}" action="{% url 'editarRegiones' %}" method="post">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Nombre de la Región <span class="text-danger">*</span></label>
-                          <input type="text" name="nameRegion" value="{{ region_registro.nombre_region }}" class="form-control rounded-pill" required>
-                          <input type="hidden" name="idRegion" value="{{ region_registro.id_region }}">
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar" data-id="{{ region_registro.id_region }}">Guardar</button>
-                          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
               {% endfor %}
             </tbody>
           </table>
@@ -84,250 +62,178 @@
     </div>
   </section>
 
+  <!-- Modales de Edición -->
+  {% for region_registro in regiones_registros %}
+  <div class="modal fade" id="myModalEditar{{ region_registro.id_region }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Región</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la Región <span class="text-danger">*</span></label>
+            <input type="text" id="nameRegion{{ region_registro.id_region }}"
+              value="{{ region_registro.nombre_region }}" class="form-control rounded-pill" required>
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar-confirm"
+              data-id="{{ region_registro.id_region }}">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
   <!-- Modal Agregar -->
   <div class="modal fade" id="myModaAgregar" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-3 shadow-lg">
         <div class="modal-header bg-success text-white">
-          <h5 class="modal-title">Agregar Región</h5>
+          <h5 class="modal-title"><i class="fa-solid fa-circle-plus me-2"></i>Agregar Región</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form id="formAgregarRegion" action="{% url 'agregarRegiones' %}" method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Nombre de la Región <span class="text-danger">*</span></label>
-              <input type="text" name="nameRegionAgregar" class="form-control rounded-pill" required>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-success rounded-pill px-4" id="agregar">Agregar</button>
-              <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-          </form>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la Región <span class="text-danger">*</span></label>
+            <input type="text" id="nameRegionAgregar" class="form-control rounded-pill"
+              placeholder="Ej: Lima, Cusco, Arequipa..." required>
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarRegion">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </main>
+{% endblock %}
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<!-- DataTables + Bootstrap 5 -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
-<style>
-  /* Mejoras visuales para la tabla */
-  .datatable {
-    font-size: 0.9rem;
-  }
-  
-  .datatable thead th {
-    background-color: #212529 !important;
-    color: white !important;
-    font-weight: 600;
-    text-align: center;
-    vertical-align: middle;
-    border: none;
-    padding: 12px 8px;
-  }
-  
-  .datatable tbody td {
-    vertical-align: middle;
-    padding: 10px 8px;
-    font-size: 0.875rem;
-  }
-  
-  .datatable tbody tr:hover {
-    background-color: #f8f9fa;
-  }
-  
-  /* Botones de acciones */
-  .btn-sm {
-    padding: 4px 8px;
-    font-size: 0.875rem;
-  }
-  
-  /* Espaciado del DataTable */
-  .dataTables_wrapper .dataTables_length,
-  .dataTables_wrapper .dataTables_filter {
-    margin-bottom: 15px;
-  }
-  
-  .dataTables_wrapper .dataTables_info,
-  .dataTables_wrapper .dataTables_paginate {
-    margin-top: 15px;
-  }
-  
-  /* Select de paginación */
-  .dataTables_length select {
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-  }
-  
-  /* Input de búsqueda */
-  .dataTables_filter input {
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-    margin-left: 10px;
-  }
-  
-  /* Responsive */
-  @media (max-width: 768px) {
-    .datatable {
-      font-size: 0.8rem;
-    }
-    
-    .datatable thead th,
-    .datatable tbody td {
-      padding: 8px 4px;
-    }
-  }
-</style>
-
+{% block extra_scripts %}
 <script>
-$(document).ready(function(){
-  // Para agregar
-  $("#agregar").click(function(){
-    var formData = new FormData($('#formAgregarRegion')[0]);
-    $.ajax({
-      type: "POST",
-      url: "{% url 'agregarRegiones' %}",
-      data: formData,
-      processData: false,
-      contentType: false,
-      success: function (response) {
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'agregarRegiones' %}";
+  var URL_EDITAR = "{% url 'editarRegiones' %}";
+  var URL_LISTA = "{% url 'regiones' %}";
+
+  $(function () {
+    // ==================== AGREGAR ====================
+    $("#btnGuardarRegion").click(function () {
+      var nombre = $("#nameRegionAgregar").val().trim();
+
+      if (!nombre) {
         Swal.fire({
-          title: 'Región guardada exitosamente',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-          confirmButtonText: '¡Ok!',
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "{% url 'regiones' %}";
+          title: 'Campo Requerido',
+          text: 'Por favor, ingrese el nombre de la región.',
+          icon: 'warning',
+          confirmButtonText: 'Entendido'
+        });
+        return;
+      }
+
+      $.post(URL_AGREGAR, {
+        nameRegionAgregar: nombre,
+        csrfmiddlewaretoken: CSRF_TOKEN
+      })
+        .done(function (response) {
+          if (response.ok) {
+            Swal.fire({
+              title: '¡Guardado!',
+              text: 'La región ha sido registrada exitosamente.',
+              icon: 'success',
+              confirmButtonText: 'Excelente'
+            }).then(() => {
+              window.location.href = URL_LISTA;
+            });
           }
+        })
+        .fail(function (xhr) {
+          var errorMsg = xhr.responseJSON ? xhr.responseJSON.error : "Error interno del servidor";
+          Swal.fire({
+            title: 'Error',
+            text: errorMsg,
+            icon: 'error',
+            confirmButtonText: 'Cerrar'
+          });
         });
-      },
-      error: function(response) {
-        Swal.fire({
-          title: 'Error al guardar la región',
-          text: response.responseText,
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      }
     });
-    return false;
-  });
 
-  // Para editar
-  $(".btn-editar").click(function(){
-    var id = $(this).data('id');
-    var form = $('#formEditarRegion' + id);
-    var formData = new FormData(form[0]);
-    $.ajax({
-      type: "POST",
-      url: form.attr('action'),
-      data: formData,
-      processData: false,
-      contentType: false,
-      success: function (response) {
+    // Resetear modal al cerrar
+    $('#myModaAgregar').on('hidden.bs.modal', function () {
+      $("#nameRegionAgregar").val("");
+    });
+
+    // ==================== EDITAR ====================
+    $(document).on('click', '.btn-editar-confirm', function () {
+      var id = $(this).data('id');
+      var nombre = $("#nameRegion" + id).val().trim();
+
+      if (!nombre) {
         Swal.fire({
-          title: 'Región editada exitosamente',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-          confirmButtonText: '¡Ok!',
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = "{% url 'regiones' %}";
+          title: 'Campo Requerido',
+          text: 'El nombre de la región no puede estar vacío.',
+          icon: 'warning',
+          confirmButtonText: 'Entendido'
+        });
+        return;
+      }
+
+      $.post(URL_EDITAR, {
+        idRegion: id,
+        nameRegion: nombre,
+        csrfmiddlewaretoken: CSRF_TOKEN
+      })
+        .done(function (response) {
+          if (response.ok) {
+            Swal.fire({
+              title: '¡Actualizado!',
+              text: 'Información actualizada correctamente.',
+              icon: 'success',
+              confirmButtonText: 'Ok'
+            }).then(() => {
+              window.location.href = URL_LISTA;
+            });
           }
+        })
+        .fail(function (xhr) {
+          var errorMsg = xhr.responseJSON ? xhr.responseJSON.error : "Error al actualizar";
+          Swal.fire({
+            title: 'Error',
+            text: errorMsg,
+            icon: 'error',
+            confirmButtonText: 'Cerrar'
+          });
         });
-      },
-      error: function(response) {
-        Swal.fire({
-          title: 'Error al guardar la región',
-          text: response.responseText,
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      }
     });
-    return false;
-  });
 
-  // DataTable inicialización
-  if ($.fn.DataTable.isDataTable('.datatable')) {
-    $('.datatable').DataTable().destroy();
-  }
-  
-  $('.datatable').DataTable({
-    "language": {
-      "decimal": "",
-      "emptyTable": "No hay información",
-      "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-      "infoEmpty": "Mostrando 0 to 0 of 0 registros",
-      "infoFiltered": "(Filtrado de _MAX_ total registros)",
-      "infoPostFix": "",
-      "thousands": ",",
-      "lengthMenu": "Mostrar _MENU_ registros",
-      "loadingRecords": "Cargando...",
-      "processing": "Procesando...",
-      "search": "Buscar:",
-      "zeroRecords": "Sin resultados encontrados",
-      "paginate": {
-        "first": "Primero",
-        "last": "Último",
-        "next": "Siguiente",
-        "previous": "Anterior"
-      }
-    },
-    "pageLength": 10,
-    "lengthMenu": [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]],
-    "responsive": true,
-    "order": [[1, 'asc']],
-    "columnDefs": [
-      { 
-        "targets": 2,
-        "orderable": false,
-        "searchable": false
-      },
-      {
-        "targets": 0,
-        "width": "10%"
-      }
-    ],
-    "autoWidth": false
-  });
-});
+    // ==================== ELIMINAR ====================
+    $(document).on('click', '.btn-eliminar', function () {
+      var id = $(this).data('id');
 
-// Confirmación eliminar
-function confirmarEliminar(id, enlace) {
-  let urlEliminar = $(enlace).attr("href");
-  Swal.fire({
-    title: '¿Seguro que quieres eliminar esta región?',
-    text: 'Esta acción cambiará el estado de la región',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      $.ajax({
-        type: "GET",
-        url: urlEliminar,
-        data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
-        success: function (response) {
-          window.location.href = "{% url 'regiones' %}";
-        },
+      Swal.fire({
+        title: '¿Eliminar Región?',
+        text: "Esta acción cambiará el estado del registro a inactivo.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/regiones/eliminar/" + id + "/";
+        }
       });
-    }
+    });
   });
-  return false;
-}
 </script>
 {% endblock %}

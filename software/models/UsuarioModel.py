@@ -8,6 +8,7 @@ class Usuario(models.Model):
     idusuario = models.AutoField(primary_key=True)
     nombrecompleto = models.CharField(max_length=255)
     correo = models.CharField(max_length=255)
+    gmail = models.CharField(max_length=255, null=True, blank=True)
     contrasena = models.CharField(max_length=255)
     idtipousuario = models.ForeignKey(Tipousuario, models.DO_NOTHING, db_column='idtipousuario')
     celular = models.CharField(max_length=10)
@@ -16,6 +17,9 @@ class Usuario(models.Model):
     estado = models.IntegerField()
     idempresa = models.ForeignKey(Empresa, models.DO_NOTHING, db_column='idempresa', null=True, blank=True)
     id_sucursal = models.ForeignKey(Sucursales, models.DO_NOTHING, db_column='id_sucursal', null=True, blank= True)
+    notificaciones_sonido = models.BooleanField(default=True)
+    sonido_notificacion = models.FileField(upload_to='notificaciones/sonidos/', null=True, blank=True)
+    imagen_perfil = models.CharField(max_length=255, null=True, blank=True)
     
 
     class Meta: 

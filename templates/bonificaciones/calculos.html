@@ -1,0 +1,568 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle">
+    <h1>Motor de Cálculo</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+        <li class="breadcrumb-item">Bonificaciones</li>
+        <li class="breadcrumb-item active">Cálculos</li>
+      </ol>
+    </nav>
+  </div>
+
+  <section class="section">
+    <div class="row">
+      <!-- Formulario para ejecutar cálculo -->
+      <div class="col-12 mb-4">
+        <div class="card" style="overflow: visible;">
+          <div class="card-body" style="overflow: visible;">
+            <h5 class="card-title">Ejecutar Cálculo de Periodo</h5>
+            <form id="formCalculo" action="{% url 'ejecutar_calculo_bonificacion' %}" method="POST" class="row g-3 align-items-center" style="overflow: visible !important;" novalidate>
+              {% csrf_token %}
+              <div class="col-md-3">
+                <label class="form-label">Vendedor</label>
+                <div class="autocomplete-wrapper">
+                  <input type="text" id="vendedor_search" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Todos (Buscar...)" autocomplete="off">
+                  <button type="button" class="autocomplete-arrow" onclick="toggleVendedorDropdown()">
+                    <i class="bi bi-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="vendedor" id="vendedor_id">
+                  <div class="autocomplete-results" id="vendedor_results"></div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label for="fecha_inicio" class="form-label">Desde</label>
+                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio">
+              </div>
+              <div class="col-md-3">
+                <label for="fecha_fin" class="form-label">Hasta</label>
+                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin">
+              </div>
+              <div class="col-md-3 mt-5">
+                <button type="submit" class="btn btn-success w-100 fw-bold">
+                  <i class="bi bi-play-circle me-1"></i> Ejecutar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de resultados -->
+      <div class="col-12">
+        <div class="card recent-sales overflow-auto">
+          <div class="card-body">
+            <h5 class="card-title">Resultados del Cálculo</h5>
+            <div class="table-responsive">
+              <table class="table table-striped" id="tablaCalculos" style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th scope="col" class="text-nowrap">Vendedor</th>
+                    <th scope="col" class="text-nowrap">Periodo</th>
+                    <th scope="col" class="text-nowrap">Vehículos (Und)</th>
+                    <th scope="col" class="text-nowrap">Repuestos (S/)</th>
+                    <th scope="col" class="text-nowrap">Com. Vehículos</th>
+                    <th scope="col" class="text-nowrap">Com. Repuestos</th>
+                    <th scope="col" class="text-nowrap">Bono Meta</th>
+                    <th scope="col" class="text-nowrap">Total a Pagar</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" class="text-nowrap">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Se llena por DataTables AJAX -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal Detalles de Ventas -->
+<div class="modal fade" id="modalDetallesVentas" tabindex="-1">
+  <div class="modal-dialog modal-xl" style="max-width: 90%;">
+    <div class="modal-content" style="background-color: #1a202c; color: white;">
+      <div class="modal-header" style="background-color: #0dcaf0; border-bottom: none;">
+        <h5 class="modal-title text-dark fw-bold">Detalle de Ventas Consideradas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <strong>Vendedor:</strong> <span id="detalleVendedor" class="text-info"></span>
+          </div>
+          <div class="col-md-4 text-center">
+            <strong>Período:</strong> <span id="detallePeriodo" class="text-warning"></span>
+          </div>
+          <div class="col-md-4 text-md-end">
+            <div style="font-size: 0.85em;">
+              <span class="text-muted">Regla Vehículos:</span> <span id="detalleReglaVehiculos" class="text-success"></span><br>
+              <span class="text-muted">Regla Repuestos:</span> <span id="detalleReglaRepuestos" class="text-success"></span>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover align-middle" id="tablaDetalles">
+            <thead>
+              <tr>
+                <th>FECHA</th>
+                <th>COMPROBANTE</th>
+                <th>CLIENTE</th>
+                <th class="text-center">VEHÍCULOS (UND)</th>
+                <th class="text-end">VALOR VEHÍCULOS (S/)</th>
+                <th class="text-center">REGLA (%)</th>
+                <th class="text-end">COM. VEHÍC. (S/)</th>
+                <th class="text-end">REPUESTOS (S/)</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDetalles">
+              <!-- Se llena por JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- DataTables CSS y JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+document.getElementById('formCalculo').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var desde = document.getElementById('fecha_inicio').value;
+    var hasta = document.getElementById('fecha_fin').value;
+
+    if(!desde || !hasta) {
+        Swal.fire('Error', 'Debe seleccionar las fechas de inicio y fin del periodo', 'warning');
+        return;
+    }
+    if(desde > hasta) {
+        Swal.fire('Error', 'La fecha de inicio no puede ser mayor a la fecha fin', 'error');
+        return;
+    }
+
+    Swal.fire({
+        title: '¿Ejecutar Cálculo?',
+        html: `Se calcularán las comisiones para el periodo:<br><b>${desde}</b> al <b>${hasta}</b>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, ejecutar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Calculando comisiones, por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            const form = document.getElementById('formCalculo');
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(async response => {
+                if (response.status === 400) {
+                    const data = await response.json();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Cálculo Bloqueado',
+                        text: data.mensaje,
+                        confirmButtonColor: '#f59e0b'
+                    });
+                } else if (response.ok || response.redirected) {
+                    window.location.href = '{% url "motor_calculo_bonificacion" %}';
+                } else {
+                    Swal.fire('Error', 'Ocurrió un error al ejecutar el cálculo.', 'error');
+                }
+            })
+            .catch(() => {
+                // Si el servidor hace redirect (302), fetch lo sigue automáticamente
+                window.location.href = '{% url "motor_calculo_bonificacion" %}';
+            });
+        }
+    });
+});
+
+function confirmarCambioEstado(url, accion, vendedor) {
+    Swal.fire({
+        title: `¿${accion} Bonificación?`,
+        text: `¿Desea cambiar el estado de la bonificación de ${vendedor}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#00d0c4',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: `Sí, ${accion.toLowerCase()}`,
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(async response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Error desconocido');
+                } else {
+                    Swal.fire('Éxito', 'Estado actualizado', 'success');
+                    $('#tablaCalculos').DataTable().ajax.reload(null, false);
+                }
+            })
+            .catch(error => {
+                Swal.fire('Error', error.message, 'error');
+            });
+        }
+    });
+}
+
+function confirmarEliminar(url, vendedor) {
+    Swal.fire({
+        title: '¿Eliminar Cálculo?',
+        html: `¿Está seguro de eliminar el cálculo de <b>${vendedor}</b>?<br><span class="text-warning">Esta acción no se puede deshacer.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(async response => {
+                if (response.ok || response.redirected) {
+                    $('#tablaCalculos').DataTable().ajax.reload(null, false);
+                    Swal.fire('Eliminado!', 'El cálculo ha sido eliminado.', 'success');
+                } else {
+                    Swal.fire('Error', 'No se pudo eliminar el cálculo', 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire('Error', error.message, 'error');
+            });
+        }
+    });
+}
+
+function verDetalles(idCalculo, vendedorNombre, periodo) {
+    // Setear cabeceras del modal
+    document.getElementById('detalleVendedor').textContent = vendedorNombre;
+    document.getElementById('detallePeriodo').textContent = periodo;
+    
+    // Mostrar modal con loading
+    const tbody = document.getElementById('tbodyDetalles');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-info" role="status"></div><br>Cargando ventas...</td></tr>';
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalDetallesVentas'));
+    modal.show();
+
+    // Llamar a la API
+    fetch(`/bonificaciones/calculos/detalle/${idCalculo}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${data.error}</td></tr>`;
+                return;
+            }
+            
+            if (data.ventas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-warning">No se encontraron ventas válidas para este cálculo.</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            let totalVehiculos = 0;
+            let totalValorVehiculos = 0;
+            let totalComisionVehiculos = 0;
+            let totalRepuestos = 0;
+            
+            // Renderizar reglas
+            if(data.reglas) {
+                document.getElementById('detalleReglaVehiculos').textContent = data.reglas.vehiculos;
+                document.getElementById('detalleReglaRepuestos').textContent = data.reglas.repuestos;
+            }
+            
+            data.ventas.forEach(v => {
+                html += `
+                <tr>
+                    <td>${v.fecha}</td>
+                    <td><span class="badge bg-primary">${v.comprobante}</span></td>
+                    <td>${v.cliente}</td>
+                    <td class="text-center">${v.vehiculos > 0 ? v.vehiculos : '-'}</td>
+                    <td class="text-end">${v.valor_vehiculos > 0 ? 'S/ ' + v.valor_vehiculos.toFixed(2) : '-'}</td>
+                    <td class="text-center text-info">${v.regla_porcentaje ? v.regla_porcentaje + '%' : '-'}</td>
+                    <td class="text-end text-success">${v.comision_vehiculos > 0 ? 'S/ ' + v.comision_vehiculos.toFixed(2) : '-'}</td>
+                    <td class="text-end">${v.repuestos > 0 ? 'S/ ' + v.repuestos.toFixed(2) : '-'}</td>
+                </tr>`;
+                totalVehiculos += v.vehiculos;
+                totalValorVehiculos += v.valor_vehiculos;
+                totalComisionVehiculos += v.comision_vehiculos;
+                totalRepuestos += v.repuestos;
+            });
+            
+            // Fila de totales
+            html += `
+            <tr class="fw-bold" style="background-color: #1e293b; color: white;">
+                <td colspan="3" class="text-end" style="color: white;">TOTAL:</td>
+                <td class="text-center text-info">${totalVehiculos}</td>
+                <td class="text-end text-info">${totalValorVehiculos > 0 ? 'S/ ' + totalValorVehiculos.toFixed(2) : '-'}</td>
+                <td></td>
+                <td class="text-end text-success">${totalComisionVehiculos > 0 ? 'S/ ' + totalComisionVehiculos.toFixed(2) : '-'}</td>
+                <td class="text-end text-info">${totalRepuestos > 0 ? 'S/ ' + totalRepuestos.toFixed(2) : '-'}</td>
+            </tr>`;
+            
+            if (data.totales && data.totales.total_repuestos_vendidos > 0) {
+                let reglaTxt = data.rango_aplicado ? `Regla aplicada: ${data.rango_aplicado}%` : 'Sin regla aplicable';
+                html += `
+                <tr class="fw-bold" style="background-color: #0f172a; color: white;">
+                    <td colspan="7" class="text-end align-middle" style="color: #94a3b8; border-bottom: none;">
+                        <span class="badge bg-secondary me-2">${reglaTxt}</span> COMISIÓN TOTAL REPUESTOS:
+                    </td>
+                    <td class="text-end text-success align-middle" style="border-bottom: none;">S/ ${data.totales.comision_repuestos.toFixed(2)}</td>
+                </tr>`;
+            }
+            
+            tbody.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar los detalles. Intente nuevamente.</td></tr>';
+        });
+}
+
+// ============================================
+// AUTOCOMPLETE DE VENDEDORES
+// ============================================
+const BUSCAR_URL = '{% url "buscar_vendedores_bonificacion" %}';
+let debounceTimer = null;
+
+function setupAutocomplete(inputId, resultsId, hiddenId, darkMode) {
+    var input = document.getElementById(inputId);
+    var results = document.getElementById(resultsId);
+    var hidden = document.getElementById(hiddenId);
+
+    input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        var q = this.value.trim();
+        hidden.value = '';
+        positionDropdown(input, results);
+        debounceTimer = setTimeout(() => fetchVendedores(q, results, hidden, darkMode), 250);
+    });
+
+    input.addEventListener('focus', function() {
+        positionDropdown(input, results);
+        fetchVendedores(this.value.trim(), results, hidden, darkMode);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('scroll', function() {
+        if (results.style.display === 'block') {
+            positionDropdown(input, results);
+        }
+    }, true);
+}
+
+function fetchVendedores(q, resultsEl, hiddenEl, darkMode) {
+    fetch(BUSCAR_URL + '?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+            resultsEl.innerHTML = '';
+            if (data.length === 0) {
+                var noItem = document.createElement('div');
+                noItem.className = 'autocomplete-item no-results';
+                noItem.textContent = 'No se encontraron resultados';
+                if(darkMode) noItem.style.cssText = 'background:#1e293b; color:#94a3b8;';
+                resultsEl.appendChild(noItem);
+            } else {
+                data.forEach(function(v) {
+                    var item = document.createElement('div');
+                    item.className = 'autocomplete-item';
+                    if(darkMode) item.style.cssText = 'background:#1e293b; color:white; border-bottom:1px solid #334155;';
+                    item.innerHTML = '<strong>' + v.nombre + '</strong>';
+                    item.addEventListener('mouseover', function() {
+                        this.style.backgroundColor = darkMode ? '#0f172a' : '#e9f5ff';
+                    });
+                    item.addEventListener('mouseout', function() {
+                        this.style.backgroundColor = darkMode ? '#1e293b' : '';
+                    });
+                    item.addEventListener('click', function() {
+                        hiddenEl.value = v.id;
+                        document.getElementById('vendedor_search').value = v.nombre;
+                        resultsEl.style.display = 'none';
+                    });
+                    resultsEl.appendChild(item);
+                });
+            }
+            resultsEl.style.display = 'block';
+        })
+        .catch(function() {
+            resultsEl.style.display = 'none';
+        });
+}
+
+function toggleVendedorDropdown() {
+    var input = document.getElementById('vendedor_search');
+    var results = document.getElementById('vendedor_results');
+    if (results.style.display === 'block') {
+        results.style.display = 'none';
+    } else {
+        positionDropdown(input, results);
+        fetchVendedores(input.value, results, document.getElementById('vendedor_id'), false);
+    }
+}
+
+function positionDropdown(input, results) {
+    var rect = input.getBoundingClientRect();
+    results.style.top = (rect.bottom + window.scrollY) + 'px';
+    results.style.left = (rect.left + window.scrollX) + 'px';
+    results.style.width = rect.width + 'px';
+}
+
+// CSS del autocomplete
+var style = document.createElement('style');
+style.textContent = `
+.autocomplete-wrapper { position: relative; }
+.autocomplete-input { width: 100%; padding-right: 40px !important; }
+.autocomplete-arrow {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer; padding: 5px 8px;
+    color: #6c757d; z-index: 10;
+}
+.autocomplete-results {
+    position: absolute;
+    z-index: 99999;
+    max-height: 220px; overflow-y: auto;
+    background: white; border: 1px solid #ced4da;
+    border-radius: 0 0 6px 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: none;
+}
+.autocomplete-item {
+    padding: 10px 15px; cursor: pointer;
+    border-bottom: 1px solid #f0f0f0; font-size: 0.875rem;
+}
+.autocomplete-item.no-results { color: #6c757d; cursor: default; font-style: italic; }
+.autocomplete-item:hover { background-color: #e9f5ff; }
+`;
+document.head.appendChild(style);
+
+// Mover el dropdown al body para que escape cualquier overflow:hidden
+// y luego inicializar el autocomplete (orden importante)
+document.addEventListener('DOMContentLoaded', function() {
+    var resultsEl = document.getElementById('vendedor_results');
+    if (resultsEl) {
+        document.body.appendChild(resultsEl);
+    }
+    setupAutocomplete('vendedor_search', 'vendedor_results', 'vendedor_id', false);
+    
+    // Inicializar DataTables Server-Side
+    if ($.fn.DataTable.isDataTable('#tablaCalculos')) {
+        $('#tablaCalculos').DataTable().destroy();
+    }
+    
+    $('#tablaCalculos').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{% url "api_listar_calculos" %}',
+            type: 'GET'
+        },
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
+        },
+        columns: [
+            { data: 'vendedor' },
+            { data: null, orderable: false, render: function(data, type, row) {
+                return data.fecha_inicio + ' - ' + data.fecha_fin;
+            }},
+            { data: 'total_vehiculos', className: 'text-center' },
+            { data: 'total_repuestos', render: function(data) { return 'S/ ' + data; } },
+            { data: 'comision_vehiculos', render: function(data) { return 'S/ ' + data; } },
+            { data: 'comision_repuestos', render: function(data) { return 'S/ ' + data; } },
+            { data: 'bono_meta', render: function(data) { return 'S/ ' + data; } },
+            { data: 'total_pagar', render: function(data) {
+                return '<span class="fw-bold text-success">S/ ' + data + '</span>';
+            }},
+            { data: 'estado', render: function(data) {
+                if (data === 'Calculado') {
+                    return '<span class="badge bg-warning text-dark">' + data + '</span>';
+                } else if (data === 'Aprobado') {
+                    return '<span class="badge bg-info text-dark">' + data + '</span>';
+                } else if (data === 'Pagado') {
+                    return '<span class="badge bg-success">' + data + '</span>';
+                } else {
+                    return '<span class="badge bg-secondary">' + data + '</span>';
+                }
+            }},
+            { data: null, orderable: false, render: function(data, type, row) {
+                let html = '';
+                // Escapar comillas en vendedor
+                let vendedorEscapado = row.vendedor.replace(/'/g, "\\'");
+                let periodoStr = row.fecha_inicio + ' al ' + row.fecha_fin;
+                
+                html += `<button type="button" class="btn btn-sm btn-secondary me-1" 
+                            onclick="verDetalles(${row.id_calculo}, '${vendedorEscapado}', '${periodoStr}')"
+                            title="Ver Ventas">
+                          <i class="bi bi-eye"></i>
+                        </button>`;
+                
+                if (row.estado === 'Calculado') {
+                    let urlAprobar = `{% url 'cambiar_estado_calculo_bonificacion' id_calculo=0 estado='Aprobado' %}`.replace('0', row.id_calculo);
+                    html += `<button type="button" class="btn btn-sm btn-info"
+                            onclick="confirmarCambioEstado('${urlAprobar}', 'Aprobar', '${vendedorEscapado}')">
+                      <i class="bi bi-check-circle"></i> Aprobar
+                    </button>`;
+                }
+                
+                if (row.estado === 'Aprobado') {
+                    let urlPagar = `{% url 'cambiar_estado_calculo_bonificacion' id_calculo=0 estado='Pagado' %}`.replace('0', row.id_calculo);
+                    html += `<button type="button" class="btn btn-sm btn-success"
+                            onclick="confirmarCambioEstado('${urlPagar}', 'Marcar como Pagado', '${vendedorEscapado}')">
+                      <i class="bi bi-cash"></i> Pagar
+                    </button>`;
+                }
+                
+                if (row.estado === 'Calculado') {
+                    let urlEliminar = `{% url 'eliminar_calculo_bonificacion' id_calculo=0 %}`.replace('0', row.id_calculo);
+                    html += `<button type="button" class="btn btn-sm btn-danger ms-1"
+                            onclick="confirmarEliminar('${urlEliminar}', '${vendedorEscapado}')"
+                            title="Eliminar cálculo">
+                      <i class="bi bi-trash"></i>
+                    </button>`;
+                }
+                
+                return html;
+            }}
+        ],
+        pagingType: 'simple_numbers',
+        order: []
+    });
+});
+
+</script>
+{% endblock %}

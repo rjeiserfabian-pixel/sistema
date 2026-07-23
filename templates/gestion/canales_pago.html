@@ -1,0 +1,397 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-bank me-2 text-primary"></i> Canales de Pago</h1>
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+                    <li class="breadcrumb-item">Gestión</li>
+                    <li class="breadcrumb-item active">Canales de Pago</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <section class="section dashboard mt-3">
+        
+        <ul class="nav nav-tabs nav-tabs-bordered" id="canalesTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="canales-tab" data-bs-toggle="tab" data-bs-target="#canales" type="button" role="tab" aria-controls="canales" aria-selected="true">
+                    <i class="bi bi-cash-stack me-1"></i> Cuentas Bancarias
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tipos-tab" data-bs-toggle="tab" data-bs-target="#tipos" type="button" role="tab" aria-controls="tipos" aria-selected="false">
+                    <i class="bi bi-tags me-1"></i> Tipos de Cuenta
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content pt-4" id="canalesTabsContent">
+            <!-- TAB CANALES DE PAGO -->
+            <div class="tab-pane fade show active" id="canales" role="tabpanel" aria-labelledby="canales-tab">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold text-primary"><i class="bi bi-list-ul me-1"></i> Lista de Cuentas</h6>
+                        <button class="btn btn-primary rounded-pill btn-sm" onclick="abrirModalCanal()">
+                            <i class="bi bi-plus-circle me-1"></i> Nueva Cuenta
+                        </button>
+                    </div>
+                    <div class="card-body mt-3">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle w-100" id="tablaCanales">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Orden</th>
+                                        <th>Banco</th>
+                                        <th>Tipo de Cuenta</th>
+                                        <th>N° Cuenta</th>
+                                        <th>CCI</th>
+                                        <th>Cód. Agente</th>
+                                        <th>Titular</th>
+                                        <th>Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB TIPOS DE CUENTA -->
+            <div class="tab-pane fade" id="tipos" role="tabpanel" aria-labelledby="tipos-tab">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold text-primary"><i class="bi bi-list-ul me-1"></i> Tipos de Cuenta</h6>
+                        <button class="btn btn-primary rounded-pill btn-sm" onclick="abrirModalTipo()">
+                            <i class="bi bi-plus-circle me-1"></i> Nuevo Tipo
+                        </button>
+                    </div>
+                    <div class="card-body mt-3">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle w-100" id="tablaTipos">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre</th>
+                                        <th>Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+<!-- Modal Canal Pago -->
+<div class="modal fade" id="modalCanal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="tituloModalCanal"><i class="bi bi-bank me-2"></i> Agregar Canal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formCanal">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <input type="hidden" id="id_canal" name="id_canal">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Banco <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="banco" name="banco" required placeholder="Ej. Banco de Crédito del Perú">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo de Cuenta <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_tipo_cuenta" name="id_tipo_cuenta" required>
+                            <!-- Llenado dinámico -->
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Número de Cuenta <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="numero_cuenta" name="numero_cuenta" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">CCI</label>
+                            <input type="text" class="form-control" id="cci" name="cci">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Titular (Opcional)</label>
+                        <input type="text" class="form-control" id="titular" name="titular" placeholder="A nombre de...">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Cód. Agente</label>
+                            <input type="text" class="form-control" id="codigo_agente" name="codigo_agente">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Orden</label>
+                            <input type="number" class="form-control" id="orden" name="orden" value="1" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Estado</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="estado_canal" name="estado" value="true" checked>
+                                <label class="form-check-label" for="estado_canal">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill"><i class="bi bi-save me-1"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tipo Cuenta -->
+<div class="modal fade" id="modalTipo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="tituloModalTipo"><i class="bi bi-tag me-2"></i> Agregar Tipo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formTipo">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <input type="hidden" id="id_tipo_cuenta_form" name="id_tipo_cuenta">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nombre_tipo" name="nombre" required placeholder="Ej. Recaudadora">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Estado</label>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="estado_tipo" name="estado" value="true" checked>
+                            <label class="form-check-label" for="estado_tipo">Activo</label>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill"><i class="bi bi-save me-1"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    $(document).ready(function() {
+        cargarTipos();
+        cargarCanales();
+
+        // Submit Form Tipo
+        $('#formTipo').submit(function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: "{% url 'guardar_tipo_cuenta' %}",
+                type: "POST",
+                data: $(this).serialize(),
+                success: function(res) {
+                    if(res.ok) {
+                        Swal.fire('Éxito', res.mensaje, 'success');
+                        $('#modalTipo').modal('hide');
+                        cargarTipos();
+                    } else {
+                        Swal.fire('Error', res.error, 'error');
+                    }
+                }
+            });
+        });
+
+        // Submit Form Canal
+        $('#formCanal').submit(function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: "{% url 'guardar_canal_pago' %}",
+                type: "POST",
+                data: $(this).serialize(),
+                success: function(res) {
+                    if(res.ok) {
+                        Swal.fire('Éxito', res.mensaje, 'success');
+                        $('#modalCanal').modal('hide');
+                        cargarCanales();
+                    } else {
+                        Swal.fire('Error', res.error, 'error');
+                    }
+                }
+            });
+        });
+    });
+
+    function cargarTipos() {
+        $.get("{% url 'listar_tipos_cuenta' %}", function(res) {
+            let tbody = $('#tablaTipos tbody');
+            tbody.empty();
+            let select = $('#id_tipo_cuenta');
+            select.empty();
+            select.append('<option value="">Seleccione...</option>');
+
+            res.data.forEach(t => {
+                let badge = t.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-danger">Inactivo</span>';
+                tbody.append(`
+                    <tr>
+                        <td>${t.id_tipo_cuenta}</td>
+                        <td>${t.nombre}</td>
+                        <td>${badge}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-warning rounded-pill" onclick='editarTipo(${JSON.stringify(t)})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill ms-1" onclick="eliminarTipo(${t.id_tipo_cuenta})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+                if(t.estado) {
+                    select.append(`<option value="${t.id_tipo_cuenta}">${t.nombre}</option>`);
+                }
+            });
+        });
+    }
+
+    function cargarCanales() {
+        $.get("{% url 'listar_canales_pago' %}", function(res) {
+            let tbody = $('#tablaCanales tbody');
+            tbody.empty();
+            res.data.forEach(c => {
+                let badge = c.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-danger">Inactivo</span>';
+                tbody.append(`
+                    <tr>
+                        <td><span class="badge bg-secondary">${c.orden}</span></td>
+                        <td class="fw-bold">${c.banco}</td>
+                        <td><span class="badge border border-primary text-primary">${c.tipo_cuenta_nombre}</span></td>
+                        <td>${c.numero_cuenta}</td>
+                        <td>${c.cci}</td>
+                        <td>${c.codigo_agente}</td>
+                        <td>${c.titular}</td>
+                        <td>${badge}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-warning rounded-pill" onclick='editarCanal(${JSON.stringify(c).replace(/'/g, "\\'")})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill ms-1" onclick="eliminarCanal(${c.id_canal})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        });
+    }
+
+    function abrirModalTipo() {
+        $('#formTipo')[0].reset();
+        $('#id_tipo_cuenta_form').val('');
+        $('#tituloModalTipo').html('<i class="bi bi-tag me-2"></i> Agregar Tipo');
+        $('#modalTipo').modal('show');
+    }
+
+    function editarTipo(t) {
+        $('#id_tipo_cuenta_form').val(t.id_tipo_cuenta);
+        $('#nombre_tipo').val(t.nombre);
+        $('#estado_tipo').prop('checked', t.estado);
+        $('#tituloModalTipo').html('<i class="bi bi-pencil me-2"></i> Editar Tipo');
+        $('#modalTipo').modal('show');
+    }
+
+    function eliminarTipo(id) {
+        Swal.fire({
+            title: '¿Desactivar tipo de cuenta?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, desactivar'
+        }).then((result) => {
+            if(result.isConfirmed) {
+                $.post("{% url 'eliminar_tipo_cuenta' %}", {
+                    id_tipo_cuenta: id,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                }, function(res) {
+                    if(res.ok) {
+                        Swal.fire('Éxito', res.mensaje, 'success');
+                        cargarTipos();
+                    } else {
+                        Swal.fire('Error', res.error, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    function abrirModalCanal() {
+        $('#formCanal')[0].reset();
+        $('#id_canal').val('');
+        $('#tituloModalCanal').html('<i class="bi bi-bank me-2"></i> Agregar Canal');
+        $('#modalCanal').modal('show');
+    }
+
+    function editarCanal(c) {
+        $('#id_canal').val(c.id_canal);
+        $('#banco').val(c.banco);
+        $('#id_tipo_cuenta').val(c.id_tipo_cuenta);
+        $('#numero_cuenta').val(c.numero_cuenta);
+        $('#cci').val(c.cci);
+        $('#codigo_agente').val(c.codigo_agente);
+        $('#titular').val(c.titular);
+        $('#orden').val(c.orden);
+        $('#estado_canal').prop('checked', c.estado);
+        
+        $('#tituloModalCanal').html('<i class="bi bi-pencil me-2"></i> Editar Canal');
+        $('#modalCanal').modal('show');
+    }
+
+    function eliminarCanal(id) {
+        Swal.fire({
+            title: '¿Desactivar canal de pago?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, desactivar'
+        }).then((result) => {
+            if(result.isConfirmed) {
+                $.post("{% url 'eliminar_canal_pago' %}", {
+                    id_canal: id,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                }, function(res) {
+                    if(res.ok) {
+                        Swal.fire('Éxito', res.mensaje, 'success');
+                        cargarCanales();
+                    } else {
+                        Swal.fire('Error', res.error, 'error');
+                    }
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}

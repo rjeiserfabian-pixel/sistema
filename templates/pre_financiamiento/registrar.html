@@ -1,0 +1,542 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+
+<style>
+.pf-form-card {
+    border-radius: 18px;
+    border: none;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.09);
+}
+.pf-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #0d6efd;
+    border-left: 4px solid #0d6efd;
+    padding-left: 10px;
+    margin-bottom: 1rem;
+}
+.pago-row {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.pago-row select, .pago-row input {
+    flex: 1;
+}
+.btn-add-pago {
+    border-style: dashed;
+}
+#resumen-total {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #198754;
+}
+.vehiculo-card {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all .2s;
+}
+.vehiculo-card:hover, .vehiculo-card.selected {
+    border-color: #0d6efd;
+    background: #e8f0fe;
+}
+.vehiculo-card.selected .check-icon { display: block !important; }
+
+/* ─── Autocomplete Moderno (Estilo Ventas) ─── */
+.autocomplete-wrapper { position: relative; }
+.autocomplete-input { width: 100%; padding-right: 40px !important; }
+.autocomplete-arrow {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer; color: #6c757d; z-index: 10;
+}
+.autocomplete-results {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 1000;
+    max-height: 250px; overflow-y: auto; background: white;
+    border: 1px solid #ced4da; border-top: none;
+    border-radius: 0 0 10px 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: none;
+}
+.autocomplete-item {
+    padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s; font-size: 0.9rem;
+}
+.autocomplete-item:hover { background-color: #e9f5ff; }
+.autocomplete-item.no-results { color: #6c757d; font-style: italic; }
+</style>
+
+<main id="main" class="main">
+
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="fw-bold" style="color:#0d6efd;">
+        <i class="fa-solid fa-file-circle-plus me-2"></i>Nueva Solicitud de Pre-Financiamiento
+      </h1>
+      <nav aria-label="breadcrumb" class="mt-1">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'index_pre_financiamiento' %}">Pre-Financiamiento</a></li>
+          <li class="breadcrumb-item active">Nueva Solicitud</li>
+        </ol>
+      </nav>
+    </div>
+    <a href="{% url 'index_pre_financiamiento' %}" class="btn btn-outline-secondary rounded-pill px-4">
+      <i class="fa-solid fa-arrow-left me-2"></i>Volver
+    </a>
+  </div>
+
+  <section class="section mt-3">
+    <div class="row justify-content-center">
+      <div class="col-xl-9">
+
+        <div class="card pf-form-card">
+          <div class="card-body p-4 p-xl-5">
+
+            <!-- ─────── 1. SELECCIÓN DE CLIENTE ─────── -->
+            <div class="pf-section-title">
+              <i class="fa-solid fa-user me-2"></i>1. Selección de Cliente
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                Cliente <span class="text-danger">*</span>
+              </label>
+              <div class="autocomplete-wrapper">
+                <input type="text" id="cliente_search" class="form-control autocomplete-input" 
+                       placeholder="Buscar por nombre o documento..." autocomplete="off">
+                <button type="button" class="autocomplete-arrow" onclick="toggleAutocomplete('cliente_search', 'cliente_results')">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <input type="hidden" name="idcliente" id="idcliente">
+                <div class="autocomplete-results" id="cliente_results"></div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- ─────── 2. SELECCIÓN DE VEHÍCULO ─────── -->
+            <div class="pf-section-title">
+              <i class="fa-solid fa-motorcycle me-2"></i>2. Vehículo de Interés
+            </div>
+
+            {% if not id_almacen_session %}
+              <div class="alert alert-warning">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                No tiene un almacén seleccionado. Configure su almacén en la barra superior para ver los vehículos disponibles.
+              </div>
+            {% else %}
+              <div class="mb-3">
+                <div class="input-group shadow-sm">
+                  <span class="input-group-text bg-white border-end-0">
+                    <i class="fa-solid fa-search text-primary"></i>
+                  </span>
+                  <input type="text" id="vehiculo_search" class="form-control border-start-0" 
+                         placeholder="Buscar por nombre, motor o chasis..." 
+                         oninput="renderVehiculos(this.value)">
+                </div>
+              </div>
+              <div id="vehiculos-container" class="row g-2 mb-3">
+                <!-- Se llena por JS -->
+              </div>
+              <input type="hidden" name="id_vehiculo" id="id_vehiculo_hidden">
+              <small class="text-muted">Haga clic en el vehículo que desea seleccionar (se muestran hasta 9 resultados).</small>
+            {% endif %}
+
+            <hr class="my-4">
+
+            <!-- ─────── 3. PAGO INICIAL ─────── -->
+            <div class="pf-section-title">
+              <i class="fa-solid fa-money-bill-wave me-2"></i>3. Registro del Pago Inicial
+            </div>
+
+            <div id="pagos-container">
+              <!-- Los pagos se agregan dinámicamente -->
+              <div class="pago-row" id="pago-row-1">
+                <div style="min-width:160px;">
+                  <label class="form-label fw-semibold small mb-1">
+                    Método de Pago <span class="text-danger">*</span>
+                  </label>
+                  <select name="tipo_pago_id[]" class="form-select form-select-sm" required onchange="toggleOperacion(this)">
+                    <option value="">Seleccione...</option>
+                    {% for tp in tipos_pago %}
+                      <option value="{{ tp.id_tipo_pago }}">{{ tp.nombre }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <!-- Campo N° Operación (oculto por defecto) -->
+                <div class="nro-operacion-container d-none" style="min-width:140px;">
+                  <label class="form-label fw-semibold small mb-1">
+                    N° Operación <span class="text-danger">*</span>
+                  </label>
+                  <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="Ingrese N° Op.">
+                </div>
+                <div style="min-width:140px;">
+                  <label class="form-label fw-semibold small mb-1">Monto (S/)</label>
+                  <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-input"
+                         step="0.01" min="0.01" placeholder="0.00" required
+                         oninput="calcularTotal()">
+                </div>
+                <div class="mt-3">
+                  <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-remove-pago" title="Eliminar" disabled>
+                    <i class="fa-solid fa-minus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary btn-add-pago btn-sm mt-2 mb-4" onclick="agregarFilaPago()">
+              <i class="fa-solid fa-plus me-1"></i>Agregar Método de Pago (Mixto)
+            </button>
+
+            <!-- Resumen total -->
+            <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-light rounded-3">
+              <i class="fa-solid fa-coins text-success fa-xl"></i>
+              <div>
+                <div class="text-muted small fw-semibold">TOTAL INICIAL A REGISTRAR</div>
+                <div id="resumen-total">S/ 0.00</div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- ─────── 4. OBSERVACIONES ─────── -->
+            <div class="pf-section-title">
+              <i class="fa-solid fa-comment me-2"></i>4. Observaciones
+            </div>
+            <textarea name="observaciones" id="observaciones" class="form-control mb-4" rows="2"
+                      placeholder="Notas adicionales sobre la solicitud (opcional)..."></textarea>
+
+            <!-- Botones -->
+            <div class="d-flex gap-3 justify-content-end">
+              <a href="{% url 'index_pre_financiamiento' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                Cancelar
+              </a>
+              <button type="button" class="btn btn-primary rounded-pill px-5 fw-bold" id="btn-guardar" onclick="guardarSolicitud()">
+                <i class="fa-solid fa-save me-2"></i>Registrar Solicitud
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CSRF_TOKEN = '{{ csrf_token }}';
+const VEHICULOS_JSON = {{ vehiculos_disponibles_json|safe }};
+const TIPOS_PAGO_TEMPLATE = `{% for tp in tipos_pago %}<option value="{{ tp.id_tipo_pago }}">{{ tp.nombre }}</option>{% endfor %}`;
+let pagoCount = 1;
+
+// ── Datos de Clientes para Autocomplete ──────────────────────────────────────
+const clientesData = [
+  {% for c in clientes %}
+    { id: "{{ c.idcliente }}", text: "{{ c.razonsocial|escapejs }} - {{ c.numdoc|escapejs }}" },
+  {% endfor %}
+];
+
+function setupAutocomplete(inputId, resultsId, data, hiddenId) {
+  const input = document.getElementById(inputId);
+  const results = document.getElementById(resultsId);
+  const hidden = document.getElementById(hiddenId);
+  
+  if (!input) return;
+
+  input.addEventListener('input', function() {
+    const value = this.value.toLowerCase();
+    results.innerHTML = '';
+    
+    if (value.length < 1) {
+      results.style.display = 'none';
+      hidden.value = '';
+      return;
+    }
+    
+    const filtered = data.filter(item => item.text.toLowerCase().includes(value));
+    
+    if (filtered.length === 0) {
+      results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron resultados</div>';
+    } else {
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item.text;
+        div.addEventListener('click', () => {
+          input.value = item.text;
+          hidden.value = item.id;
+          results.style.display = 'none';
+        });
+        results.appendChild(div);
+      });
+    }
+    results.style.display = 'block';
+  });
+  
+  document.addEventListener('click', (e) => {
+    const arrow = input.parentElement.querySelector('.autocomplete-arrow');
+    if (!input.contains(e.target) && !results.contains(e.target) && (!arrow || !arrow.contains(e.target))) {
+      results.style.display = 'none';
+    }
+  });
+
+  input.addEventListener('focus', function() {
+    if (this.value && !hidden.value) {
+      this.value = '';
+    }
+  });
+}
+
+function toggleAutocomplete(inputId, resultsId) {
+  const input = document.getElementById(inputId);
+  const results = document.getElementById(resultsId);
+  
+  if (results.style.display === 'block') {
+    results.style.display = 'none';
+    return;
+  }
+  
+  results.innerHTML = '';
+  clientesData.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+    div.textContent = item.text;
+    div.addEventListener('click', (e) => {
+      e.stopPropagation();
+      input.value = item.text;
+      document.getElementById('idcliente').value = item.id;
+      results.style.display = 'none';
+    });
+    results.appendChild(div);
+  });
+  results.style.display = 'block';
+  input.focus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupAutocomplete('cliente_search', 'cliente_results', clientesData, 'idcliente');
+    renderVehiculos();
+});
+
+
+// ── Renderizar vehículos ─────────────────────────────────────────────────────
+function renderVehiculos(query = '') {
+    const container = document.getElementById('vehiculos-container');
+    if (!container) return;
+    
+    const idSeleccionado = document.getElementById('id_vehiculo_hidden').value;
+    container.innerHTML = '';
+    
+    if (!VEHICULOS_JSON || VEHICULOS_JSON.length === 0) {
+        container.innerHTML = '<p class="text-muted col-12">No hay vehículos disponibles en el almacén actual.</p>';
+        return;
+    }
+
+    const q = query.toLowerCase().trim();
+    const filtered = VEHICULOS_JSON.filter(v => 
+        v.nombre.toLowerCase().includes(q) || 
+        (v.serie_motor && v.serie_motor.toLowerCase().includes(q)) || 
+        (v.serie_chasis && v.serie_chasis.toLowerCase().includes(q))
+    ).slice(0, 9);
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="text-muted col-12"><i class="fa-solid fa-circle-info me-2"></i>No se encontraron vehículos que coincidan con la búsqueda.</p>';
+        return;
+    }
+
+    filtered.forEach(v => {
+        const isSelected = v.id_vehiculo.toString() === idSeleccionado;
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4';
+        col.innerHTML = `
+          <div class="vehiculo-card ${isSelected ? 'selected' : ''}" data-id="${v.id_vehiculo}" onclick="seleccionarVehiculo(this, ${v.id_vehiculo})">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold">${v.nombre}</div>
+                <small class="text-muted">Motor: ${v.serie_motor || '—'}</small><br>
+                <small class="text-muted">Chasis: ${v.serie_chasis || '—'}</small>
+              </div>
+              <i class="fa-solid fa-circle-check text-primary fa-xl check-icon" style="${isSelected ? 'display:block;' : 'display:none;'}"></i>
+            </div>
+            <div class="mt-2">
+              <span class="badge bg-light text-dark border">S/ ${v.precio_venta.toFixed(2)}</span>
+              <span class="badge bg-success ms-1">Stock: ${v.stock}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(col);
+    });
+}
+
+function toggleOperacion(select) {
+    const row = select.closest('.pago-row');
+    const container = row.querySelector('.nro-operacion-container');
+    const input = container.querySelector('input');
+    const selectedText = select.options[select.selectedIndex].text.toLowerCase();
+    
+    // Si no es efectivo, mostrar campo de operación y hacerlo obligatorio
+    if (selectedText && !selectedText.includes('efectivo')) {
+        container.classList.remove('d-none');
+        input.required = true;
+    } else {
+        container.classList.add('d-none');
+        input.required = false;
+        input.value = '';
+    }
+}
+
+function seleccionarVehiculo(card, id) {
+    document.querySelectorAll('.vehiculo-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    document.getElementById('id_vehiculo_hidden').value = id;
+}
+
+// ── Pagos Mixtos ─────────────────────────────────────────────────────────────
+function agregarFilaPago() {
+    pagoCount++;
+    const div = document.createElement('div');
+    div.className = 'pago-row';
+    div.id = `pago-row-${pagoCount}`;
+    div.innerHTML = `
+      <div style="min-width:160px;">
+        <label class="form-label fw-semibold small mb-1">Método de Pago <span class="text-danger">*</span></label>
+        <select name="tipo_pago_id[]" class="form-select form-select-sm" required onchange="toggleOperacion(this)">
+          <option value="">Seleccione...</option>
+          ${TIPOS_PAGO_TEMPLATE}
+        </select>
+      </div>
+      <div class="nro-operacion-container d-none" style="min-width:140px;">
+        <label class="form-label fw-semibold small mb-1">N° Operación <span class="text-danger">*</span></label>
+        <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="Ingrese N° Op.">
+      </div>
+      <div style="min-width:140px;">
+        <label class="form-label fw-semibold small mb-1">Monto (S/)</label>
+        <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-input"
+               step="0.01" min="0.01" placeholder="0.00" required
+               oninput="calcularTotal()">
+      </div>
+      <div class="mt-3">
+        <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-remove-pago"
+                title="Eliminar" onclick="eliminarFilaPago(this)">
+          <i class="fa-solid fa-minus"></i>
+        </button>
+      </div>
+    `;
+    document.getElementById('pagos-container').appendChild(div);
+    actualizarBotonesEliminar();
+}
+
+function eliminarFilaPago(btn) {
+    btn.closest('.pago-row').remove();
+    calcularTotal();
+    actualizarBotonesEliminar();
+}
+
+function actualizarBotonesEliminar() {
+    const btns = document.querySelectorAll('.btn-remove-pago');
+    btns.forEach(b => b.disabled = (btns.length === 1));
+}
+
+function calcularTotal() {
+    let total = 0;
+    document.querySelectorAll('.monto-input').forEach(inp => {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('resumen-total').textContent = `S/ ${total.toFixed(2)}`;
+}
+
+// ── Guardar Solicitud ────────────────────────────────────────────────────────
+function guardarSolicitud() {
+    const idcliente = document.getElementById('idcliente').value;
+    const id_vehiculo = document.getElementById('id_vehiculo_hidden')?.value || '';
+    const btn = document.getElementById('btn-guardar');
+
+    if (!idcliente) {
+        Swal.fire('Campo requerido', 'Debe seleccionar un cliente.', 'warning');
+        return;
+    }
+    if (!id_vehiculo) {
+        Swal.fire('Campo requerido', 'Debe seleccionar un vehículo.', 'warning');
+        return;
+    }
+
+    // Validar que se haya seleccionado un método de pago en cada fila
+    let metodoFaltante = false;
+    document.querySelectorAll('[name="tipo_pago_id[]"]').forEach(select => {
+        if (!select.value) metodoFaltante = true;
+    });
+    if (metodoFaltante) {
+        Swal.fire('Campo requerido', 'Debe seleccionar un método de pago para cada registro.', 'warning');
+        return;
+    }
+
+    // Verificar que hay al menos un pago con monto > 0
+    const montos = [...document.querySelectorAll('.monto-input')].map(i => parseFloat(i.value) || 0);
+    if (montos.every(m => m <= 0)) {
+        Swal.fire('Campo requerido', 'Debe ingresar al menos un monto de pago.', 'warning');
+        return;
+    }
+
+    // Validar N° de operación para los campos visibles
+    let opFaltante = false;
+    document.querySelectorAll('.nro-operacion-container:not(.d-none) input').forEach(inp => {
+        if (!inp.value.trim()) opFaltante = true;
+    });
+    if (opFaltante) {
+        Swal.fire('Campo requerido', 'Debe ingresar el número de operación para los métodos de pago seleccionados.', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    formData.append('idcliente', idcliente);
+    formData.append('id_vehiculo', id_vehiculo);
+    formData.append('observaciones', document.getElementById('observaciones').value);
+
+    document.querySelectorAll('[name="tipo_pago_id[]"]').forEach(s => formData.append('tipo_pago_id[]', s.value));
+    document.querySelectorAll('[name="nro_operacion[]"]').forEach(i => formData.append('nro_operacion[]', i.value));
+    document.querySelectorAll('[name="monto_pago[]"]').forEach(i => formData.append('monto_pago[]', i.value));
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+
+    fetch('{% url "registrar_pre_financiamiento" %}', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            Swal.fire({
+                title: '¡Solicitud registrada!',
+                text: data.message,
+                icon: 'success',
+                confirmButtonText: 'Ver listado',
+            }).then(() => {
+                window.location.href = '{% url "index_pre_financiamiento" %}';
+            });
+        } else {
+            Swal.fire('Error', data.error, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-save me-2"></i>Registrar Solicitud';
+        }
+    })
+    .catch(() => {
+        Swal.fire('Error', 'Error de conexión.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-save me-2"></i>Registrar Solicitud';
+    });
+}
+</script>
+{% endblock %}

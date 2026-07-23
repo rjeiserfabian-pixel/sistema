@@ -12,31 +12,27 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-
-
-
-
+import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-1yqp4mb^j0uqm-uf6zgr+^axhif(n-^x%kk2y$folet5#i##!a'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'insecure-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't', 'y', 'yes')
 
-ALLOWED_HOSTS = [
-    '127.0.0.1', 
-    'localhost',
-    # Esto permite cualquier subdominio generado por ngrok en el dominio .ngrok-free.dev
-    'misistemaventas.ngrok.app', 
-    '*' # Permite todas las peticiones si DEBUG=True (útil para desarrollo)
-]
+# Permite convertir una lista separada por comas del archivo .env a una lista en python
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 
@@ -48,12 +44,15 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary',
     'software.apps.SoftwareConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,6 +76,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'software.context_processors.modulos_sidebar',
                 'software.context_processors.empresa_context',
+                'software.context_processors.usuario_context',
             ],
         },
     },
@@ -89,14 +89,10 @@ WSGI_APPLICATION = 'raiz.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'facsiswave',
-        'USER': 'root',
-        'PASSWORD': 'root',
-        'HOST': 'localhost',  # O la dirección IP de tu servidor MySQL
-        'PORT': '3306',       # El puerto por defecto de MySQL es 3306
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL', 'postgres://postgres:root@localhost:5432/facsiswave'),
+        conn_max_age=600
+    )
 }
 
 
@@ -134,12 +130,25 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
-    "/var/www/static/",
 ]
+
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = DEBUG
+STORAGES = {
+    'default': {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -148,24 +157,73 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configuración de la ruta media
 MEDIA_URL = '/media/'  # URL que se usará para acceder a los archivos media
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Ruta en el sistema de archivos
+SERVE_MEDIA = os.environ.get('SERVE_MEDIA', 'False').lower() in ('true', '1', 't', 'y', 'yes')
 
 # Configuración de correo Gmail
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'jerojasd@alumno.unsm.edu.pe'  # ← Cambia esto
-EMAIL_HOST_PASSWORD = 'usrlkwexthgfjmxh'  # ← Contraseña de aplicación de Gmail
-DEFAULT_FROM_EMAIL = 'MotoVentas <jerojasd@alumno.unsm.edu.pe>'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
+
+#CSRF_TRUSTED_ORIGINS = [
+    #'https://misistemaventas.ngrok.app', # Añade el comodín HTTPS para ngrok
+#]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://misistemaventas.ngrok.app', # Añade el comodín HTTPS para ngrok
+    origin.strip()
+    for origin in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://51.222.13.41:8015,https://misistemaventas.ngrok.app'
+    ).split(',')
+    if origin.strip()
 ]
 
 #Para encriptar 
-ENCRYPTION_KEY = 'lhgnTN5ZgcS6UKinpZdMrknlCeUPFxy5Eq10e8tyB0I='
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
 
-#Para consumir la API RENIC
-TOKENPERU_TOKEN = 'sk_11701.nbA9F1Pyxxiq9B1tn2dGAzjtioUPEBoJ'
+#Para consumir la API RENIC (DeColecta - Proveedor Principal)
+TOKENPERU_TOKEN = os.environ.get('TOKENPERU_TOKEN')
+
+# APIsPERU - Proveedor de Respaldo (Fallback) para consultas DNI/RUC
+APISPERU_TOKEN = os.environ.get('APISPERU_TOKEN')
 
 #TOKENPERU_DEMO_MODE = True
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Configurar el SDK de Cloudinary directamente
+import cloudinary
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+    secure=True
+)
+
+# Configuración para permitir formularios grandes (muchas cuotas/items en ventas)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+# Redirección global de inicio de sesión
+LOGIN_URL = 'login'
+
+# Ajustes para correr detras de ngrok/HTTPS usando waitress.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
+# Cache local simple para reducir trabajo repetido del servidor.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'sistema-ventas-local-cache',
+        'TIMEOUT': 300,
+    }
+}

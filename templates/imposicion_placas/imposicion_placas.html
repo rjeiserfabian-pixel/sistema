@@ -30,7 +30,7 @@
                 <i class="fa-solid fa-clipboard-list text-primary"></i>
               </div>
               <div class="ps-3">
-                <h6 class="fw-bold">{{ estadisticas.total }}</h6>
+                <h6 class="fw-bold" id="stat-total">{{ estadisticas.total }}</h6>
               </div>
             </div>
           </div>
@@ -46,7 +46,7 @@
                 <i class="fa-solid fa-clock text-warning"></i>
               </div>
               <div class="ps-3">
-                <h6 class="fw-bold text-warning">{{ estadisticas.pendientes }}</h6>
+                <h6 class="fw-bold text-warning" id="stat-pendientes">{{ estadisticas.pendientes }}</h6>
               </div>
             </div>
           </div>
@@ -62,7 +62,7 @@
                 <i class="fa-solid fa-spinner text-info"></i>
               </div>
               <div class="ps-3">
-                <h6 class="fw-bold text-info">{{ estadisticas.en_tramite }}</h6>
+                <h6 class="fw-bold text-info" id="stat-entramite">{{ estadisticas.en_tramite }}</h6>
               </div>
             </div>
           </div>
@@ -78,7 +78,7 @@
                 <i class="fa-solid fa-check-circle text-success"></i>
               </div>
               <div class="ps-3">
-                <h6 class="fw-bold text-success">{{ estadisticas.completados }}</h6>
+                <h6 class="fw-bold text-success" id="stat-completados">{{ estadisticas.completados }}</h6>
               </div>
             </div>
           </div>
@@ -92,9 +92,40 @@
     <div class="card shadow-sm border-0">
       <div class="card-body">
         <h5 class="card-title">Listado de Imposiciones de Placas</h5>
+
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-4">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Buscar</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white"><i class="fa-solid fa-search text-muted"></i></span>
+              <input type="text" id="buscarImposicion" class="form-control border-start-0" placeholder="Buscar por cliente o vehículo..." autocomplete="off">
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Estado</label>
+            <select id="filtroEstadoTramite" class="form-select form-select-sm">
+              <option value="">Todos los Estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="en_tramite">En Trámite</option>
+              <option value="completado">Completado</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Fecha Desde</label>
+            <div class="input-group input-group-sm">
+              <input type="date" id="filtroFechaDesde" class="form-control" value="{{ fecha_desde }}">
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Fecha Hasta</label>
+            <div class="input-group input-group-sm">
+              <input type="date" id="filtroFechaHasta" class="form-control" value="{{ fecha_hasta }}">
+            </div>
+          </div>
+        </div>
         
         <div class="table-responsive">
-          <table class="table table-hover align-middle datatable">
+          <table class="table table-hover align-middle" id="tablaImposiciones">
             <thead class="table-dark">
               <tr>
                 <th scope="col">#</th>
@@ -102,103 +133,38 @@
                 <th scope="col">Vehículo</th>
                 <th scope="col">N° Placa</th>
                 <th scope="col">Tipo</th>
-                <th scope="col">Fecha Solicitud</th>
+                <th scope="col">Fecha Trámite</th>
                 <th scope="col" class="text-end">Total Costo</th>
                 <th scope="col" class="text-center">Estado</th>
                 <th scope="col" class="text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              {% for imp in imposiciones %}
+            <tbody id="tbodyImposiciones">
+              <!-- Las imposiciones se cargarán aquí por AJAX -->
               <tr>
-                <td class="fw-semibold">{{ forloop.counter }}</td>
-                <td>
-                  <span class="fw-semibold">{{ imp.idcliente.razonsocial }}</span>
-                  <br>
-                  <small class="text-muted">{{ imp.idcliente.numdoc }}</small>
-                </td>
-                <td>
-                  <span class="fw-semibold">{{ imp.id_vehiculo.idproducto.nomproducto }}</span>
-                  <br>
-                  <small class="text-muted">Motor: {{ imp.id_vehiculo.serie_motor|truncatechars:15 }}</small>
-                </td>
-                <td>
-                  {% if imp.numero_placa %}
-                    <span class="badge bg-dark fs-6">{{ imp.numero_placa }}</span>
-                  {% else %}
-                    <span class="badge bg-secondary">Sin asignar</span>
-                  {% endif %}
-                </td>
-                <td>
-                  {% if imp.tipo_placa == 'nueva' %}
-                    <span class="badge bg-success">Nueva</span>
-                  {% elif imp.tipo_placa == 'transferencia' %}
-                    <span class="badge bg-info">Transferencia</span>
-                  {% else %}
-                    <span class="badge bg-warning text-dark">Duplicado</span>
-                  {% endif %}
-                </td>
-                <td>{{ imp.fecha_solicitud|date:"d/m/Y" }}</td>
-                <td class="text-end fw-bold">S/ {{ imp.total_costo|floatformat:2 }}</td>
-                <td class="text-center">
-                  {% if imp.estado_tramite == 'pendiente' %}
-                    <span class="badge bg-warning text-dark">
-                      <i class="fa-solid fa-clock me-1"></i>Pendiente
-                    </span>
-                  {% elif imp.estado_tramite == 'en_tramite' %}
-                    <span class="badge bg-info">
-                      <i class="fa-solid fa-spinner me-1"></i>En Trámite
-                    </span>
-                  {% elif imp.estado_tramite == 'completado' %}
-                    <span class="badge bg-success">
-                      <i class="fa-solid fa-check me-1"></i>Completado
-                    </span>
-                  {% else %}
-                    <span class="badge bg-danger">
-                      <i class="fa-solid fa-ban me-1"></i>Cancelado
-                    </span>
-                  {% endif %}
-                </td>
-                <td class="text-center">
-                  <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-info" onclick="verDetalle({{ imp.id_imposicion }})" title="Ver Detalle">
-                      <i class="fa-solid fa-eye"></i>
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="editarImposicion({{ imp.id_imposicion }})" title="Editar">
-                      <i class="fa-solid fa-edit"></i>
-                    </button>
-                    {% if imp.estado_tramite != 'completado' and imp.estado_tramite != 'cancelado' %}
-                    <button type="button" class="btn btn-success" onclick="cambiarEstado({{ imp.id_imposicion }}, '{{ imp.estado_tramite }}')" title="Cambiar Estado">
-                      <i class="fa-solid fa-exchange-alt"></i>
-                    </button>
-                    {% endif %}
-                    <a href="{% url 'imprimir_constancia_placa' imp.id_imposicion %}" class="btn btn-secondary" target="_blank" title="Imprimir">
-                      <i class="fa-solid fa-print"></i>
-                    </a>
-                    {% if imp.estado_tramite == 'pendiente' %}
-                    <button type="button" class="btn btn-danger" onclick="eliminarImposicion({{ imp.id_imposicion }})" title="Eliminar">
-                      <i class="fa-solid fa-trash"></i>
-                    </button>
-                    {% endif %}
+                <td colspan="9" class="text-center py-4">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
                   </div>
+                  <p class="mt-2 text-muted">Cargando datos...</p>
                 </td>
               </tr>
-              {% empty %}
-              <tr>
-                <td colspan="9" class="text-center text-muted py-4">
-                  <i class="fa-solid fa-inbox fa-3x mb-3 d-block"></i>
-                  No hay imposiciones de placas registradas
-                </td>
-              </tr>
-              {% endfor %}
             </tbody>
           </table>
+        </div>
+        
+        <!-- Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <div id="infoPaginacion" class="text-muted small"></div>
+          <ul id="paginacionImposiciones" class="pagination pagination-sm mb-0"></ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Modal Nueva Imposición -->
+  <!-- ========================================
+       ⭐ MODAL NUEVA IMPOSICIÓN CON AUTOCOMPLETE
+       ======================================== -->
   <div class="modal fade" id="modalNuevaImposicion" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -209,157 +175,172 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form id="formNuevaImposicion" action="{% url 'nueva_imposicion' %}" method="post">
+          <form id="formNuevaImposicion" action="{% url 'nueva_imposicion' %}" method="post" novalidate>
             {% csrf_token %}
             
-            <!-- Selección de Venta y Vehículo -->
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-motorcycle me-2"></i>Selección de Vehículo</h6>
+            <!-- PASO 1: TIPO DE TRÁMITE -->
+            <div class="card mb-3 border-primary shadow-sm">
+              <div class="card-header bg-primary text-white py-2">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-1 me-2"></i>Paso 1: Tipo de Trámite</h6>
               </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold">Venta <span class="text-danger">*</span></label>
-                    <select name="idventa" id="select_venta" class="form-select" required>
-                      <option value="">Seleccione una venta</option>
-                      {% for detalle in ventas_con_vehiculos %}
-                      <option value="{{ detalle.idventa.idventa }}" 
-                              data-cliente="{{ detalle.idventa.idcliente.razonsocial }}"
-                              data-comprobante="{{ detalle.idventa.numero_comprobante }}">
-                        {{ detalle.idventa.numero_comprobante }} - {{ detalle.idventa.idcliente.razonsocial|truncatechars:30 }}
-                      </option>
-                      {% endfor %}
-                    </select>
+              <div class="card-body py-3">
+                <div class="row align-items-center">
+                  <div class="col-md-12">
+                    <label class="form-label fw-semibold">¿Qué tipo de placa desea tramitar? <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light"><i class="fa-solid fa-list-check"></i></span>
+                      <select name="tipo_placa" class="form-select fw-bold border-primary">
+                        <option value="nueva">Placa Nueva (Vehículos de Primera)</option>
+                        <option value="transferencia">Transferencia (Vehículos de Segunda/Tercera)</option>
+                        <option value="duplicado">Duplicado (Vehículos de Segunda/Tercera)</option>
+                      </select>
+                    </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PASO 2: SELECCIÓN DE VEHÍCULO -->
+            <div class="card mb-3 shadow-sm">
+              <div class="card-header bg-light">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-2 me-2"></i>Paso 2: Selección de Vehículo</h6>
+              </div>
+              <div class="card-body py-3">
+                <div class="row g-3">
+                  <!-- ⭐ VENTA CON AUTOCOMPLETE -->
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                      Venta <span class="text-danger">*</span>
+                      <i class="fa-solid fa-circle-info text-info ms-1" 
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="top" 
+                        title="Busque la venta por comprobante o cliente."></i>
+                    </label>
+                    <div class="autocomplete-wrapper">
+                      <input type="text" 
+                             id="venta_search" 
+                             class="form-control autocomplete-input autocomplete-with-arrow" 
+                             placeholder="Escriba comprobante o cliente..." 
+                             autocomplete="off">
+                      <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteVenta()">
+                        <i class="bi bi-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="idventa" id="venta_id">
+                      <div class="autocomplete-results" id="venta_results"></div>
+                    </div>
+                  </div>
+                  
                   <div class="col-md-6">
                     <label class="form-label fw-semibold">Vehículo <span class="text-danger">*</span></label>
-                    <select name="id_vehiculo" id="select_vehiculo" class="form-select" required disabled>
+                    <select name="id_vehiculo" id="select_vehiculo" class="form-select" disabled>
                       <option value="">Primero seleccione una venta</option>
                     </select>
                   </div>
                 </div>
                 
                 <!-- Info del vehículo seleccionado -->
-                <div id="info_vehiculo" class="alert alert-info mt-3 d-none">
+                <div id="info_vehiculo" class="alert alert-info mt-3 d-none mb-0">
                   <div class="row">
-                    <div class="col-md-4"><strong>Producto:</strong> <span id="info_producto"></span></div>
-                    <div class="col-md-4"><strong>Motor:</strong> <span id="info_motor"></span></div>
-                    <div class="col-md-4"><strong>Chasis:</strong> <span id="info_chasis"></span></div>
+                    <div class="col-md-4"><strong>Vehículo:</strong> <br><span id="info_producto" class="fw-bold"></span></div>
+                    <div class="col-md-4"><strong>Motor:</strong> <br><span id="info_motor" class="fw-bold"></span></div>
+                    <div class="col-md-4"><strong>Chasis:</strong> <br><span id="info_chasis" class="fw-bold"></span></div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Datos de la Placa -->
-            <div class="card mb-3">
+            <!-- PASO 3: DETALLES Y FECHAS DEL TRÁMITE -->
+            <div class="card mb-3 shadow-sm">
               <div class="card-header bg-light">
-                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-rectangle-list me-2"></i>Datos de la Placa</h6>
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-3 me-2"></i>Paso 3: Detalles y Fechas</h6>
               </div>
-              <div class="card-body">
+              <div class="card-body py-3">
                 <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label fw-semibold">Tipo de Placa <span class="text-danger">*</span></label>
-                    <select name="tipo_placa" class="form-select" required>
-                      <option value="nueva">Placa Nueva</option>
-                      <option value="transferencia">Transferencia</option>
-                      <option value="duplicado">Duplicado</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
+                  <div class="col-md-6">
                     <label class="form-label fw-semibold">N° de Placa</label>
                     <input type="text" name="numero_placa" class="form-control text-uppercase" placeholder="ABC-123" maxlength="10">
-                    <small class="text-muted">Dejar vacío si aún no tiene</small>
+                    <small class="text-muted">Dejar vacío si aún no tiene asignado</small>
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-semibold">N° Expediente</label>
-                    <input type="text" name="numero_expediente" class="form-control" placeholder="EXP-001">
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Fechas -->
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-calendar me-2"></i>Fechas del Trámite</h6>
-              </div>
-              <div class="card-body">
-                <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label fw-semibold">Fecha de Trámite</label>
+                    <label class="form-label fw-semibold">N° Expediente</label>
+                    <input type="text" name="numero_expediente" class="form-control" placeholder="EXP-12345">
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label fw-semibold">Fecha de Trámite <span class="text-danger">*</span></label>
                     <input type="date" name="fecha_tramite" class="form-control">
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold">Fecha Vencimiento Trámite</label>
-                    <input type="date" name="fecha_vencimiento_tramite" class="form-control">
-                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Costos -->
-            <div class="card mb-3">
+            <!-- PASO 4: COSTOS Y FINANZAS -->
+            <div class="card mb-3 shadow-sm">
               <div class="card-header bg-light">
-                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-money-bill me-2"></i>Costos</h6>
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-4 me-2"></i>Paso 4: Costos y Finanzas</h6>
               </div>
-              <div class="card-body">
+              <div class="card-body py-3">
                 <div class="row g-3">
                   <div class="col-md-3">
                     <label class="form-label fw-semibold">Costo Trámite</label>
                     <div class="input-group">
-                      <span class="input-group-text">S/</span>
-                      <input type="number" name="costo_tramite" class="form-control costo-input" step="0.01" min="0" value="0.00">
+                      <span class="input-group-text bg-light">S/</span>
+                      <input type="number" name="costo_tramite" class="form-control costo-input text-end" step="0.01" min="0" value="0.00">
                     </div>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label fw-semibold">Costo Placa</label>
                     <div class="input-group">
-                      <span class="input-group-text">S/</span>
-                      <input type="number" name="costo_placa" class="form-control costo-input" step="0.01" min="0" value="0.00">
+                      <span class="input-group-text bg-light">S/</span>
+                      <input type="number" name="costo_placa" class="form-control costo-input text-end" step="0.01" min="0" value="0.00">
                     </div>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label fw-semibold">Otros Costos</label>
                     <div class="input-group">
-                      <span class="input-group-text">S/</span>
-                      <input type="number" name="otros_costos" class="form-control costo-input" step="0.01" min="0" value="0.00">
+                      <span class="input-group-text bg-light">S/</span>
+                      <input type="number" name="otros_costos" class="form-control costo-input text-end" step="0.01" min="0" value="0.00">
                     </div>
                   </div>
                   <div class="col-md-3">
-                    <label class="form-label fw-semibold">Total</label>
+                    <label class="form-label fw-semibold text-primary">Total Final</label>
                     <div class="input-group">
-                      <span class="input-group-text">S/</span>
-                      <input type="text" id="total_costo" class="form-control fw-bold" value="0.00" readonly>
+                      <span class="input-group-text bg-primary text-white">S/</span>
+                      <input type="text" id="total_costo" class="form-control fw-bold text-end bg-white border-primary" value="0.00" readonly>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Documentación -->
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-file-alt me-2"></i>Documentación</h6>
+            <!-- PASO 5: REQUISITOS Y DOCUMENTACIÓN -->
+            <div class="card mb-3 shadow-sm border-success">
+              <div class="card-header bg-success text-white py-2">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-5 me-2"></i>Paso 5: Requisitos y Documentación</h6>
               </div>
-              <div class="card-body">
+              <div class="card-body py-3">
                 <div class="row g-3">
-                  <div class="col-md-4">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" name="tiene_tarjeta_propiedad" id="tiene_tarjeta">
-                      <label class="form-check-label" for="tiene_tarjeta">Tarjeta de Propiedad</label>
+                  <div class="col-md-3">
+                    <div class="form-check form-switch card p-2 border-0 bg-light">
+                      <input class="form-check-input ms-0 me-2" type="checkbox" name="tiene_tarjeta_propiedad" id="tiene_tarjeta">
+                      <label class="form-check-label fw-semibold" for="tiene_tarjeta">Tarjeta Propiedad</label>
                     </div>
                   </div>
-                  <div class="col-md-4">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" name="tiene_soat" id="tiene_soat">
-                      <label class="form-check-label" for="tiene_soat">SOAT</label>
+                  <div class="col-md-3">
+                    <div class="form-check form-switch card p-2 border-0 bg-light">
+                      <input class="form-check-input ms-0 me-2" type="checkbox" name="tiene_soat" id="tiene_soat">
+                      <label class="form-check-label fw-semibold" for="tiene_soat">SOAT</label>
                     </div>
                   </div>
-                  <div class="col-md-4">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" name="tiene_revision_tecnica" id="tiene_revision">
-                      <label class="form-check-label" for="tiene_revision">Revisión Técnica</label>
+                  <div class="col-md-3">
+                    <div class="form-check form-switch card p-2 border-0 bg-light">
+                      <input class="form-check-input ms-0 me-2" type="checkbox" name="tiene_revision_tecnica" id="tiene_revision">
+                      <label class="form-check-label fw-semibold" for="tiene_revision">Rev. Técnica</label>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-check form-switch card p-2 border-0 bg-light border-warning">
+                      <input class="form-check-input ms-0 me-2" type="checkbox" name="con_garantia_mobiliaria" id="con_garantia">
+                      <label class="form-check-label fw-bold text-warning-emphasis" for="con_garantia" title="Inscrita en SUNARP">Garantía Mobiliaria</label>
                     </div>
                   </div>
                 </div>
@@ -460,202 +441,510 @@
 
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-// ✅ SOLUCIÓN: Usar IIFE para evitar redeclaración de variables
+// ========================================
+// ⭐ DATOS PARA AUTOCOMPLETE DE VENTAS
+// ========================================
+const ventasData = [];
 const vehiculosPorVenta = {};
 
 {% for detalle in ventas_con_vehiculos %}
   {% if detalle.id_vehiculo %}
     (function() {
-      var idventaTemp = {{ detalle.idventa.idventa }};
+      var idventa = {{ detalle.idventa.idventa }};
+      var comprobante = "{{ detalle.idventa.numero_comprobante|escapejs }}";
+      var cliente = "{{ detalle.idventa.idcliente.razonsocial|escapejs }}";
       
-      if (!vehiculosPorVenta[idventaTemp]) {
-        vehiculosPorVenta[idventaTemp] = [];
+      // ⭐ AGREGAR A LISTA DE VENTAS (solo una vez por venta)
+      if (!vehiculosPorVenta[idventa]) {
+        ventasData.push({
+          id: idventa,
+          comprobante: comprobante,
+          cliente: cliente,
+          text: comprobante + " - " + cliente
+        });
+        vehiculosPorVenta[idventa] = [];
       }
       
-      vehiculosPorVenta[idventaTemp].push({
+      // ⭐ AGREGAR VEHÍCULO A LA VENTA (con su estado)
+      vehiculosPorVenta[idventa].push({
         id: {{ detalle.id_vehiculo.id_vehiculo }},
         producto: "{{ detalle.id_vehiculo.idproducto.nomproducto|escapejs }}",
         motor: "{{ detalle.id_vehiculo.serie_motor|escapejs }}",
-        chasis: "{{ detalle.id_vehiculo.serie_chasis|escapejs }}"
+        chasis: "{{ detalle.id_vehiculo.serie_chasis|escapejs }}",
+        id_estado: {{ detalle.id_vehiculo.idestadoproducto.idestadoproducto|default:"0" }},
+        nombre_estado: "{{ detalle.id_vehiculo.idestadoproducto.nombreestadoproducto|lower|escapejs }}"
       });
     })();
   {% endif %}
 {% endfor %}
 
-console.log("Vehículos cargados por venta:", vehiculosPorVenta);
+console.log("✅ Ventas cargadas:", ventasData.length);
+console.log("✅ Vehículos por venta:", vehiculosPorVenta);
+
+// ========================================
+// ⭐ LÓGICA DE FILTRADO POR TIPO DE PLACA
+// nueva → solo vehículos "primera" o "nueva"
+// transferencia/duplicado → "segunda", "semi-nueva" o cualquier estado no nuevo
+// ========================================
+function esVehiculoValido(vehiculo, tipoPlaca) {
+  // id_estado === 1 corresponde a "Nueva" / "Primera"
+  var idEstado = parseInt(vehiculo.id_estado) || 0;
+  var esNuevo = (idEstado === 1);
+  
+  if (tipoPlaca === 'nueva') {
+    return esNuevo;
+  } else {
+    // transferencia o duplicado: cualquier estado que no sea 'nueva/primera'
+    return !esNuevo;
+  }
+}
+
+function obtenerVentasFiltradas() {
+  var tipoPlaca = $('select[name="tipo_placa"]').val() || 'nueva';
+  return ventasData.filter(function(venta) {
+    var vehiculos = vehiculosPorVenta[venta.id] || [];
+    return vehiculos.some(function(v) { return esVehiculoValido(v, tipoPlaca); });
+  });
+}
+
+// ========================================
+// ⭐ FUNCIÓN AUTOCOMPLETE GENÉRICA
+// ========================================
+function setupAutocomplete(inputId, resultsId, data, hiddenId, onSelectCallback) {
+  const input = document.getElementById(inputId);
+  const results = document.getElementById(resultsId);
+  const hidden = document.getElementById(hiddenId);
+  
+  if (!input) return;
+
+  input.addEventListener('input', function() {
+    const value = this.value.toLowerCase();
+    results.innerHTML = '';
+    
+    if (value.length < 1) {
+      results.style.display = 'none';
+      hidden.value = '';
+      if (onSelectCallback) onSelectCallback(null);
+      return;
+    }
+    const searchValue = value.replace(/\s+/g, '');
+    
+    const ventasFiltradas = typeof obtenerVentasFiltradas === 'function'
+      ? obtenerVentasFiltradas()
+      : data;
+    
+    const filtered = ventasFiltradas.filter(item => 
+      item.text.toLowerCase().replace(/\s+/g, '').includes(searchValue)
+    );
+    
+    if (filtered.length === 0) {
+      results.innerHTML = '<div class="autocomplete-item no-results">No se encontraron ventas para este tipo de placa</div>';
+      results.style.display = 'block';
+      return;
+    }
+    
+    filtered.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'autocomplete-item';
+      
+      // ⭐ FORMATO ESPECIAL PARA VENTAS
+      if (item.comprobante) {
+        const tipoPlaca = typeof $ !== 'undefined' ? $('select[name="tipo_placa"]').val() || 'nueva' : 'nueva';
+        const vehsFiltrados = (vehiculosPorVenta[item.id] || []).filter(v => esVehiculoValido(v, tipoPlaca));
+        div.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>${item.comprobante}</strong>
+              <br>
+              <small class="text-muted">${item.cliente}</small>
+            </div>
+            <span class="badge bg-success">
+              ${vehsFiltrados.length} vehículo(s)
+            </span>
+          </div>
+        `;
+      } else {
+        div.textContent = item.text;
+      }
+      
+      div.addEventListener('click', function() {
+        if (item.comprobante) {
+          input.value = `${item.comprobante} - ${item.cliente}`;
+        } else {
+          input.value = item.text;
+        }
+        hidden.value = item.id;
+        results.style.display = 'none';
+        
+        if (onSelectCallback) {
+          onSelectCallback(item);
+        }
+      });
+      results.appendChild(div);
+    });
+    
+    results.style.display = 'block';
+  });
+  
+  // Cerrar al hacer clic fuera
+  document.addEventListener('click', function(e) {
+    if (!input.contains(e.target) && !results.contains(e.target)) {
+      const arrow = input.parentElement.querySelector('.autocomplete-arrow');
+      if (arrow && !arrow.contains(e.target)) {
+        results.style.display = 'none';
+      }
+    }
+  });
+
+  // Limpiar al cambiar
+  input.addEventListener('focus', function() {
+    if (this.value && !hidden.value) {
+      this.value = '';
+    }
+  });
+}
+
+// ========================================
+// ⭐ FUNCIÓN PARA ABRIR/CERRAR CON LA FLECHA
+// ========================================
+function toggleAutocompleteVenta() {
+  const input = document.getElementById('venta_search');
+  const results = document.getElementById('venta_results');
+  const hidden = document.getElementById('venta_id');
+  
+  // Si ya está abierto, cerrar
+  if (results.style.display === 'block') {
+    results.style.display = 'none';
+    return;
+  }
+  
+  // Mostrar ventas filtradas según tipo de placa
+  results.innerHTML = '';
+  const ventasFiltradas = obtenerVentasFiltradas();
+
+  if (ventasFiltradas.length === 0) {
+    results.innerHTML = '<div class="autocomplete-item no-results">No hay ventas disponibles para este tipo de placa</div>';
+    results.style.display = 'block';
+    input.focus();
+    return;
+  }
+
+  ventasFiltradas.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+    const vehiculosFiltrados = (vehiculosPorVenta[item.id] || []).filter(v => {
+      const tipoPlaca = $('select[name="tipo_placa"]').val() || 'nueva';
+      return esVehiculoValido(v, tipoPlaca);
+    });
+    div.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <strong>${item.comprobante}</strong>
+          <br>
+          <small class="text-muted">${item.cliente}</small>
+        </div>
+        <span class="badge bg-success">
+          ${vehiculosFiltrados.length} vehículo(s)
+        </span>
+      </div>
+    `;
+    
+    div.addEventListener('click', function(e) {
+      e.stopPropagation();
+      input.value = `${item.comprobante} - ${item.cliente}`;
+      hidden.value = item.id;
+      results.style.display = 'none';
+      
+      // ⭐ CARGAR VEHÍCULOS FILTRADOS
+      cargarVehiculosDeVenta(item.id);
+    });
+    results.appendChild(div);
+  });
+  
+  results.style.display = 'block';
+  input.focus();
+}
+
+// ========================================
+// ⭐ FUNCIÓN CARGAR VEHÍCULOS DE VENTA (filtrados por tipo de placa)
+// ========================================
+function cargarVehiculosDeVenta(idventa) {
+  const $selectVehiculo = $('#select_vehiculo');
+  const tipoPlaca = $('select[name="tipo_placa"]').val() || 'nueva';
+  
+  console.log("📋 Venta seleccionada:", idventa, "| Tipo placa:", tipoPlaca);
+  
+  $selectVehiculo.empty().append('<option value="">Seleccione un vehículo</option>');
+  $('#info_vehiculo').addClass('d-none');
+  
+  if (idventa && vehiculosPorVenta[idventa]) {
+    // Filtrar vehículos según el tipo de placa seleccionado
+    const vehiculos = (vehiculosPorVenta[idventa] || []).filter(v => esVehiculoValido(v, tipoPlaca));
+    console.log("🚙 Vehículos válidos para tipo '" + tipoPlaca + "':", vehiculos.length);
+    
+    if (vehiculos.length > 0) {
+      vehiculos.forEach(function(v) {
+        var estadoText = v.nombre_estado ? ' [' + v.nombre_estado.charAt(0).toUpperCase() + v.nombre_estado.slice(1) + ']' : '';
+        $selectVehiculo.append(
+          $('<option></option>')
+            .attr('value', v.id)
+            .attr('data-producto', v.producto)
+            .attr('data-motor', v.motor)
+            .attr('data-chasis', v.chasis)
+            .text(v.producto + ' - Motor: ' + v.motor.substring(0, 15) + estadoText)
+        );
+      });
+      
+      $selectVehiculo.prop('disabled', false);
+      console.log("✅ Vehículos cargados correctamente");
+    } else {
+      $selectVehiculo.append('<option value="">Sin vehículos disponibles para este tipo de placa</option>');
+      $selectVehiculo.prop('disabled', true);
+      console.warn("⚠️ No hay vehículos con el estado requerido para tipo: " + tipoPlaca);
+    }
+  } else {
+    $selectVehiculo.prop('disabled', true);
+    console.warn("⚠️ No hay vehículos para idventa:", idventa);
+  }
+}
 
 $(document).ready(function() {
   
   // ========================================
-  // EVENTO: CAMBIO DE VENTA
+  // ⭐ INICIALIZAR AUTOCOMPLETE PARA VENTAS
   // ========================================
-  $('#select_venta').on('change', function() {
-    var idventa = parseInt($(this).val());
-    var $selectVehiculo = $('#select_vehiculo');
-    
-    console.log("📋 Venta seleccionada:", idventa);
-    
-    $selectVehiculo.empty().append('<option value="">Seleccione un vehículo</option>');
-    $('#info_vehiculo').addClass('d-none');
-    
-    if (idventa && vehiculosPorVenta[idventa]) {
-      var vehiculos = vehiculosPorVenta[idventa];
-      console.log("🚙 Vehículos encontrados:", vehiculos.length);
-      
-      if (vehiculos.length > 0) {
-        vehiculos.forEach(function(v) {
-          $selectVehiculo.append(
-            $('<option></option>')
-              .attr('value', v.id)
-              .attr('data-producto', v.producto)
-              .attr('data-motor', v.motor)
-              .attr('data-chasis', v.chasis)
-              .text(v.producto + ' - Motor: ' + v.motor.substring(0, 15))
-          );
-        });
-        
-        $selectVehiculo.prop('disabled', false);
-        console.log("✅ Vehículos cargados correctamente");
-      } else {
-        $selectVehiculo.append('<option value="">Sin vehículos disponibles</option>');
-        $selectVehiculo.prop('disabled', true);
-        console.warn("⚠️ Array vacío para esta venta");
-      }
-    } else {
-      $selectVehiculo.prop('disabled', true);
-      console.warn("⚠️ No hay vehículos para idventa:", idventa);
+  setupAutocomplete('venta_search', 'venta_results', ventasData, 'venta_id', function(item) {
+    if (item) {
+      cargarVehiculosDeVenta(item.id);
     }
   });
 
   // ========================================
-  // EVENTO: CAMBIO DE VEHÍCULO
+  // ⭐ EVENTO: CAMBIO DE VEHÍCULO
   // ========================================
   $('#select_vehiculo').on('change', function() {
-    var $selected = $(this).find(':selected');
-    var valor = $selected.val();
+    const $selected = $(this).find(':selected');
+    const valor = $selected.val();
     
     if (valor) {
-      var producto = $selected.data('producto');
-      var motor = $selected.data('motor');
-      var chasis = $selected.data('chasis');
+      const producto = $selected.data('producto');
+      const motor = $selected.data('motor');
+      const chasis = $selected.data('chasis');
       
       $('#info_producto').text(producto);
       $('#info_motor').text(motor);
       $('#info_chasis').text(chasis);
       $('#info_vehiculo').removeClass('d-none');
       
-      console.log("✅ Vehículo seleccionado:", { producto: producto, motor: motor, chasis: chasis });
+      console.log("✅ Vehículo seleccionado:", { producto, motor, chasis });
     } else {
       $('#info_vehiculo').addClass('d-none');
     }
   });
+  // ========================================
+  // ⭐ EVENTO: CAMBIO DE TIPO DE PLACA → limpiar selección de venta y vehículo
+  // ========================================
+  $('select[name="tipo_placa"]').on('change', function() {
+    const tipoPlaca = $(this).val();
+    console.log("🔄 Tipo de placa cambiado a:", tipoPlaca);
+    
+    // Limpiar búsqueda de venta
+    $('#venta_search').val('');
+    $('#venta_id').val('');
+    $('#venta_results').hide();
+    
+    // Limpiar select de vehículo
+    $('#select_vehiculo')
+      .empty()
+      .append('<option value="">Primero seleccione una venta</option>')
+      .prop('disabled', true);
+    
+    // Limpiar info del vehículo
+    $('#info_vehiculo').addClass('d-none');
+    
+    if (tipoPlaca === 'nueva') {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: '✅ Solo vehículos de estado <b>Nueva/Primera</b>',
+        html: 'Busque una venta con vehículos en estado <b>Nueva</b> o <b>Primera</b>.',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+      });
+    } else {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: '🔄 Solo vehículos de estado <b>Semi-nueva/Segunda</b>',
+        html: 'Busque una venta con vehículos en estado <b>Semi-nueva</b> o <b>Segunda</b>.',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+      });
+    }
+  });
 
   // ========================================
-  // CÁLCULO AUTOMÁTICO DE TOTAL COSTOS
-  // ========================================
   $('.costo-input').on('input', function() {
-    var total = 0;
+    let total = 0;
     $('.costo-input').each(function() {
-      var valor = parseFloat($(this).val()) || 0;
+      const valor = parseFloat($(this).val()) || 0;
       total += valor;
     });
     $('#total_costo').val(total.toFixed(2));
   });
 
   // ========================================
-  // SUBMIT: NUEVA IMPOSICIÓN
+  // ⭐ SUBMIT: NUEVA IMPOSICIÓN
   // ========================================
   $('#formNuevaImposicion').on('submit', function(e) {
     e.preventDefault();
     
-    var vehiculoSeleccionado = $('#select_vehiculo').val();
-    if (!vehiculoSeleccionado) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Faltan datos',
-        text: 'Debe seleccionar un vehículo',
-        confirmButtonColor: '#f0ad4e'
-      });
-      return;
-    }
-    
-    var ventaSeleccionada = $('#select_venta').val();
+    // ✅ VALIDACIÓN: Venta seleccionada
+    const ventaSeleccionada = $('#venta_id').val();
     if (!ventaSeleccionada) {
       Swal.fire({
         icon: 'warning',
-        title: 'Faltan datos',
-        text: 'Debe seleccionar una venta',
+        title: 'Campo obligatorio',
+        text: 'Debe seleccionar una venta antes de continuar.',
         confirmButtonColor: '#f0ad4e'
       });
       return;
     }
-    
-    Swal.fire({
-      title: 'Procesando...',
-      text: 'Registrando imposición de placa',
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      willOpen: function() { Swal.showLoading(); }
-    });
 
-    $.ajax({
-      type: 'POST',
-      url: $(this).attr('action'),
-      data: new FormData(this),
-      processData: false,
-      contentType: false,
-      success: function(res) {
-        if (res.ok) {
-          Swal.fire({
-            icon: 'success',
-            title: '¡Registrado!',
-            text: res.message,
-            confirmButtonColor: '#198754'
-          }).then(function() {
-            location.reload();
-          });
-        } else {
+    // ✅ VALIDACIÓN: Vehículo seleccionado
+    const vehiculoSeleccionado = $('#select_vehiculo').val();
+    if (!vehiculoSeleccionado) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campo obligatorio',
+        text: 'Debe seleccionar un vehículo de la venta.',
+        confirmButtonColor: '#f0ad4e'
+      });
+      return;
+    }
+
+    // ✅ VALIDACIÓN: Fecha de Trámite
+    const fechaTramite = $(this).find('input[name="fecha_tramite"]').val();
+    if (!fechaTramite) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campo obligatorio',
+        text: 'Debe ingresar una Fecha de Trámite antes de continuar.',
+        confirmButtonColor: '#f0ad4e'
+      });
+      return;
+    }
+
+    // ✅ VALIDACIÓN: Tipo de placa
+    const tipoPlaca = $(this).find('select[name="tipo_placa"]').val();
+    if (!tipoPlaca) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campo obligatorio',
+        text: 'Debe seleccionar el tipo de placa.',
+        confirmButtonColor: '#f0ad4e'
+      });
+      return;
+    }
+
+    const formRef = this;
+
+    // ✅ CONFIRMACIÓN antes de guardar
+    Swal.fire({
+      title: '¿Registrar imposición?',
+      text: '¿Desea guardar la nueva imposición de placa?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#198754',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: '<i class="fa-solid fa-save me-2"></i>Sí, guardar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (!result.isConfirmed) return;
+
+      Swal.fire({
+        title: 'Procesando...',
+        text: 'Registrando imposición de placa',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => Swal.showLoading()
+      });
+
+      $.ajax({
+        type: 'POST',
+        url: $(formRef).attr('action'),
+        data: new FormData(formRef),
+        processData: false,
+        contentType: false,
+        success: function(res) {
+          if (res.ok) {
+            Swal.fire({
+              icon: 'success',
+              title: '¡Registrado!',
+              text: res.message,
+              confirmButtonColor: '#198754'
+            }).then(() => {
+              $('#modalNuevaImposicion').modal('hide');
+              $('#formNuevaImposicion')[0].reset();
+              $('#detalles_vehiculo').html('<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-info-circle me-2"></i>Seleccione un vehículo de la venta para ver sus detalles.</div>');
+              cargarImposiciones(1);
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: res.error,
+              confirmButtonColor: '#dc3545'
+            });
+          }
+        },
+        error: function(xhr) {
+          const res = xhr.responseJSON || {};
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: res.error,
+            text: res.error || 'Error al procesar la solicitud',
             confirmButtonColor: '#dc3545'
           });
         }
-      },
-      error: function(xhr) {
-        var res = xhr.responseJSON || {};
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: res.error || 'Error al procesar la solicitud',
-          confirmButtonColor: '#dc3545'
-        });
-      }
+      });
     });
+  });
+  
+  // ========================================
+  // ⭐ INICIALIZAR TOOLTIPS
+  // ========================================
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
   });
 });
 
 // ========================================
-// FUNCIÓN: VER DETALLE
+// ⭐ FUNCIONES EXISTENTES (Ver Detalle, Editar, etc.)
 // ========================================
 function verDetalle(id) {
   Swal.fire({
     title: 'Cargando...',
     allowOutsideClick: false,
     showConfirmButton: false,
-    willOpen: function() { Swal.showLoading(); }
+    willOpen: () => Swal.showLoading()
   });
   
   $.get('/imposicion-placas/detalle/' + id + '/', function(res) {
     Swal.close();
     
     if (res.ok) {
-      var d = res.data;
+      const d = res.data;
       
-      var estadoBadge = '';
+      let estadoBadge = '';
       if (d.estado_tramite === 'completado') {
         estadoBadge = '<span class="badge bg-success">COMPLETADO</span>';
       } else if (d.estado_tramite === 'en_tramite') {
@@ -666,8 +955,8 @@ function verDetalle(id) {
         estadoBadge = '<span class="badge bg-warning text-dark">PENDIENTE</span>';
       }
       
-      var historialHtml = '';
-      d.historial.forEach(function(h) {
+      let historialHtml = '';
+      d.historial.forEach(h => {
         historialHtml += '<tr>' +
           '<td><small>' + h.fecha + '</small></td>' +
           '<td><small>' + h.usuario + '</small></td>' +
@@ -676,10 +965,12 @@ function verDetalle(id) {
           '</tr>';
       });
       
-      var html = '<div class="row">' +
+      const html = '<div class="row">' +
         '<div class="col-md-6">' +
           '<h6 class="fw-bold text-primary"><i class="fa-solid fa-user me-2"></i>Cliente</h6>' +
           '<p>' + d.cliente + '</p>' +
+          '<h6 class="fw-bold text-primary mt-3"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Venta</h6>' +
+          '<p>' + (d.comprobante ? '<strong>' + d.comprobante + '</strong>' : '-') + (d.forma_pago ? ' <span class="badge bg-success ms-2">' + d.forma_pago + '</span>' : '') + '</p>' +
           '<h6 class="fw-bold text-primary mt-3"><i class="fa-solid fa-motorcycle me-2"></i>Vehículo</h6>' +
           '<p>' + d.vehiculo + '<br><small class="text-muted">Motor: ' + d.serie_motor + '</small><br><small class="text-muted">Chasis: ' + d.serie_chasis + '</small></p>' +
           '<h6 class="fw-bold text-primary mt-3"><i class="fa-solid fa-id-card me-2"></i>Placa</h6>' +
@@ -687,7 +978,7 @@ function verDetalle(id) {
         '</div>' +
         '<div class="col-md-6">' +
           '<h6 class="fw-bold text-primary"><i class="fa-solid fa-info-circle me-2"></i>Estado</h6>' +
-          '<p>' + estadoBadge + (d.esta_vencido ? '<span class="badge bg-danger ms-2">VENCIDO</span>' : '') + '<br><small class="text-muted">Días en trámite: ' + d.dias_en_tramite + '</small></p>' +
+          '<p>' + estadoBadge + '<br><small class="text-muted">Días en trámite: ' + d.dias_en_tramite + '</small></p>' +
           '<h6 class="fw-bold text-primary mt-3"><i class="fa-solid fa-money-bill me-2"></i>Costos</h6>' +
           '<table class="table table-sm table-bordered">' +
             '<tr><td>Trámite:</td><td class="text-end">S/ ' + d.costo_tramite.toFixed(2) + '</td></tr>' +
@@ -705,6 +996,7 @@ function verDetalle(id) {
             '<span class="badge ' + (d.tiene_tarjeta_propiedad ? 'bg-success' : 'bg-secondary') + '"><i class="fa-solid fa-' + (d.tiene_tarjeta_propiedad ? 'check' : 'times') + ' me-1"></i>Tarjeta Propiedad</span>' +
             '<span class="badge ' + (d.tiene_soat ? 'bg-success' : 'bg-secondary') + '"><i class="fa-solid fa-' + (d.tiene_soat ? 'check' : 'times') + ' me-1"></i>SOAT</span>' +
             '<span class="badge ' + (d.tiene_revision_tecnica ? 'bg-success' : 'bg-secondary') + '"><i class="fa-solid fa-' + (d.tiene_revision_tecnica ? 'check' : 'times') + ' me-1"></i>Revisión Técnica</span>' +
+            '<span class="badge ' + (d.con_garantia_mobiliaria ? 'bg-warning text-dark border border-warning' : 'bg-secondary') + '"><i class="fa-solid fa-' + (d.con_garantia_mobiliaria ? 'lock' : 'lock-open') + ' me-1"></i>Garantía Mobiliaria</span>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -730,7 +1022,7 @@ function verDetalle(id) {
         confirmButtonColor: '#dc3545'
       });
     }
-  }).fail(function() {
+  }).fail(() => {
     Swal.close();
     Swal.fire({
       icon: 'error',
@@ -741,24 +1033,21 @@ function verDetalle(id) {
   });
 }
 
-// ========================================
-// FUNCIÓN: EDITAR IMPOSICIÓN
-// ========================================
 function editarImposicion(id) {
   Swal.fire({
     title: 'Cargando...',
     allowOutsideClick: false,
     showConfirmButton: false,
-    willOpen: function() { Swal.showLoading(); }
+    willOpen: () => Swal.showLoading()
   });
   
   $.get('/imposicion-placas/detalle/' + id + '/', function(res) {
     Swal.close();
     
     if (res.ok) {
-      var d = res.data;
+      const d = res.data;
       
-      var html = '<form id="formEditarImposicion" action="/imposicion-placas/editar/' + id + '/" method="post">' +
+      const html = '<form id="formEditarImposicion" action="/imposicion-placas/editar/' + id + '/" method="post">' +
         '{% csrf_token %}' +
         '<div class="alert alert-info">' +
           '<strong><i class="fa-solid fa-user me-2"></i>Cliente:</strong> ' + d.cliente + '<br>' +
@@ -794,7 +1083,7 @@ function editarImposicion(id) {
             '<input type="text" name="numero_expediente" class="form-control" value="' + d.numero_expediente + '" placeholder="EXP-001">' +
           '</div>' +
           '<div class="col-md-4">' +
-            '<label class="form-label">Fecha Trámite</label>' +
+            '<label class="form-label">Fecha Trámite <span class="text-danger">*</span></label>' +
             '<input type="date" name="fecha_tramite" class="form-control" value="' + d.fecha_tramite + '">' +
           '</div>' +
           '<div class="col-md-4">' +
@@ -803,40 +1092,42 @@ function editarImposicion(id) {
           '</div>' +
         '</div>' +
         '<div class="row g-3 mt-2">' +
-          '<div class="col-md-3">' +
+          '<div class="col-md-4">' +
             '<label class="form-label">Costo Trámite (S/)</label>' +
             '<input type="number" name="costo_tramite" class="form-control" step="0.01" value="' + d.costo_tramite + '" min="0">' +
           '</div>' +
-          '<div class="col-md-3">' +
+          '<div class="col-md-4">' +
             '<label class="form-label">Costo Placa (S/)</label>' +
             '<input type="number" name="costo_placa" class="form-control" step="0.01" value="' + d.costo_placa + '" min="0">' +
           '</div>' +
-          '<div class="col-md-3">' +
+          '<div class="col-md-4">' +
             '<label class="form-label">Otros Costos (S/)</label>' +
             '<input type="number" name="otros_costos" class="form-control" step="0.01" value="' + d.otros_costos + '" min="0">' +
           '</div>' +
-          '<div class="col-md-3">' +
-            '<label class="form-label">Fecha Vencimiento</label>' +
-            '<input type="date" name="fecha_vencimiento_tramite" class="form-control" value="' + d.fecha_vencimiento_tramite + '">' +
-          '</div>' +
         '</div>' +
-        '<div class="row g-3 mt-3">' +
-          '<div class="col-md-4">' +
-            '<div class="form-check form-switch">' +
-              '<input class="form-check-input" type="checkbox" name="tiene_tarjeta_propiedad" id="edit_tarjeta"' + (d.tiene_tarjeta_propiedad ? ' checked' : '') + '>' +
-              '<label class="form-check-label" for="edit_tarjeta">Tarjeta de Propiedad</label>' +
+        '<div class="row g-3">' +
+          '<div class="col-md-3">' +
+            '<div class="form-check form-switch card p-2 border-0 bg-light">' +
+              '<input class="form-check-input ms-0 me-2" type="checkbox" name="tiene_tarjeta_propiedad" id="edit_tarjeta"' + (d.tiene_tarjeta_propiedad ? ' checked' : '') + '>' +
+              '<label class="form-check-label fw-semibold" for="edit_tarjeta">Tarjeta Propiedad</label>' +
             '</div>' +
           '</div>' +
-          '<div class="col-md-4">' +
-            '<div class="form-check form-switch">' +
-              '<input class="form-check-input" type="checkbox" name="tiene_soat" id="edit_soat"' + (d.tiene_soat ? ' checked' : '') + '>' +
-              '<label class="form-check-label" for="edit_soat">SOAT</label>' +
+          '<div class="col-md-3">' +
+            '<div class="form-check form-switch card p-2 border-0 bg-light">' +
+              '<input class="form-check-input ms-0 me-2" type="checkbox" name="tiene_soat" id="edit_soat"' + (d.tiene_soat ? ' checked' : '') + '>' +
+              '<label class="form-check-label fw-semibold" for="edit_soat">SOAT</label>' +
             '</div>' +
           '</div>' +
-          '<div class="col-md-4">' +
-            '<div class="form-check form-switch">' +
-              '<input class="form-check-input" type="checkbox" name="tiene_revision_tecnica" id="edit_revision"' + (d.tiene_revision_tecnica ? ' checked' : '') + '>' +
-              '<label class="form-check-label" for="edit_revision">Revisión Técnica</label>' +
+          '<div class="col-md-3">' +
+            '<div class="form-check form-switch card p-2 border-0 bg-light">' +
+              '<input class="form-check-input ms-0 me-2" type="checkbox" name="tiene_revision_tecnica" id="edit_revision"' + (d.tiene_revision_tecnica ? ' checked' : '') + '>' +
+              '<label class="form-check-label fw-semibold" for="edit_revision">Rev. Técnica</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="col-md-3">' +
+            '<div class="form-check form-switch card p-2 border-0 bg-light border-warning">' +
+              '<input class="form-check-input ms-0 me-2" type="checkbox" name="con_garantia_mobiliaria" id="edit_garantia"' + (d.con_garantia_mobiliaria ? ' checked' : '') + '>' +
+              '<label class="form-check-label fw-bold text-warning-emphasis" for="edit_garantia" title="Inscrita en SUNARP">Garantía Mobiliaria</label>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -846,7 +1137,7 @@ function editarImposicion(id) {
         '</div>' +
         '<div class="mt-3">' +
           '<label class="form-label fw-semibold">Comentario del cambio</label>' +
-          '<input type="text" name="comentario_cambio" class="form-control" placeholder="Describa brevemente los cambios realizados..." required>' +
+          '<input type="text" name="comentario_cambio" class="form-control" placeholder="Describa brevemente los cambios realizados...">' +
         '</div>' +
         '<div class="modal-footer mt-4 px-0 pb-0">' +
           '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fa-solid fa-times me-2"></i>Cancelar</button>' +
@@ -858,45 +1149,88 @@ function editarImposicion(id) {
       
       $('#formEditarImposicion').on('submit', function(e) {
         e.preventDefault();
-        
+
+        // ✅ VALIDACIÓN: Comentario de cambio
+        const comentario = $(this).find('input[name="comentario_cambio"]').val().trim();
+        if (!comentario) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Campo obligatorio',
+            text: 'Debe describir brevemente los cambios realizados.',
+            confirmButtonColor: '#f0ad4e'
+          });
+          return;
+        }
+
+        // ✅ VALIDACIÓN: Fecha de Trámite
+        const fechaTramite = $(this).find('input[name="fecha_tramite"]').val();
+        if (!fechaTramite) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Campo obligatorio',
+            text: 'Debe ingresar una Fecha de Trámite antes de continuar.',
+            confirmButtonColor: '#f0ad4e'
+          });
+          return;
+        }
+
+        const formRef = this;
+
+        // ✅ CONFIRMACIÓN antes de actualizar
         Swal.fire({
-          title: 'Guardando...',
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          willOpen: function() { Swal.showLoading(); }
-        });
-        
-        $.ajax({
-          type: 'POST',
-          url: $(this).attr('action'),
-          data: new FormData(this),
-          processData: false,
-          contentType: false,
-          success: function(res) {
-            if (res.ok) {
-              Swal.fire({
-                icon: 'success',
-                title: '¡Actualizado!',
-                text: res.message,
-                confirmButtonColor: '#198754'
-              }).then(function() { location.reload(); });
-            } else {
+          title: '¿Guardar cambios?',
+          text: '¿Desea actualizar los datos de esta imposición?',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#0d6efd',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: '<i class="fa-solid fa-save me-2"></i>Sí, actualizar',
+          cancelButtonText: 'Cancelar'
+        }).then(result => {
+          if (!result.isConfirmed) return;
+
+          Swal.fire({
+            title: 'Guardando...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => Swal.showLoading()
+          });
+
+          $.ajax({
+            type: 'POST',
+            url: $(formRef).attr('action'),
+            data: new FormData(formRef),
+            processData: false,
+            contentType: false,
+            success: function(res) {
+              if (res.ok) {
+                Swal.fire({
+                  icon: 'success',
+                  title: '¡Actualizado!',
+                  text: res.message,
+                  confirmButtonColor: '#198754'
+                }).then(() => {
+                  $('#modalEditarImposicion').modal('hide');
+                  cargarImposiciones(currentPage);
+                });
+              } else {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: res.error,
+                  confirmButtonColor: '#dc3545'
+                });
+              }
+            },
+            error: function(xhr) {
               Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: res.error,
+                text: xhr.responseJSON?.error || 'Error al procesar',
                 confirmButtonColor: '#dc3545'
               });
             }
-          },
-          error: function(xhr) {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: xhr.responseJSON?.error || 'Error al procesar',
-              confirmButtonColor: '#dc3545'
-            });
-          }
+          });
         });
       });
       
@@ -909,7 +1243,7 @@ function editarImposicion(id) {
         confirmButtonColor: '#dc3545'
       });
     }
-  }).fail(function() {
+  }).fail(() => {
     Swal.close();
     Swal.fire({
       icon: 'error',
@@ -920,13 +1254,10 @@ function editarImposicion(id) {
   });
 }
 
-// ========================================
-// FUNCIÓN: CAMBIAR ESTADO
-// ========================================
 function cambiarEstado(id, estadoActual) {
   $('#id_imposicion_estado').val(id);
   
-  var nuevoEstado = 'en_tramite';
+  let nuevoEstado = 'en_tramite';
   if (estadoActual === 'pendiente') {
     nuevoEstado = 'en_tramite';
   } else if (estadoActual === 'en_tramite') {
@@ -938,9 +1269,9 @@ function cambiarEstado(id, estadoActual) {
 }
 
 function confirmarCambioEstado() {
-  var id = $('#id_imposicion_estado').val();
-  var nuevoEstado = $('#nuevo_estado').val();
-  var comentario = $('#modalCambiarEstado').find('textarea[name="comentario"]').val();
+  const id = $('#id_imposicion_estado').val();
+  const nuevoEstado = $('#nuevo_estado').val();
+  const comentario = $('#modalCambiarEstado').find('textarea[name="comentario"]').val();
   
   if (!comentario.trim()) {
     Swal.fire({
@@ -956,7 +1287,7 @@ function confirmarCambioEstado() {
     title: 'Procesando...',
     allowOutsideClick: false,
     showConfirmButton: false,
-    willOpen: function() { Swal.showLoading(); }
+    willOpen: () => Swal.showLoading()
   });
   
   $.post('/imposicion-placas/cambiar-estado/' + id + '/', {
@@ -970,7 +1301,11 @@ function confirmarCambioEstado() {
         title: '¡Estado actualizado!',
         text: res.message,
         confirmButtonColor: '#198754'
-      }).then(function() { location.reload(); });
+      }).then(() => {
+        $('#modalCambiarEstado').find('textarea[name="comentario"]').val('');
+        $('#modalCambiarEstado').modal('hide');
+        cargarImposiciones(currentPage);
+      });
     } else {
       Swal.fire({
         icon: 'error',
@@ -979,7 +1314,7 @@ function confirmarCambioEstado() {
         confirmButtonColor: '#dc3545'
       });
     }
-  }).fail(function(xhr) {
+  }).fail(xhr => {
     Swal.fire({
       icon: 'error',
       title: 'Error',
@@ -989,28 +1324,376 @@ function confirmarCambioEstado() {
   });
 }
 
-// ========================================
-// FUNCIÓN: ELIMINAR IMPOSICIÓN
-// ========================================
 function eliminarImposicion(id) {
   Swal.fire({
     title: '¿Eliminar imposición?',
-    text: 'Esta acción no se puede deshacer',
+    html: 'Esta acción <strong>desactivará</strong> el registro.<br>¿Está seguro de continuar?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#dc3545',
     cancelButtonColor: '#6c757d',
     confirmButtonText: '<i class="fa-solid fa-trash me-2"></i>Sí, eliminar',
     cancelButtonText: 'Cancelar'
-  }).then(function(result) {
-    if (result.isConfirmed) {
-      window.location.href = '/imposicion-placas/eliminar/' + id + '/';
+  }).then(result => {
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+      title: 'Eliminando...',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      willOpen: () => Swal.showLoading()
+    });
+
+    $.post('/imposicion-placas/eliminar/' + id + '/', {
+      csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').first().val()
+    }, function(res) {
+      if (res.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: '¡Eliminado!',
+          text: res.message,
+          confirmButtonColor: '#198754'
+        }).then(() => cargarImposiciones(currentPage));
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: res.error || 'No se pudo eliminar el registro',
+          confirmButtonColor: '#dc3545'
+        });
+      }
+    }).fail(xhr => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: xhr.responseJSON?.error || 'Error al procesar la solicitud',
+        confirmButtonColor: '#dc3545'
+      });
+    });
+  });
+}
+
+let currentPage = 1;
+
+function cargarImposiciones(page = 1) {
+  currentPage = page;
+  const search = $('#buscarImposicion').val();
+  const estadoTramite = $('#filtroEstadoTramite').val();
+  const fechaDesde = $('#filtroFechaDesde').val();
+  const fechaHasta = $('#filtroFechaHasta').val();
+  
+  $('#tbodyImposiciones').html('<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Cargando datos...</p></td></tr>');
+  
+  $.ajax({
+    url: '/imposicion-placas/api/listar/',
+    data: {
+      page: page,
+      search: search,
+      estado_tramite: estadoTramite,
+      fecha_desde: fechaDesde,
+      fecha_hasta: fechaHasta
+    },
+    success: function(res) {
+      if (res.estadisticas) {
+        $('#stat-total').text(res.estadisticas.total);
+        $('#stat-pendientes').text(res.estadisticas.pendientes);
+        $('#stat-entramite').text(res.estadisticas.en_tramite);
+        $('#stat-completados').text(res.estadisticas.completados);
+      }
+      
+      const tbody = $('#tbodyImposiciones');
+      tbody.empty();
+      
+      if (res.data.length === 0) {
+        tbody.html('<tr><td colspan="9" class="text-center text-muted py-4"><i class="fa-solid fa-inbox fa-3x mb-3 d-block"></i>No hay imposiciones de placas registradas</td></tr>');
+      } else {
+        res.data.forEach((imp, index) => {
+          tbody.append(renderFilaImposicion(imp, index + 1 + (page - 1) * res.per_page));
+        });
+      }
+      
+      renderPaginacion(res.total_records, res.page, res.per_page);
+    },
+    error: function() {
+      $('#tbodyImposiciones').html('<tr><td colspan="9" class="text-center text-danger py-4">Error al cargar los datos</td></tr>');
     }
   });
 }
+
+function renderFilaImposicion(imp, index) {
+  let placaBadge = imp.numero_placa ? 
+    `<span class="badge bg-dark fs-6">${imp.numero_placa}</span>` : 
+    `<span class="badge bg-secondary">Sin asignar</span>`;
+    
+  let tipoBadge = '';
+  if (imp.tipo_placa === 'nueva') {
+      tipoBadge = '<span class="badge bg-success">Nueva</span>';
+  } else if (imp.tipo_placa === 'transferencia') {
+      tipoBadge = '<span class="badge bg-info">Transferencia</span>';
+  } else {
+      tipoBadge = '<span class="badge bg-warning text-dark">Duplicado</span>';
+  }
+
+  let estadoBadge = '';
+  if (imp.estado_tramite === 'pendiente') {
+    estadoBadge = `<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Pendiente</span>`;
+  } else if (imp.estado_tramite === 'en_tramite') {
+    estadoBadge = `<span class="badge bg-info"><i class="fa-solid fa-spinner me-1"></i>En Trámite</span>`;
+  } else if (imp.estado_tramite === 'completado') {
+    estadoBadge = `<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Completado</span>`;
+  } else {
+    estadoBadge = `<span class="badge bg-danger"><i class="fa-solid fa-ban me-1"></i>Cancelado</span>`;
+  }
+  
+  let slaBadge = '';
+  if (imp.estado_tramite !== 'completado' && imp.estado_tramite !== 'cancelado') {
+    if (imp.dias_en_tramite <= 7) {
+      slaBadge = `<span class="badge bg-success ms-1" title="Tiempo normal"><i class="fa-solid fa-clock me-1"></i>${imp.dias_en_tramite} d</span>`;
+    } else if (imp.dias_en_tramite <= 15) {
+      slaBadge = `<span class="badge bg-warning text-dark ms-1" title="Alerta de tiempo"><i class="fa-solid fa-exclamation-triangle me-1"></i>${imp.dias_en_tramite} d</span>`;
+    } else {
+      slaBadge = `<span class="badge bg-danger ms-1" title="Retrasado"><i class="fa-solid fa-skull-crossbones me-1"></i>${imp.dias_en_tramite} d</span>`;
+    }
+  }
+  
+  let acciones = `<div class="btn-group btn-group-sm">
+    <button type="button" class="btn btn-info" onclick="verDetalle(${imp.id})" title="Ver Detalle">
+      <i class="fa-solid fa-eye"></i>
+    </button>`;
+    
+  if (imp.puede_editar) {
+    acciones += `
+    <button type="button" class="btn btn-primary" onclick="editarImposicion(${imp.id})" title="Editar">
+      <i class="fa-solid fa-edit"></i>
+    </button>`;
+  }
+  
+  if (imp.puede_editar && imp.estado_tramite !== 'completado' && imp.estado_tramite !== 'cancelado') {
+    acciones += `
+    <button type="button" class="btn btn-success" onclick="cambiarEstado(${imp.id}, '${imp.estado_tramite}')" title="Cambiar Estado">
+      <i class="fa-solid fa-exchange-alt"></i>
+    </button>`;
+  }
+  
+  acciones += `
+    <a href="/imposicion-placas/imprimir/${imp.id}/" class="btn btn-secondary" target="_blank" title="Imprimir Constancia">
+      <i class="fa-solid fa-print"></i>
+    </a>`;
+    
+  if (imp.estado_tramite === 'completado') {
+    acciones += `
+    <a href="/imposicion-placas/acta-entrega/${imp.id}/" class="btn btn-warning text-dark" target="_blank" title="Imprimir Acta de Entrega">
+      <i class="fa-solid fa-file-signature"></i>
+    </a>`;
+  }
+    
+  if (imp.puede_eliminar && imp.estado_tramite === 'pendiente') {
+    acciones += `
+    <button type="button" class="btn btn-danger" onclick="eliminarImposicion(${imp.id})" title="Eliminar">
+      <i class="fa-solid fa-trash"></i>
+    </button>`;
+  }
+  
+  acciones += `</div>`;
+
+  return `<tr>
+    <td class="fw-semibold">${index}</td>
+    <td>
+      <span class="fw-semibold">${imp.cliente}</span><br>
+      <small class="text-muted">${imp.doc_cliente}</small>
+    </td>
+    <td>
+      <span class="fw-semibold">${imp.vehiculo}</span><br>
+    </td>
+    <td>${placaBadge}</td>
+    <td>${tipoBadge}</td>
+    <td>${imp.fecha_tramite}</td>
+    <td class="text-end fw-bold">S/ ${imp.total_costo}</td>
+    <td class="text-center">${estadoBadge}<br>${slaBadge}</td>
+    <td class="text-center">${acciones}</td>
+  </tr>`;
+}
+
+function renderPaginacion(totalRecords, currentPage, perPage) {
+  const totalPages = Math.ceil(totalRecords / perPage);
+  const ul = $('#paginacionImposiciones');
+  ul.empty();
+  
+  if (totalRecords === 0) {
+    $('#infoPaginacion').text('Mostrando 0 registros');
+    return;
+  }
+  
+  const start = (currentPage - 1) * perPage + 1;
+  const end = Math.min(currentPage * perPage, totalRecords);
+  $('#infoPaginacion').text(`Mostrando ${start} a ${end} de ${totalRecords} registros`);
+  
+  if (totalPages <= 1) return;
+  
+  ul.append(`<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="cargarImposiciones(${currentPage - 1}); return false;">Anterior</a>
+  </li>`);
+  
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, currentPage + 2);
+  
+  for (let i = startPage; i <= endPage; i++) {
+    ul.append(`<li class="page-item ${i === currentPage ? 'active' : ''}">
+      <a class="page-link" href="#" onclick="cargarImposiciones(${i}); return false;">${i}</a>
+    </li>`);
+  }
+  
+  ul.append(`<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="cargarImposiciones(${currentPage + 1}); return false;">Siguiente</a>
+  </li>`);
+}
+
+$(document).ready(function() {
+  cargarImposiciones(1);
+  
+  let typingTimer;
+  $('#buscarImposicion').on('input', function() {
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(function() {
+      cargarImposiciones(1);
+    }, 400);
+  });
+  
+  $('#filtroEstadoTramite, #filtroFechaDesde, #filtroFechaHasta').on('change', function() {
+    cargarImposiciones(1);
+  });
+});
 </script>
 
 <style>
+  /* ========================================
+     ⭐ ESTILOS DEL SISTEMA DE AUTOCOMPLETE
+     ======================================== */
+  .autocomplete-wrapper {
+    position: relative;
+  }
+
+  .autocomplete-input {
+    width: 100%;
+  }
+
+  .autocomplete-with-arrow {
+    padding-right: 40px;
+  }
+
+  .autocomplete-arrow {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px 8px;
+    color: #6c757d;
+    transition: all 0.2s ease;
+    z-index: 10;
+  }
+
+  .autocomplete-arrow:hover {
+    color: #495057;
+  }
+
+  .autocomplete-arrow i {
+    font-size: 14px;
+  }
+
+  .autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: none;
+    margin-top: 2px;
+  }
+
+  .autocomplete-wrapper:focus-within .autocomplete-input {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .autocomplete-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.15s ease-in-out;
+  }
+
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+
+  .autocomplete-item:hover {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+  }
+
+  .autocomplete-item.no-results {
+    color: #6c757d;
+    cursor: default;
+    font-style: italic;
+  }
+
+  .autocomplete-item.no-results:hover {
+    background-color: white;
+  }
+
+  .autocomplete-item .badge {
+    font-size: 0.7rem;
+    padding: 0.25em 0.5em;
+    vertical-align: middle;
+  }
+
+  .autocomplete-item .d-flex {
+    width: 100%;
+    font-size: 0.9rem;
+  }
+
+  .autocomplete-item strong {
+    color: #495057;
+    font-weight: 600;
+  }
+
+  .autocomplete-item small {
+    color: #6c757d;
+  }
+
+  .autocomplete-results::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .autocomplete-results::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+
+  .autocomplete-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 4px;
+  }
+
+  .autocomplete-results::-webkit-scrollbar-thumb:hover {
+    background: #6c757d;
+  }
+
+  /* ========================================
+     ⭐ ESTILOS GENERALES
+     ======================================== */
   .card-icon {
     width: 48px;
     height: 48px;
@@ -1045,6 +1728,72 @@ function eliminarImposicion(id) {
     position: sticky;
     top: 0;
     z-index: 10;
+  }
+
+  .card-header {
+    border-radius: 10px 10px 0 0 !important;
+  }
+
+  .form-label.fw-semibold {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-label .text-danger {
+    font-weight: 700;
+  }
+
+  /* Animación de carga */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .modal.show .modal-dialog {
+    animation: fadeIn 0.3s ease;
+  }
+
+  /* Asegurar que el autocomplete no se corte y respete el orden de capas */
+  #formNuevaImposicion .card {
+    overflow: visible !important;
+    position: relative;
+  }
+
+  #formNuevaImposicion .card:nth-child(1) { z-index: 10; }
+  #formNuevaImposicion .card:nth-child(2) { z-index: 9; }
+  #formNuevaImposicion .card:nth-child(3) { z-index: 8; }
+  #formNuevaImposicion .card:nth-child(4) { z-index: 7; }
+  #formNuevaImposicion .card:nth-child(5) { z-index: 6; }
+
+  #formNuevaImposicion .card-body {
+    overflow: visible !important;
+  }
+
+  /* Estilos premium para los headers de pasos */
+  .card-header.bg-primary {
+    background: linear-gradient(45deg, #0d6efd, #0dcaf0) !important;
+    border-bottom: none;
+  }
+
+  .card-header.bg-success {
+    background: linear-gradient(45deg, #198754, #20c997) !important;
+    border-bottom: none;
+  }
+
+  .card-header.bg-light {
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef) !important;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .info-card {
+    border-left: 4px solid #0d6efd;
   }
 </style>
 {% endblock %}

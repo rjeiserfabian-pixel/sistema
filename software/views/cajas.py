@@ -86,20 +86,7 @@ def agregarCajas(request):
                 status=400
             )
         
-        # Verificar si la sucursal ya tiene una caja asignada (CLAVE)
-        caja_existente = Caja.objects.filter(
-            id_sucursal=id_sucursal,
-            estado=1
-        ).exists()
-        
-        if caja_existente:
-            return HttpResponse(
-                json.dumps({
-                    'error': 'Esta sucursal ya tiene una caja asignada. Por favor, seleccione otra sucursal.'
-                }),
-                content_type='application/json',
-                status=400
-            )
+        # La validación de una sola caja por sucursal ha sido eliminada para permitir múltiples cajas.
         
         # Verificar si el número de caja ya existe en esa sucursal
         numero_existente = Caja.objects.filter(
@@ -136,10 +123,10 @@ def agregarCajas(request):
         print(f"DEBUG - IntegrityError en agregar: {error_msg}")
         
         # Detectar tipo de error
-        if 'id_sucursal' in error_msg or 'Duplicate entry' in error_msg:
+        if 'numero_caja' in error_msg or 'Duplicate entry' in error_msg:
             return HttpResponse(
                 json.dumps({
-                    'error': 'Esta sucursal ya tiene una caja asignada. Por favor, seleccione otra sucursal.'
+                    'error': 'Ya existe una caja con ese número en esta sucursal.'
                 }),
                 content_type='application/json',
                 status=400
@@ -241,20 +228,7 @@ def editarCajas(request):
                 status=400
             )
         
-        # Verificar si la sucursal ya está siendo usada por OTRA caja (CLAVE)
-        sucursal_en_uso = Caja.objects.filter(
-            id_sucursal=id_sucursal,
-            estado=1
-        ).exclude(id_caja=id_caja).exists()
-        
-        if sucursal_en_uso:
-            return HttpResponse(
-                json.dumps({
-                    'error': 'Esta sucursal ya tiene una caja asignada. Por favor, seleccione otra sucursal.'
-                }),
-                content_type='application/json',
-                status=400
-            )
+        # La validación de una sola caja por sucursal ha sido eliminada.
         
         # Verificar si el número de caja ya está siendo usado en la misma sucursal
         numero_en_uso = Caja.objects.filter(
@@ -291,10 +265,10 @@ def editarCajas(request):
         print(f"DEBUG - IntegrityError: {error_msg}")
         
         # Detectar tipo de error
-        if 'id_sucursal' in error_msg or 'Duplicate entry' in error_msg:
+        if 'numero_caja' in error_msg or 'Duplicate entry' in error_msg:
             return HttpResponse(
                 json.dumps({
-                    'error': 'Esta sucursal ya tiene una caja asignada. Por favor, seleccione otra sucursal.'
+                    'error': 'Ya existe una caja con ese número en esta sucursal.'
                 }),
                 content_type='application/json',
                 status=400

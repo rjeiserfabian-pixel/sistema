@@ -42,23 +42,62 @@ def permisos(request):
         
         # Ordenar hijos por orden
         for nombre, grupo in modulos_organizados.items():
-            grupo['hijos'].sort(key=lambda x: x.orden)
+            grupo['hijos'].sort(key=lambda x: x.orden if x.orden is not None else 0)
+            
+        # Ordenar el diccionario principal por el orden del padre
+        modulos_organizados = dict(sorted(
+            modulos_organizados.items(),
+            key=lambda item: item[1]['padre'].orden if item[1]['padre'].orden is not None else 0
+        ))
         
         # Datos para gestión de permisos
-        permisos2 = Detalletipousuarioxmodulos.objects.all()
+        permisos2 = Detalletipousuarioxmodulos.objects.filter(idtipousuario__estado=1)
         modulos = Modulos.objects.filter(estado=1)
         tipoUsuarios = Tipousuario.objects.filter(estado=1)
         
         permisos_por_tipo_usuario = defaultdict(list)
         for permiso in permisos2:
             permisos_por_tipo_usuario[permiso.idtipousuario.nombretipousuario].append(permiso)
+        
+        # Organizar TODOS los módulos activos en estructura jerárquica para el modal
+        todos_modulos_organizados = {}
+        modulos_con_padre = modulos.select_related('idmodulo_padre')
+        
+        for modulo in modulos_con_padre:
+            if modulo.idmodulo_padre:
+                padre = modulo.idmodulo_padre
+                key = padre.idmodulo
+                if key not in todos_modulos_organizados:
+                    todos_modulos_organizados[key] = {
+                        'padre': padre,
+                        'hijos': []
+                    }
+                todos_modulos_organizados[key]['hijos'].append(modulo)
+            else:
+                # Módulo sin padre (es raíz)
+                key = modulo.idmodulo
+                if key not in todos_modulos_organizados:
+                    todos_modulos_organizados[key] = {
+                        'padre': modulo,
+                        'hijos': []
+                    }
+        
+        # Ordenar por orden del padre
+        todos_modulos_organizados = dict(sorted(
+            todos_modulos_organizados.items(),
+            key=lambda item: item[1]['padre'].orden if item[1]['padre'].orden is not None else 0
+        ))
+        # Ordenar hijos
+        for key, grupo in todos_modulos_organizados.items():
+            grupo['hijos'].sort(key=lambda x: x.orden if x.orden is not None else 0)
             
         data = {
             'permisos_por_tipo_usuario': permisos_por_tipo_usuario.items(),
             'permisos': permisos,
             'modulos_organizados': modulos_organizados,
             'modulos': modulos,
-            'tipoUsuarios': tipoUsuarios
+            'tipoUsuarios': tipoUsuarios,
+            'todos_modulos_organizados': todos_modulos_organizados.values(),
         }
         
         return render(request, 'permisos/permisos.html', data)

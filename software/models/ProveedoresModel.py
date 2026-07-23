@@ -5,12 +5,13 @@ from software.models.Tipo_entidadModel import TipoEntidad
 
 class Proveedor(models.Model):
     idproveedor = models.AutoField(primary_key=True)
-    numdoc = models.CharField(max_length=255, unique=True, verbose_name="Número de Documento")
+    # Único solo entre proveedores activos (estado=1). Se valida a nivel de vista.
+    numdoc = models.CharField(max_length=255, verbose_name="Número de Documento")
     razonsocial = models.CharField(max_length=255, verbose_name="Razón Social/Nombre Completo")
     estado = models.IntegerField(default=1, verbose_name="Estado")
     nombre_comercial = models.CharField(max_length=255, blank=True, null=True, verbose_name="Nombre Comercial")
     direccion = models.CharField(max_length=255, blank=True, null=True, verbose_name="Dirección")
-    telefono = models.CharField(max_length=30, blank=True, null=True, verbose_name="Teléfono")
+    telefono = models.CharField(max_length=150, blank=True, null=True, verbose_name="Teléfono")
     email = models.EmailField(max_length=255, blank=True, null=True, verbose_name="Correo Electrónico")
     
     # Nuevos campos para información SUNAT/RENIEC

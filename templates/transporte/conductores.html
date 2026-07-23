@@ -1,0 +1,313 @@
+{% extends 'plantilla/base.html' %}
+{% load static %}
+
+{% block main %}
+<main id="main" class="main">
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="fw-bold text-primary"><i class="fas fa-id-badge me-2"></i>Conductores de Logística</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'index' %}">Inicio</a></li>
+          <li class="breadcrumb-item">Transporte</li>
+          <li class="breadcrumb-item active">Conductores</li>
+        </ol>
+      </nav>
+    </div>
+    <button class="btn btn-dark rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalConductor">
+      <i class="bi bi-person-plus me-2"></i>Nuevo Conductor
+    </button>
+  </div>
+
+  <section class="section">
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-body p-4">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle custom-table">
+                <thead>
+                  <tr>
+                    <th>Nombre Completo</th>
+                    <th>DNI</th>
+                    <th>Licencia</th>
+                    <th>Teléfono</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for c in conductores %}
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <div class="avatar-circle me-3">{{ c.nombre_completo|slice:":1" }}</div>
+                        <span class="fw-bold">{{ c.nombre_completo }}</span>
+                      </div>
+                    </td>
+                    <td>{{ c.dni }}</td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <span class="badge bg-dark-light text-dark mb-1">{{ c.licencia_conducir }}</span>
+                        <small class="text-muted">Clase: {{ c.tipo_licencia }}</small>
+                      </div>
+                    </td>
+                    <td>{{ c.telefono|default:"-" }}</td>
+                    <td class="text-center">
+                      {% if c.estado == 'disponible' %}
+                        <span class="badge bg-success-light text-success rounded-pill px-3">Disponible</span>
+                      {% elif c.estado == 'en_viaje' %}
+                        <span class="badge bg-info-light text-info rounded-pill px-3">En Viaje</span>
+                      {% else %}
+                        <span class="badge bg-secondary-light text-secondary rounded-pill px-3">{{ c.estado }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-center">
+                      <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-outline-dark rounded-circle" 
+                                onclick="editarConductor('{{ c.id_transporte_conductor }}', '{{ c.nombre_completo }}', '{{ c.dni }}', '{{ c.licencia_conducir }}', '{{ c.tipo_licencia }}', '{{ c.telefono }}', '{{ c.estado }}')"
+                                title="Editar">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <a href="{% url 'eliminar_conductor' c.id_transporte_conductor %}" 
+                           class="btn btn-sm btn-outline-danger rounded-circle btn-delete" 
+                           title="Eliminar">
+                          <i class="bi bi-trash"></i>
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No hay conductores registrados</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL CONDUCTOR -->
+  <div class="modal fade" id="modalConductor" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-dark text-white rounded-top-4">
+          <h5 class="modal-title fw-bold" id="modalTitle">Nuevo Conductor</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formConductor" method="post" action="{% url 'agregar_conductor' %}">
+          {% csrf_token %}
+          <input type="hidden" name="id_transporte_conductor" id="id_transporte_conductor">
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 mb-3 border-0 rounded-3 d-flex align-items-center">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              <small><strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) y los datos se completarán automáticamente.</small>
+            </div>
+
+            <div id="alertCargando" class="alert alert-warning py-2 mb-3 d-none">
+              <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+              <small>Consultando a RENIEC...</small>
+            </div>
+
+            <div id="alertError" class="alert alert-danger py-2 mb-3 d-none">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              <small id="mensajeError"></small>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">Nombre Completo <span class="text-danger">*</span></label>
+                <input type="text" name="nombre_completo" id="nombre_completo" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">DNI <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="text" name="dni" id="dni" class="form-control" required maxlength="8">
+                  <button class="btn btn-primary" type="button" id="btnConsultarDNI">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Teléfono</label>
+                <input type="text" name="telefono" id="telefono" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">N° Licencia <span class="text-danger">*</span></label>
+                <input type="text" name="licencia_conducir" id="licencia_conducir" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Tipo de Licencia <span class="text-danger">*</span></label>
+                <input type="text" name="tipo_licencia" id="tipo_licencia" class="form-control" placeholder="Ej: AIIB" required>
+              </div>
+              <div class="col-md-12" id="divEstado" style="display:none;">
+                <label class="form-label fw-semibold">Estado</label>
+                <select name="estado" id="estado" class="form-select">
+                  <option value="disponible">Disponible</option>
+                  <option value="en_viaje">En Viaje</option>
+                  <option value="licencia">Con Licencia</option>
+                  <option value="suspendido">Suspendido</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-0 p-4">
+            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-dark rounded-pill px-4 shadow-sm">Guardar Conductor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function editarConductor(id, nombre, dni, licencia, tipo_lic, tlf, estado) {
+    $('#modalTitle').text('Editar Conductor');
+    $('#formConductor').attr('action', '{% url "editar_conductor" %}');
+    $('#id_transporte_conductor').val(id);
+    $('#nombre_completo').val(nombre);
+    $('#dni').val(dni);
+    $('#licencia_conducir').val(licencia);
+    $('#tipo_licencia').val(tipo_lic);
+    $('#telefono').val(tlf);
+    $('#estado').val(estado);
+    $('#divEstado').show();
+    $('#modalConductor').modal('show');
+}
+
+$('#modalConductor').on('hidden.bs.modal', function () {
+    $('#modalTitle').text('Nuevo Conductor');
+    $('#formConductor').attr('action', '{% url "agregar_conductor" %}');
+    $('#id_transporte_conductor').val('');
+    $('#formConductor')[0].reset();
+    $('#divEstado').hide();
+});
+
+// DETECTAR MENSAJES DE DJANGO Y MOSTRAR SWEETALERT
+{% if messages %}
+  {% for message in messages %}
+    Swal.fire({
+      icon: '{% if message.tags == "error" %}error{% else %}success{% endif %}',
+      title: '{% if message.tags == "error" %}¡Error!{% else %}¡Logrado!{% endif %}',
+      text: '{{ message }}',
+      timer: 3000,
+      showConfirmButton: false
+    });
+  {% endfor %}
+{% endif %}
+
+$('.btn-delete').click(function(e) {
+    e.preventDefault();
+    const url = $(this).attr('href');
+    Swal.fire({
+        title: '¿Eliminar conductor?',
+        text: "Se borrarán sus datos del sistema.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = url;
+        }
+    });
+});
+
+// ⭐ CONSULTA RENIEC PARA CONDUCTORES
+async function consultarDNIConductor(numero) {
+  const alertCargando = $('#alertCargando');
+  const alertError = $('#alertError');
+  
+  if (numero.length !== 8) return;
+
+  // Mostrar loading
+  alertCargando.removeClass('d-none');
+  alertError.addClass('d-none');
+  
+  try {
+    const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
+    const data = await response.json();
+    
+    alertCargando.addClass('d-none');
+    
+    if (data.success) {
+      // Autocompletar campos
+      $('#nombre_completo').val(data.razonsocial).addClass('campo-autocompletado');
+      
+      // Remover animación después de 1.5s
+      setTimeout(() => {
+        $('.campo-autocompletado').removeClass('campo-autocompletado');
+      }, 1500);
+      
+    } else {
+      alertError.removeClass('d-none');
+      $('#mensajeError').text(data.error || 'No se encontró el DNI');
+    }
+  } catch (error) {
+    alertCargando.addClass('d-none');
+    alertError.removeClass('d-none');
+    $('#mensajeError').text('Error de conexión. Intente nuevamente.');
+    console.error('Error:', error);
+  }
+}
+
+$('#btnConsultarDNI').click(function() {
+  const dni = $('#dni').val().trim();
+  if (dni.length === 8) {
+    consultarDNIConductor(dni);
+  } else {
+    Swal.fire('DNI inválido', 'El DNI debe tener 8 dígitos', 'warning');
+  }
+});
+
+$('#dni').keypress(function(e) {
+  if (e.which === 13) {
+    e.preventDefault();
+    const dni = $(this).val().trim();
+    if (dni.length === 8) consultarDNIConductor(dni);
+  }
+});
+</script>
+<style>
+  .bg-success-light { background-color: rgba(40, 167, 69, 0.1); }
+  .bg-info-light { background-color: rgba(23, 162, 184, 0.1); }
+  .bg-dark-light { background-color: rgba(33, 37, 41, 0.1); }
+  .avatar-circle {
+    width: 35px;
+    height: 35px;
+    background-color: #212529;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+  }
+  .custom-table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+  }
+  .campo-autocompletado {
+    animation: highlight 1.5s ease-out;
+  }
+  @keyframes highlight {
+    0% { background-color: rgba(13, 110, 253, 0.2); }
+    100% { background-color: transparent; }
+  }
+</style>
+{% endblock %}

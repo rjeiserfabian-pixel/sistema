@@ -1,0 +1,186 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<main id="main" class="main">
+  <!-- Encabezado -->
+  <div class="pagetitle d-flex justify-content-between align-items-center">
+    <h1 class="fw-bold text-primary">
+      <i class="fas fa-car-side me-2"></i>Configuración Vehicular
+    </h1>
+    <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal"
+      data-bs-target="#myModalAgregar">
+      <i class="fa-solid fa-circle-plus me-2"></i>Agregar Configuración
+    </button>
+  </div>
+
+  <nav aria-label="breadcrumb" class="mt-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+      <li class="breadcrumb-item">Almacén</li>
+      <li class="breadcrumb-item active">Configuración Vehicular</li>
+    </ol>
+  </nav>
+
+  <!-- Contenido -->
+  <section class="section dashboard mt-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Listado de configuraciones</h5>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle datatable">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Configuración</th>
+                <th scope="col" class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for registro in registros %}
+              <tr>
+                <td class="fw-semibold">{{ forloop.counter }}</td>
+                <td>{{ registro.nombre }}</td>
+                <td class="text-center">
+                  <!-- Editar -->
+                  <a type="button" class="btn btn-sm btn-light border shadow-sm me-2" data-bs-toggle="modal"
+                    data-bs-target="#myModalEditar{{ registro.id_configuracion }}">
+                    <i class="fa-solid fa-pen-to-square text-primary"></i>
+                  </a>
+                  <!-- Eliminar -->
+                  <a href="{% url 'eliminar_configuracion' id=registro.id_configuracion %}"
+                    class="btn btn-sm btn-light border shadow-sm eliminar"
+                    onclick="return confirmarEliminar('{{ registro.id_configuracion }}', this)">
+                    <i class="fa-solid fa-trash text-danger"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modales de Edición -->
+  {% for registro in registros %}
+  <div class="modal fade" id="myModalEditar{{ registro.id_configuracion }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Configuración</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la configuración <span
+                class="text-danger">*</span></label>
+            <input type="text" id="nombreEditar{{ registro.id_configuracion }}"
+              value="{{ registro.nombre }}" class="form-control rounded-pill">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar-confirm"
+              data-id="{{ registro.id_configuracion }}">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar Cambios
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill"
+              data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Modal Agregar -->
+  <div class="modal fade" id="myModalAgregar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-circle-plus me-2"></i>Agregar Configuración</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la configuración <span class="text-danger">*</span></label>
+            <input type="text" id="nombreAgregar" class="form-control rounded-pill"
+              placeholder="Ej: Lineal, Trimóvil...">
+          </div>
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardar">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  var CSRF_TOKEN = '{{ csrf_token }}';
+  var URL_AGREGAR = "{% url 'agregar_configuracion' %}";
+  var URL_EDITAR = "{% url 'editar_configuracion' %}";
+  var URL_LISTA = "{% url 'configuracion_vehicular' %}";
+
+  $(function () {
+    // ==================== AGREGAR ====================
+    $('#btnGuardar').on('click', function () {
+      var nombre = $('#nombreAgregar').val().trim();
+      if (!nombre) {
+        Swal.fire({ title: 'Campo requerido', text: 'Ingrese el nombre de la configuración.', icon: 'warning' });
+        return;
+      }
+      $.post(URL_AGREGAR, { nombre: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Agregado!', text: 'Configuración registrada correctamente.', icon: 'success' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo agregar.', icon: 'error' });
+          }
+        });
+    });
+
+    // ==================== EDITAR ====================
+    $(document).on('click', '.btn-editar-confirm', function () {
+      var id = $(this).data('id');
+      var nombre = $('#nombreEditar' + id).val().trim();
+
+      if (!nombre) {
+        Swal.fire({ title: 'Campo requerido', text: 'El nombre no puede estar vacío.', icon: 'warning' });
+        return;
+      }
+
+      $.post(URL_EDITAR, { id: id, nombre: nombre, csrfmiddlewaretoken: CSRF_TOKEN })
+        .done(function (res) {
+          if (res.ok) {
+            Swal.fire({ title: '¡Actualizado!', text: 'Configuración actualizada correctamente.', icon: 'success' })
+              .then(() => window.location.href = URL_LISTA);
+          } else {
+            Swal.fire({ title: 'Error', text: res.error || 'No se pudo actualizar.', icon: 'error' });
+          }
+        });
+    });
+  });
+
+  function confirmarEliminar(id, enlace) {
+    let urlEliminar = $(enlace).attr('href');
+    Swal.fire({
+      title: '¿Seguro que quieres eliminar esta configuración?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = urlEliminar;
+      }
+    });
+    return false;
+  }
+</script>
+{% endblock %}

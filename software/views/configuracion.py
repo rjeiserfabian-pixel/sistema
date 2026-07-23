@@ -1,11 +1,15 @@
 from django.shortcuts import redirect, render, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
-from django.core.files.storage import FileSystemStorage
 from django.db import transaction
+from decimal import Decimal
+import os
+import cloudinary.uploader
 from software.models.empresaModel import Empresa
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
-import os
+from software.models.RegionModel import Region
+from software.models.ProvinciaModel import Provincia
+from software.models.DistritoModel import Distrito
 
 
 def configuracion(request):
@@ -27,11 +31,15 @@ def configuracion(request):
         # Obtener datos de empresa
         empresas = Empresa.objects.all()
         
+        # Obtener regiones para los selectores de ubicación (solo activas)
+        regiones = Region.objects.filter(estado=1).order_by('nombre_region')
+        
         # Obtener modo de desarrollo de la primera empresa
         modo = empresas.first().mododev if empresas.exists() else 0
         
         context = {
             'empresas': empresas,
+            'regiones': regiones,
             'modo': modo,
             'permisos': permisos
         }
@@ -74,6 +82,14 @@ def editarEmpresa(request):
         pagina = request.POST.get('pagina', '').strip()
         publicidad = request.POST.get('publicidad', '').strip()
         
+        gerente_general = request.POST.get('gerenteGeneral', '').strip()
+        dni_gerente = request.POST.get('dniGerente', '').strip()
+        celular_gerente = request.POST.get('celularGerente', '').strip()
+        
+        # UltraMsg (WhatsApp)
+        ultramsg_instance = request.POST.get('ultramsg_instance', '').strip()
+        ultramsg_token = request.POST.get('ultramsg_token', '').strip()
+        
         # Validaciones básicas
         if not idempresa:
             messages.error(request, 'ID de empresa no proporcionado')
@@ -114,32 +130,119 @@ def editarEmpresa(request):
             empresa.slogan = slogan if slogan else None
             empresa.pagina = pagina if pagina else None
             empresa.publicidad = publicidad if publicidad else None
+            empresa.gerente_general = gerente_general if gerente_general else None
+            empresa.dni_gerente = dni_gerente if dni_gerente else None
+            empresa.celular_gerente = celular_gerente if celular_gerente else None
+            
+            # UltraMsg
+            empresa.ultramsg_instance = ultramsg_instance if ultramsg_instance else None
+            empresa.ultramsg_token = ultramsg_token if ultramsg_token else None
+            empresa.agradecimiento = request.POST.get('agradecimiento', '').strip() or None
+            
+            # Gmails
+            gmail_1 = request.POST.get('gmail_1', '').strip()
+            gmail_2 = request.POST.get('gmail_2', '').strip()
+            empresa.gmail_1 = gmail_1 if gmail_1 else None
+            empresa.gmail_2 = gmail_2 if gmail_2 else None
+            
+            # Ubicación del Gerente
+            direccion_gerente = request.POST.get('direccionGerente', '').strip()
+            id_region_gerente = request.POST.get('idRegionGerente')
+            id_provincia_gerente = request.POST.get('idProvinciaGerente')
+            id_distrito_gerente = request.POST.get('idDistritoGerente')
+            
+            empresa.direccion_gerente = direccion_gerente if direccion_gerente else None
+            
+            if id_region_gerente:
+                empresa.id_region_gerente = Region.objects.get(id_region=id_region_gerente)
+            else:
+                empresa.id_region_gerente = None
+                
+            if id_provincia_gerente:
+                empresa.id_provincia_gerente = Provincia.objects.get(id_provincia=id_provincia_gerente)
+            else:
+                empresa.id_provincia_gerente = None
+                
+            if id_distrito_gerente:
+                empresa.id_distrito_gerente = Distrito.objects.get(id_distrito=id_distrito_gerente)
+            else:
+                empresa.id_distrito_gerente = None
+            
+            # Actualizar Parámetros Tributarios
+            igv = request.POST.get('igv')
+            if igv:
+                empresa.igv = Decimal(igv)
+            
+            icbper = request.POST.get('icbper')
+            if icbper:
+                empresa.icbper = Decimal(icbper)
+            
+            isc = request.POST.get('isc')
+            if isc:
+                empresa.isc = Decimal(isc)
+            
+            afectacion = request.POST.get('afectacion_sunat')
+            if afectacion:
+                empresa.afectacion_sunat = int(afectacion)
+            
+            # Actualizar Interés Mora
+            interes_mora_base = request.POST.get('interesMoraBase')
+            if interes_mora_base:
+                empresa.interes_mora_base = Decimal(interes_mora_base)
+            
+            dias_mora_inicio = request.POST.get('diasMoraInicio')
+            if dias_mora_inicio:
+                empresa.dias_mora_inicio = int(dias_mora_inicio)
             
             # Manejo de archivo de logo
             if 'logo' in request.FILES:
                 logo_file = request.FILES['logo']
                 
-                # Validar tipo de archivo
-                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+                # Validar extensión
+                valid_extensions = ['.jpg', '.jpeg', '.png']
                 file_extension = os.path.splitext(logo_file.name)[1].lower()
                 
-                if file_extension not in allowed_extensions:
-                    messages.error(request, 'Formato de imagen no permitido. Use: JPG, PNG, GIF o WEBP')
+                if file_extension not in valid_extensions:
+                    messages.error(request, 'El logo debe ser una imagen (JPG, JPEG o PNG).')
                     return redirect('configuracion')
                 
-                # Validar tamaño (2MB máximo)
                 if logo_file.size > 2 * 1024 * 1024:  # 2MB en bytes
-                    messages.error(request, 'El archivo es demasiado grande. Tamaño máximo: 2MB')
+                    messages.error(request, 'El logo no debe superar los 2MB.')
                     return redirect('configuracion')
                 
-                # Crear carpeta si no existe
-                logo_dir = 'media/logos'
-                os.makedirs(logo_dir, exist_ok=True)
+                # Subir a Cloudinary con public_id estático
+                upload_result = cloudinary.uploader.upload(
+                    logo_file,
+                    folder='logos_empresa',
+                    public_id=f'logo_{ruc}',
+                    overwrite=True
+                )
+                empresa.logo = upload_result['secure_url']
+
+            # Manejo de archivo de logo_ticket
+            if 'logo_ticket' in request.FILES:
+                logo_ticket_file = request.FILES['logo_ticket']
                 
-                # Guardar archivo
-                fs = FileSystemStorage(location=logo_dir)
-                filename = fs.save(f'logo_{ruc}{file_extension}', logo_file)
-                empresa.logo = f'logos/{filename}'
+                # Validar extensión
+                valid_extensions = ['.jpg', '.jpeg', '.png']
+                file_extension = os.path.splitext(logo_ticket_file.name)[1].lower()
+                
+                if file_extension not in valid_extensions:
+                    messages.error(request, 'El logo para ticket debe ser una imagen (JPG, JPEG o PNG).')
+                    return redirect('configuracion')
+                
+                if logo_ticket_file.size > 2 * 1024 * 1024:  # 2MB en bytes
+                    messages.error(request, 'El logo para ticket no debe superar los 2MB.')
+                    return redirect('configuracion')
+                
+                # Subir a Cloudinary con public_id estático
+                upload_result_ticket = cloudinary.uploader.upload(
+                    logo_ticket_file,
+                    folder='logos_empresa',
+                    public_id=f'logo_ticket_{ruc}',
+                    overwrite=True
+                )
+                empresa.logo_ticket = upload_result_ticket['secure_url']
             
             # Guardar cambios
             empresa.save()

@@ -59,65 +59,6 @@
                 </td>
               </tr>
 
-              <!-- Modal Editar -->
-              <!-- Modal Editar -->
-              <div class="modal fade" id="myModal2{{ caja_registro.id_caja }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content rounded-3 shadow-lg">
-                    <div class="modal-header bg-primary text-white">
-                      <h5 class="modal-title">Editar Caja</h5>
-                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                      <form id="formEditarCaja{{ caja_registro.id_caja }}" action="{% url 'editarCajas' %}" method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="idCaja" value="{{ caja_registro.id_caja }}">
-                        
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Nombre de la Caja <span class="text-danger">*</span></label>
-                          <input type="text" name="nameCaja" value="{{ caja_registro.nombre_caja }}" class="form-control rounded-pill" required>
-                        </div>
-
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Número de Caja <span class="text-danger">*</span></label>
-                          <input type="number" name="numeroCaja" value="{{ caja_registro.numero_caja }}" class="form-control rounded-pill" min="1" required>
-                        </div>
-
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Empresa <span class="text-danger">*</span></label>
-                          <select name="idEmpresaEdit{{ caja_registro.id_caja }}" class="form-select rounded-pill empresa-select-edit" data-caja-id="{{ caja_registro.id_caja }}" required>
-                            <option value="">Seleccione una empresa</option>
-                            {% for empresa in empresas_registros %}
-                            <option value="{{ empresa.idempresa }}" {% if empresa.idempresa == caja_registro.id_sucursal.idempresa.idempresa %}selected{% endif %}>
-                              {{ empresa.razonsocial }}
-                            </option>
-                            {% endfor %}
-                          </select>
-                        </div>
-
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Sucursal <span class="text-danger">*</span></label>
-                          <select name="idSucursal" id="sucursalEdit{{ caja_registro.id_caja }}" class="form-select rounded-pill" required>
-                            <option value="">Seleccione una sucursal</option>
-                            {% for sucursal in sucursales_registros %}
-                            {% if sucursal.idempresa.idempresa == caja_registro.id_sucursal.idempresa.idempresa %}
-                            <option value="{{ sucursal.id_sucursal }}" {% if sucursal.id_sucursal == caja_registro.id_sucursal.id_sucursal %}selected{% endif %}>
-                              {{ sucursal.nombre_sucursal }}
-                            </option>
-                            {% endif %}
-                            {% endfor %}
-                          </select>
-                        </div>
-
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar" data-id="{{ caja_registro.id_caja }}">Guardar</button>
-                          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
               {% endfor %}
             </tbody>
           </table>
@@ -125,6 +66,67 @@
       </div>
     </div>
   </section>
+
+  <!-- Modales de Edición -->
+  {% for caja_registro in cajas_registros %}
+  <div class="modal fade" id="myModal2{{ caja_registro.id_caja }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Editar Caja</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditarCaja{{ caja_registro.id_caja }}" action="{% url 'editarCajas' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="idCaja" value="{{ caja_registro.id_caja }}">
+            
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nombre de la Caja <span class="text-danger">*</span></label>
+              <input type="text" name="nameCaja" value="{{ caja_registro.nombre_caja }}" class="form-control rounded-pill" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Número de Caja <span class="text-danger">*</span></label>
+              <input type="number" name="numeroCaja" value="{{ caja_registro.numero_caja }}" class="form-control rounded-pill" min="1" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Empresa <span class="text-danger">*</span></label>
+              <select name="idEmpresaEdit{{ caja_registro.id_caja }}" class="form-select rounded-pill empresa-select-edit" data-caja-id="{{ caja_registro.id_caja }}" required>
+                <option value="">Seleccione una empresa</option>
+                {% for empresa in empresas_registros %}
+                <option value="{{ empresa.idempresa }}" {% if empresa.idempresa == caja_registro.id_sucursal.idempresa.idempresa %}selected{% endif %}>
+                  {{ empresa.razonsocial }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Sucursal <span class="text-danger">*</span></label>
+              <select name="idSucursal" id="sucursalEdit{{ caja_registro.id_caja }}" class="form-select rounded-pill" required>
+                <option value="">Seleccione una sucursal</option>
+                {% for sucursal in sucursales_registros %}
+                {% if sucursal.idempresa.idempresa == caja_registro.id_sucursal.idempresa.idempresa %}
+                <option value="{{ sucursal.id_sucursal }}" {% if sucursal.id_sucursal == caja_registro.id_sucursal.id_sucursal %}selected{% endif %}>
+                  {{ sucursal.nombre_sucursal }}
+                </option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary rounded-pill px-4 btn-editar" data-id="{{ caja_registro.id_caja }}">Guardar</button>
+              <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 
   <!-- Modal Agregar -->
   <div class="modal fade" id="myModaAgregar" tabindex="-1">
