@@ -144,8 +144,9 @@ def cambiar_contexto(request):
         
         # Actualizar sucursal
         if id_sucursal:
-            if es_admin:
-                # Admin puede cambiar a cualquier sucursal de su empresa
+            puede_cambiar_sucursal = usuario.idtipousuario.idtipousuario in [1, 5, 6]
+            if puede_cambiar_sucursal:
+                # Admin, Gerente o Analista pueden cambiar a cualquier sucursal de su empresa
                 sucursal = Sucursales.objects.get(
                     id_sucursal=id_sucursal,
                     idempresa=usuario.idempresa
@@ -221,6 +222,7 @@ def obtener_datos_apertura(request):
     
     usuario = Usuario.objects.get(idusuario=idusuario)
     es_admin = idtipousuario == 1
+    puede_cambiar_sucursal = idtipousuario in [1, 5, 6]
     
     data = {
         'es_admin': es_admin,
@@ -229,8 +231,8 @@ def obtener_datos_apertura(request):
         'almacenes': []
     }
     
-    if es_admin:
-        # Admin: puede ver todas las sucursales de su empresa
+    if puede_cambiar_sucursal:
+        # Puede ver todas las sucursales de su empresa
         sucursales = Sucursales.objects.filter(idempresa=usuario.idempresa)
         data['sucursales'] = [
             {'id': s.id_sucursal, 'nombre': s.nombre_sucursal} 

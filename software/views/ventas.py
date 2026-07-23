@@ -394,11 +394,15 @@ def ventas(request):
             print(f"Error cargando proforma: {e}")
             pass
 
-    # Optimización: Obtener lista de vendedores según el rol
+    # Optimización: Obtener lista de vendedores según el rol y la sucursal
+    vendedores_filtros = {'estado': 1}
+    if id_sucursal:
+        vendedores_filtros['id_sucursal_id'] = id_sucursal
+        
     if id2 == 6:  # Analista
-        vendedores_qs = Usuario.objects.filter(estado=1, idtipousuario=2).only('idusuario', 'nombrecompleto')
-    else:
-        vendedores_qs = Usuario.objects.filter(estado=1).only('idusuario', 'nombrecompleto')
+        vendedores_filtros['idtipousuario'] = 2
+        
+    vendedores_qs = Usuario.objects.filter(**vendedores_filtros).only('idusuario', 'nombrecompleto')
 
     # Contexto para el template
     data = {
@@ -3228,16 +3232,18 @@ def api_listar_ventas(request):
     filtros = {'estado': 1}
 
     # 3.1. Filtro por Sucursal
-    if es_admin and id_sucursal:
+    puede_cambiar_sucursal = id_tipo_usuario in [1, 5, 6]
+    
+    if puede_cambiar_sucursal and id_sucursal:
         filtros['id_sucursal_id'] = id_sucursal
-    elif not es_admin:
+    elif not puede_cambiar_sucursal:
         try:
             usuario = Usuario.objects.get(idusuario=idusuario)
             filtros['id_sucursal_id'] = usuario.id_sucursal_id
         except Usuario.DoesNotExist:
             return JsonResponse({'ok': True, 'ventas': [], 'total_pages': 0})
     else:
-        # Admin sin sucursal
+        # Permiso de cambiar pero sin sucursal seleccionada en sesión
         return JsonResponse({'ok': True, 'ventas': [], 'total_pages': 0})
 
     # 3.2. Filtro por Fechas
