@@ -262,6 +262,12 @@ class Empresa(models.Model):
     )
     
     # Parámetros de Créditos
+    cobrar_mora = models.BooleanField(
+        default=True,
+        verbose_name="Cobrar Mora",
+        help_text="Activa o desactiva el cobro de mora en todos los créditos"
+    )
+    
     interes_mora_base = models.DecimalField(
         max_digits=5,
         decimal_places=2,

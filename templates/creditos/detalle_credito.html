@@ -1751,6 +1751,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const pageSizeCuotas = 30;
 
     function renderizarPaginaCuotas(pagina) {
+        sessionStorage.setItem(`currentPageCuotas_{{ credito.idcredito }}`, pagina);
         currentPageCuotas = pagina;
         const $rows = $('#tablaCuotas tbody tr.main-row-cuota');
         const totalRows = $rows.length;
@@ -1808,7 +1809,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Inicializar paginación
     if ($('#tablaCuotas tbody tr.main-row-cuota').length > pageSizeCuotas) {
-        renderizarPaginaCuotas(1);
+        let savedPage = sessionStorage.getItem(`currentPageCuotas_{{ credito.idcredito }}`);
+        renderizarPaginaCuotas(savedPage ? parseInt(savedPage) : 1);
     }
 });
 </script>

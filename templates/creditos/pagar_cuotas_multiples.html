@@ -241,12 +241,6 @@ $(document).ready(function () {
         const totalStr = total.toFixed(2);
         $displayTotal.text(totalStr);
         $bannerTotal.text(totalStr);
-        
-        // Sincronizar con el primer input del método de pago si solo hay uno
-        if ($('.pago-row').length === 1) {
-            $('.monto-item-input').first().val(totalStr);
-        }
-        
         return total;
     }
 
@@ -318,7 +312,7 @@ $(document).ready(function () {
         actualizarBotonesEliminar();
     });
 
-    // Evento al cambiar el monto de una cuota
+    // Evento al cambiar el monto de una cuota manualmente
     $('.input-monto-cuota').on('input', function() {
         const $input = $(this);
         let val = parseFloat($input.val()) || 0;
@@ -336,6 +330,48 @@ $(document).ready(function () {
             $input.val('0.00');
         }
 
+        const nuevoTotal = recalcularTotalCuotas();
+        if ($('.pago-row').length === 1) {
+            $('.monto-item-input').first().val(nuevoTotal.toFixed(2));
+        }
+    });
+
+    // Evento reactivo al cambiar el monto en los métodos de pago (Efecto Cascada)
+    $(document).on('input', '.monto-item-input', function() {
+        let totalMetodos = 0;
+        $('.monto-item-input').each(function() {
+            totalMetodos += parseFloat($(this).val()) || 0;
+        });
+        
+        let maxTotal = 0;
+        $('.input-monto-cuota').each(function() { 
+            maxTotal += parseFloat($(this).data('original')) || 0; 
+        });
+        
+        if (totalMetodos > maxTotal) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Monto excedido',
+                text: 'El monto ingresado (S/ ' + totalMetodos.toFixed(2) + ') supera la deuda seleccionada (S/ ' + maxTotal.toFixed(2) + ').',
+                confirmButtonColor: '#f8bb86'
+            });
+        }
+        
+        let restante = totalMetodos > maxTotal ? maxTotal : totalMetodos;
+        
+        $('.input-monto-cuota').each(function() {
+            let maxCuota = parseFloat($(this).data('original')) || 0;
+            if (restante >= maxCuota) {
+                $(this).val(maxCuota.toFixed(2));
+                restante -= maxCuota;
+            } else if (restante > 0) {
+                $(this).val(restante.toFixed(2));
+                restante = 0;
+            } else {
+                $(this).val('0.00');
+            }
+        });
+        
         recalcularTotalCuotas();
     });
 
@@ -349,15 +385,41 @@ $(document).ready(function () {
             totalMetodos += parseFloat($(this).val()) || 0;
         });
 
-        if (Math.abs(totalCuotas - totalMetodos) > 0.01) {
+        if (totalMetodos <= 0) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'El total a pagar debe ser mayor a 0.', confirmButtonColor: '#dc3545' });
+            return;
+        }
+
+        let maxTotal = 0;
+        $('.input-monto-cuota').each(function() { 
+            maxTotal += parseFloat($(this).data('original')) || 0; 
+        });
+
+        if (totalMetodos > maxTotal) {
             Swal.fire({ 
                 icon: 'error', 
-                title: 'Desajuste de montos', 
-                text: `El total de los métodos de pago (S/ ${totalMetodos.toFixed(2)}) debe ser igual al total de las cuotas (S/ ${totalCuotas.toFixed(2)})`, 
+                title: 'Monto excedido', 
+                text: `El total de los métodos de pago (S/ ${totalMetodos.toFixed(2)}) supera la deuda seleccionada (S/ ${maxTotal.toFixed(2)})`, 
                 confirmButtonColor: '#dc3545' 
             });
             return;
         }
+
+        // Re-asegurar la cascada antes de recolectar detalles
+        let restanteSubmit = totalMetodos;
+        $('.input-monto-cuota').each(function() {
+            let maxCuota = parseFloat($(this).data('original')) || 0;
+            if (restanteSubmit >= maxCuota) {
+                $(this).val(maxCuota.toFixed(2));
+                restanteSubmit -= maxCuota;
+            } else if (restanteSubmit > 0) {
+                $(this).val(restanteSubmit.toFixed(2));
+                restanteSubmit = 0;
+            } else {
+                $(this).val('0.00');
+            }
+        });
+        recalcularTotalCuotas();
 
         let faltanDatos = false;
         let faltaNroOp = false;

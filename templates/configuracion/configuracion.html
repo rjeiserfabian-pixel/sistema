@@ -337,7 +337,7 @@
             </div>
             
             <div class="row mb-3">
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <label class="form-label fw-semibold">RUC <span class="text-danger">*</span></label>
                 <input type="text" name="ruc" id="ruc" class="form-control" value="{{ empresa.ruc }}" required maxlength="11" pattern="[0-9]{11}">
                 <small class="text-muted">11 dígitos numéricos</small>
@@ -346,7 +346,13 @@
                 <label class="form-label fw-semibold">Razón Social <span class="text-danger">*</span></label>
                 <input type="text" name="razonSocial" class="form-control" value="{{ empresa.razonsocial }}" required>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
+                <label class="form-label fw-semibold text-primary">Cobrar Mora</label>
+                <div class="form-check form-switch mt-1">
+                  <input class="form-check-input fs-4 m-0" type="checkbox" role="switch" name="cobrarMora" id="cobrarMora" {% if empresa.cobrar_mora %}checked{% endif %}>
+                </div>
+              </div>
+              <div class="col-md-2">
                 <label class="form-label fw-semibold text-primary"><i class="bi bi-percent me-1"></i>Mora Base (%)</label>
                 <input type="number" step="0.01" name="interesMoraBase" class="form-control border-primary-subtle" value="{{ empresa.interes_mora_base|stringformat:".2f" }}" required>
               </div>

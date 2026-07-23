@@ -186,6 +186,8 @@ def editarEmpresa(request):
                 empresa.afectacion_sunat = int(afectacion)
             
             # Actualizar Interés Mora
+            empresa.cobrar_mora = (request.POST.get('cobrarMora') == 'on')
+            
             interes_mora_base = request.POST.get('interesMoraBase')
             if interes_mora_base:
                 empresa.interes_mora_base = Decimal(interes_mora_base)
@@ -247,7 +249,11 @@ def editarEmpresa(request):
             # Guardar cambios
             empresa.save()
             
-            messages.success(request, 'Información de empresa actualizada correctamente')
+            # Limpiar caché de configuración para que se reflejen los cambios instantáneamente
+            from django.core.cache import cache
+            cache.delete('config_empresa_mora')
+            
+            messages.success(request, 'Información de la empresa actualizada correctamente.')
             
             # Si es AJAX, retornar JSON
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

@@ -1293,12 +1293,22 @@ def calcular_interes_mora(cuota, fecha_referencia=None):
     
     dias_retraso = (fecha_referencia - cuota.fecha_vencimiento).days
     
-    # Obtener configuración de la empresa
+    # Obtener configuración de la empresa de la caché (o base de datos si no existe)
+    from django.core.cache import cache
     from software.models.empresaModel import Empresa
-    empresa = Empresa.objects.all().first()
+    
+    empresa = cache.get('config_empresa_mora')
+    if not empresa:
+        empresa = Empresa.objects.all().first()
+        if empresa:
+            cache.set('config_empresa_mora', empresa, 3600)  # Guardar por 1 hora
     
     dias_inicio = empresa.dias_mora_inicio if empresa and empresa.dias_mora_inicio else 4
     tasa_base = empresa.interes_mora_base if empresa else Decimal('5.00')
+
+    # Si la empresa tiene desactivado el cobro de mora, devolver 0
+    if empresa and not empresa.cobrar_mora:
+        return Decimal('0'), 0, dias_retraso
 
     if dias_retraso < dias_inicio:
         return Decimal('0'), 0, dias_retraso
