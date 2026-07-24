@@ -1,0 +1,412 @@
+{% extends 'plantilla/base.html' %}
+
+{% block main %}
+<style>
+  [data-theme="dark"] .nav-tabs-bordered .nav-link span:not(.badge) {
+    color: #e2e8f0 !important;
+  }
+  [data-theme="dark"] .nav-tabs-bordered .nav-link.active span:not(.badge) {
+    color: #1e293b !important; /* Texto oscuro porque el fondo de la pestaña activa es blanco */
+    font-weight: 600;
+  }
+</style>
+<main id="main" class="main">
+
+  <!-- ── Encabezado ──────────────────────────────────────────────────────── -->
+  <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h1 class="fw-bold" style="color: var(--primary-color, #0ea5e9);">
+        <i class="bi bi-receipt-cutoff me-2"></i>Comprobantes de Venta
+      </h1>
+      <nav aria-label="breadcrumb" class="mt-1">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+          <li class="breadcrumb-item">Facturación Electrónica</li>
+          <li class="breadcrumb-item active">Comprobantes de Venta</li>
+        </ol>
+      </nav>
+    </div>
+    <!-- Indicador de modo SUNAT -->
+    <div id="sunat-mode-badge" class="badge rounded-pill px-3 py-2 fs-6 d-none d-md-block">
+      Cargando modo...
+    </div>
+  </div>
+
+  <!-- ── Alertas Django messages ───────────────────────────────────────────── -->
+  {% if messages %}
+  <div class="mt-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-info-circle me-2"></i>{{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── Pestañas principales ──────────────────────────────────────────────── -->
+  <section class="section mt-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-0">
+
+            <!-- Tabs nav -->
+            <ul class="nav nav-tabs nav-tabs-bordered px-3 pt-3" id="comprobantesTab" role="tablist">
+              <!-- Factura Electrónica -->
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active d-flex align-items-center gap-2"
+                        id="factura-tab" data-bs-toggle="tab" data-bs-target="#tab-factura"
+                        type="button" role="tab" aria-selected="true">
+                  <i class="bi bi-file-earmark-text-fill text-primary"></i>
+                  <span>Factura Electrónica</span>
+                  <span class="badge rounded-pill bg-primary ms-1" id="badge-facturas">0</span>
+                </button>
+              </li>
+              <!-- Boleta de Venta -->
+              <li class="nav-item" role="presentation">
+                <button class="nav-link d-flex align-items-center gap-2"
+                        id="boleta-tab" data-bs-toggle="tab" data-bs-target="#tab-boleta"
+                        type="button" role="tab" aria-selected="false">
+                  <i class="bi bi-file-earmark-medical-fill text-success"></i>
+                  <span>Boleta de Venta</span>
+                  <span class="badge rounded-pill bg-success ms-1" id="badge-boletas">0</span>
+                </button>
+              </li>
+              <!-- Liquidación de Compra -->
+              <li class="nav-item" role="presentation">
+                <button class="nav-link d-flex align-items-center gap-2"
+                        id="liquidacion-tab" data-bs-toggle="tab" data-bs-target="#tab-liquidacion"
+                        type="button" role="tab" aria-selected="false">
+                  <i class="bi bi-file-earmark-bar-graph-fill text-warning"></i>
+                  <span>Liquidación de Compra</span>
+                  <span class="badge rounded-pill bg-warning text-dark ms-1" id="badge-liquidaciones">0</span>
+                </button>
+              </li>
+            </ul>
+
+            <!-- Tabs content -->
+            <div class="tab-content p-3" id="comprobantesTabContent">
+
+              <!-- ══ TAB: FACTURAS ════════════════════════════════════════════ -->
+              <div class="tab-pane fade show active" id="tab-factura" role="tabpanel">
+                {% include 'facturacion/includes/_tabla_comprobante.html' with tab_id="facturas" titulo="Facturas Electrónicas" color="primary" icono="bi-file-earmark-text-fill" %}
+              </div>
+
+              <!-- ══ TAB: BOLETAS ═════════════════════════════════════════════ -->
+              <div class="tab-pane fade" id="tab-boleta" role="tabpanel">
+                {% include 'facturacion/includes/_tabla_comprobante.html' with tab_id="boletas" titulo="Boletas de Venta" color="success" icono="bi-file-earmark-medical-fill" %}
+              </div>
+
+              <!-- ══ TAB: LIQUIDACIONES ═══════════════════════════════════════ -->
+              <div class="tab-pane fade" id="tab-liquidacion" role="tabpanel">
+                {% include 'facturacion/includes/_tabla_comprobante.html' with tab_id="liquidaciones" titulo="Liquidaciones de Compra" color="warning" icono="bi-file-earmark-bar-graph-fill" %}
+              </div>
+
+            </div><!-- /tab-content -->
+          </div><!-- /card-body -->
+        </div><!-- /card -->
+      </div>
+    </div>
+  </section>
+
+</main>
+
+
+<!-- ══ Modal de confirmación de envío ═════════════════════════════════════════ -->
+<div class="modal fade" id="modalEnviarSunat" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header" style="background: linear-gradient(135deg,#0ea5e9,#6366f1); color:#fff;">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-send-check-fill me-2"></i>Enviar a SUNAT
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <i class="bi bi-cloud-upload fs-1 text-primary mb-3 d-block"></i>
+        <p class="mb-1">¿Deseas enviar el comprobante</p>
+        <strong id="modal-comprobante-label" class="fs-5 d-block mb-3 text-primary">...</strong>
+        <div class="alert alert-warning border-0 rounded-3 small py-2 px-3">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Esta acción enviará el comprobante al servidor SUNAT. Si el sistema está en modo
+          <strong>Producción</strong>, el comprobante será oficial.
+        </div>
+      </div>
+      <div class="modal-footer border-0 justify-content-center gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-primary px-4" id="btn-confirmar-envio">
+          <i class="bi bi-send-fill me-1"></i>Enviar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal de resultado ════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalResultadoSunat" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0" id="resultado-modal-header">
+        <h5 class="modal-title fw-bold" id="resultado-modal-title">Resultado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <i id="resultado-icono" class="fs-1 mb-3 d-block"></i>
+        <p id="resultado-mensaje" class="mb-0"></p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script>
+"use strict";
+
+// ── Variables globales ──────────────────────────────────────────────────────
+const CSRF_TOKEN = "{{ csrf_token }}";
+let tablesInit = {};       // DataTables ya inicializadas
+let pendingIdventa = null; // ID a enviar cuando se confirme
+
+// ── URLs de la API ────────────────────────────────────────────────────────
+const API = {
+  facturas:      "{% url 'api_listar_facturas_sunat' %}",
+  boletas:       "{% url 'api_listar_boletas_sunat' %}",
+  liquidaciones: "{% url 'api_listar_liquidaciones_sunat' %}",
+  enviar:        (id) => `/facturacion/comprobantes/enviar/${id}/`,
+  imprimir:      (id) => `/ventas/imprimir/${id}/`,
+};
+
+// ── Helpers de badge de estado ────────────────────────────────────────────
+function badgeEstado(estado) {
+  const cfg = {
+    0: { cls: "bg-secondary",          icon: "bi-clock",              txt: "Pendiente"  },
+    1: { cls: "bg-success",            icon: "bi-check-circle-fill",  txt: "Aceptado"   },
+    2: { cls: "bg-danger",             icon: "bi-x-circle-fill",      txt: "Rechazado"  },
+    3: { cls: "bg-warning text-dark",  icon: "bi-exclamation-triangle-fill", txt: "Error" },
+  };
+  const c = cfg[estado] || cfg[0];
+  return `<span class="badge rounded-pill ${c.cls} px-3">
+            <i class="bi ${c.icon} me-1"></i>${c.txt}
+          </span>`;
+}
+
+// ── Botones de acción ─────────────────────────────────────────────────────
+function botonesAccion(row) {
+  const imprimirBtn = `
+    <a href="${API.imprimir(row.idventa)}" target="_blank"
+       class="btn btn-sm btn-info text-white" title="Imprimir ticket del sistema">
+      <i class="bi bi-printer-fill"></i>
+    </a>`;
+
+  let enviarBtn = "";
+  if (row.sunat_estado === 1) {
+    // Ya aceptado → botón deshabilitado con icono de verificado
+    enviarBtn = `<button class="btn btn-sm btn-secondary" disabled title="Ya aceptado por SUNAT">
+                   <i class="bi bi-send-check-fill"></i>
+                 </button>`;
+    // XML disponible
+    if (row.sunat_xml) {
+      enviarBtn += ` <a href="${row.sunat_xml}" target="_blank"
+                       class="btn btn-sm btn-outline-success" title="Ver XML SUNAT">
+                      <i class="bi bi-file-code"></i>
+                    </a>`;
+    }
+  } else {
+    // Pendiente / error → puede reenviar
+    enviarBtn = `<button class="btn btn-sm btn-primary btn-enviar-sunat"
+                         data-idventa="${row.idventa}"
+                         data-comprobante="${row.comprobante}"
+                         title="Enviar a SUNAT">
+                   <i class="bi bi-send-fill"></i>
+                 </button>`;
+  }
+
+  return `<div class="btn-group btn-group-sm">${imprimirBtn}${enviarBtn}</div>`;
+}
+
+// ── Helpers para leer los filtros de fecha de una pestaña ────────────────────
+function getFechaFiltros(tabId) {
+  const inicio = document.getElementById('fecha-inicio-' + tabId)?.value || '';
+  const fin    = document.getElementById('fecha-fin-' + tabId)?.value || '';
+  return { fecha_inicio: inicio, fecha_fin: fin };
+}
+
+// ── Inicializar DataTable genérica (Server-Side Processing) ───────────────
+function initDataTable(tabId, apiUrl) {
+  if (tablesInit[tabId]) return; // Evitar inicialización doble
+  tablesInit[tabId] = true;
+
+  const tableId = '#tabla-' + tabId;
+
+  const table = $(tableId).DataTable({
+    processing: true,
+    serverSide: true,
+    ajax: {
+      url: apiUrl,
+      type: 'GET',
+      data: function(d) {
+        const filtros = getFechaFiltros(tabId);
+        d.fecha_inicio = filtros.fecha_inicio;
+        d.fecha_fin    = filtros.fecha_fin;
+      },
+      error: function(xhr, err, thrown) {
+        console.error('Error cargando ' + tabId + ':', err, xhr.responseText);
+      }
+    },
+    columns: [
+      { data: 'fecha', title: 'Fecha',
+        render: function(d, t, row) { return d + '<br><small class="text-muted">' + row.hora + '</small>'; } },
+      { data: 'comprobante', title: 'Comprobante',
+        render: function(d, t, row) { return '<span class="badge bg-primary text-uppercase">' + d + '</span><br><small class="text-muted">' + row.tipo + '</small>'; } },
+      { data: 'cliente', title: 'Cliente',
+        render: function(d, t, row) { return '<span class="fw-semibold text-uppercase">' + d + '</span><br><small class="text-muted">' + row.numdoc + '</small>'; } },
+      { data: 'total', title: 'Total',
+        render: function(d) { return '<span class="fw-bold">S/ ' + parseFloat(d).toFixed(2) + '</span>'; } },
+      { data: 'sunat_estado', title: 'Estado SUNAT', className: 'text-center', orderable: false,
+        render: function(d, t, row) {
+          var badge = badgeEstado(d);
+          if ((d === 2 || d === 3) && row.sunat_error) {
+            badge += '<br><small class="text-danger" title="' + row.sunat_error + '"><i class="bi bi-info-circle"></i> ' + row.sunat_error.substring(0, 60) + (row.sunat_error.length > 60 ? '...' : '') + '</small>';
+          }
+          return badge;
+        }
+      },
+      { data: null, title: 'Acciones', className: 'text-center', orderable: false,
+        render: function(d, t, row) { return botonesAccion(row); } },
+    ],
+    order: [[0, "desc"]],
+    pageLength: 10,
+    language: { url: "//cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json" },
+    responsive: true,
+    dom: '<"row mb-2"<"col-sm-6"l><"col-sm-6"f>>rtip',
+    drawCallback: function() {
+      // Actualizar badge de conteo
+      const info = this.api().page.info();
+      $(`#badge-${tabId}`).text(info.recordsTotal);
+    }
+  });
+
+  // Inicializar botones manualmente y montarlos en el contenedor
+  new $.fn.dataTable.Buttons(table, {
+    buttons: [
+      { extend: "excel", text: '<i class="bi bi-file-earmark-excel me-1"></i>Excel', className: "btn btn-sm btn-success me-2" },
+      { extend: "pdf",   text: '<i class="bi bi-file-earmark-pdf me-1"></i>PDF',   className: "btn btn-sm btn-danger" },
+    ]
+  });
+
+  table.buttons().container().appendTo('#botones-exportar-' + tabId);
+}
+
+// ── Activar DataTable al hacer clic en la pestaña ─────────────────────────
+document.addEventListener("DOMContentLoaded", function () {
+
+  // Cargar la tabla de Facturas al inicio (pestaña activa por defecto)
+  initDataTable("facturas", API.facturas);
+
+  // Cargar las demás al hacer clic
+  document.getElementById("boleta-tab").addEventListener("shown.bs.tab", function () {
+    initDataTable("boletas", API.boletas);
+  });
+  document.getElementById("liquidacion-tab").addEventListener("shown.bs.tab", function () {
+    initDataTable("liquidaciones", API.liquidaciones);
+  });
+
+  // ── Abrir modal de confirmación de envío ───────────────────────────────
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".btn-enviar-sunat");
+    if (!btn) return;
+    pendingIdventa = btn.dataset.idventa;
+    document.getElementById("modal-comprobante-label").textContent = btn.dataset.comprobante;
+    new bootstrap.Modal(document.getElementById("modalEnviarSunat")).show();
+  });
+
+  // ── Confirmar envío ────────────────────────────────────────────────────
+  document.getElementById("btn-confirmar-envio").addEventListener("click", function () {
+    if (!pendingIdventa) return;
+
+    const modalEnviar = bootstrap.Modal.getInstance(document.getElementById("modalEnviarSunat"));
+    modalEnviar.hide();
+
+    // Mostrar spinner en el botón
+    const btnConfirmar = this;
+    btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando...';
+    btnConfirmar.disabled = true;
+
+    fetch(API.enviar(pendingIdventa), {
+      method: "POST",
+      headers: { "X-CSRFToken": CSRF_TOKEN, "Content-Type": "application/json" },
+    })
+    .then(r => r.json())
+    .then(data => {
+      // Restaurar botón
+      btnConfirmar.innerHTML = '<i class="bi bi-send-fill me-1"></i>Enviar';
+      btnConfirmar.disabled = false;
+      pendingIdventa = null;
+
+      // Mostrar resultado
+      mostrarResultado(data.ok, data.msg);
+
+      // Recargar DataTables abiertas
+      Object.keys(tablesInit).forEach(key => {
+        const dt = $(`#tabla-${key}`).DataTable();
+        if (dt && typeof dt.ajax !== "undefined") dt.ajax.reload(null, false);
+      });
+    })
+    .catch(err => {
+      btnConfirmar.innerHTML = '<i class="bi bi-send-fill me-1"></i>Enviar';
+      btnConfirmar.disabled = false;
+      mostrarResultado(false, "Error de conexión: " + err.message);
+    });
+  });
+});
+
+// ── Mostrar modal de resultado ────────────────────────────────────────────
+function mostrarResultado(ok, mensaje) {
+  const header = document.getElementById("resultado-modal-header");
+  const icono  = document.getElementById("resultado-icono");
+  const msg    = document.getElementById("resultado-mensaje");
+  const titulo = document.getElementById("resultado-modal-title");
+
+  if (ok) {
+    header.style.background = "linear-gradient(135deg,#10b981,#059669)";
+    header.style.color = "#fff";
+    titulo.textContent = "¡Comprobante Aceptado!";
+    icono.className = "bi bi-check-circle-fill text-success fs-1 mb-3 d-block";
+  } else {
+    header.style.background = "linear-gradient(135deg,#ef4444,#dc2626)";
+    header.style.color = "#fff";
+    titulo.textContent = "Error al Enviar";
+    icono.className = "bi bi-x-circle-fill text-danger fs-1 mb-3 d-block";
+  }
+  msg.textContent = mensaje;
+  new bootstrap.Modal(document.getElementById("modalResultadoSunat")).show();
+}
+</script>
+{% endblock %}

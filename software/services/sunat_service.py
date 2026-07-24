@@ -1,238 +1,458 @@
+"""
+Servicio de integración con la API SUNAT (PHP).
+Maneja la comunicación con los endpoints para emitir:
+  - Factura Electrónica (código 01)
+  - Boleta de Venta (código 03)
+  - Liquidación de Compra (código 04)
+
+Las credenciales y el modo (Desarrollo/Producción) se leen
+dinámicamente desde el modelo Empresa, según lo configurado
+en el módulo de Configuración del sistema.
+"""
+
 import requests
 import json
-from django.conf import settings
-from software.models.VentasModel import Ventas
-from software.models.VentaDetalleModel import VentaDetalle
-from software.models.empresaModel import Empresa
-from datetime import datetime
-import traceback
+import logging
+from decimal import Decimal
 
-def enviar_a_sunat(venta_id):
+logger = logging.getLogger(__name__)
+
+# ─── URL base de la API PHP ────────────────────────────────────────────────────
+# En producción esta URL cambiará; por ahora apunta al servidor local.
+SUNAT_API_BASE = "http://localhost/API_SUNAT"
+
+ENDPOINT_COMPROBANTE = f"{SUNAT_API_BASE}/post.php"
+ENDPOINT_LIQUIDACION = f"{SUNAT_API_BASE}/liquidacion.php"
+
+TIMEOUT_SEGUNDOS = 30  # Tiempo máximo de espera por respuesta
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Helpers internos
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _get_empresa():
+    """Obtiene el primer registro activo de Empresa."""
+    from software.models.empresaModel import Empresa
+    return Empresa.objects.filter(activo=True).first()
+
+
+def _build_empresa_payload(empresa):
+    """Construye el bloque 'empresa' que va en todos los JSON."""
+    return {
+        "ruc": empresa.ruc,
+        "razon_social": empresa.razonsocial,
+        "nombre_comercial": empresa.nombrecomercial or empresa.razonsocial,
+        "domicilio_fiscal": empresa.direccion,
+        "ubigeo": empresa.ubigueo or "150101",
+        "departamento": "LIMA",   # TODO: leer de la BD si se agrega campo
+        "provincia": "LIMA",
+        "distrito": "LIMA",
+        "modo": empresa.mododev,           # 0=Beta, 1=Producción
+        "usu_secundario_produccion_user": empresa.usersec or "",
+        "usu_secundario_produccion_password": empresa.passwordsec or "",
+        "cuenta_detraccion": "",
+    }
+
+
+def _build_empresa_payload_simple(empresa):
+    """Bloque empresa simplificado (para liquidación, tiene campos extra)."""
+    return {
+        "ruc": empresa.ruc,
+        "razon_social": empresa.razonsocial,
+        "nombre_comercial": empresa.nombrecomercial or empresa.razonsocial,
+        "domicilio_fiscal": empresa.direccion,
+        "ubigeo": empresa.ubigueo or "150101",
+        "departamento": "LIMA",
+        "provincia": "LIMA",
+        "distrito": "LIMA",
+        "modo": empresa.mododev,
+        "usu_secundario_produccion_user": empresa.usersec or "",
+        "usu_secundario_produccion_password": empresa.passwordsec or "",
+    }
+
+
+def _float(valor):
+    """Convierte Decimal/None a float seguro para JSON."""
+    if valor is None:
+        return None
+    return float(Decimal(str(valor)))
+
+
+def _post_to_api(endpoint, payload):
+    """
+    Realiza el POST a la API PHP y retorna (exito: bool, data: dict).
+    En caso de error de red o timeout, retorna (False, {'error': '...'}).
+    """
     try:
-        # Obtenemos la venta
-        venta = Ventas.objects.get(idventa=venta_id)
-        
-        if not venta.idtipocomprobante:
-            return False, "Tipo de comprobante no válido o no definido"
-        
-        empresa = Empresa.objects.first() # Suponiendo que hay una sola empresa
-        if not empresa:
-            return False, "No se encontraron datos de la empresa"
-
-        cliente = venta.idcliente
-        
-        # URL de la API (ajustar segun entorno)
-        url_api = "http://localhost/API_SUNAT/API_SUNAT/post.php"
-        
-        # Detalle de la venta
-        detalles = VentaDetalle.objects.filter(idventa=venta_id)
-        items_payload = []
-        total_acumulado_igv = 0
-        total_acumulado_gravada = 0
-        total_acumulado_exonerada = 0
-        
-        # Primero detectar el tipo de IGV global de la venta
-        # ID 2 suele ser Exonerado (20), ID 1 suele ser Gravado (10)
-        es_exonerada = (venta.id_tipo_igv and (venta.id_tipo_igv.id_tipo_igv == 2 or str(venta.id_tipo_igv.codigo) == "20"))
-        
-        # Forzar exonerada si los montos coinciden y el IGV es cero (común en este sistema)
-        if not es_exonerada and float(venta.total_venta or 0) == float(venta.subtotal or 0) and float(venta.total_venta or 0) > 0:
-            es_exonerada = True
-
-        for d in detalles:
-            # Determinamos precio unitario y evitamos "None"
-            if venta.id_forma_pago and venta.id_forma_pago.id_forma_pago == 1:
-                precio_unitario = float(d.precio_venta_contado or 0)
-            else:
-                precio_unitario = float(d.precio_venta_credito if d.precio_venta_credito is not None else (d.precio_venta_contado or 0))
-
-            # SKIP items with price 0.0 (ghost items)
-            if precio_unitario <= 0:
-                continue
-
-            # Determinamos nombre y código del producto según su tipo
-            nombre_producto = "Producto"
-            codigo_producto = "000"
-            if d.tipo_item == 'vehiculo' and d.id_vehiculo:
-                nombre_producto = f"{d.id_vehiculo.idproducto.nomproducto} - Motor: {d.id_vehiculo.serie_motor}"
-                codigo_producto = str(d.id_vehiculo.idproducto.idproducto)
-            elif d.tipo_item == 'repuesto' and d.id_repuesto_comprado:
-                nombre_producto = d.id_repuesto_comprado.id_repuesto.nombre if d.id_repuesto_comprado.id_repuesto else d.id_repuesto_comprado.descripcion
-                codigo_producto = str(d.id_repuesto_comprado.id_repuesto.id_repuesto) if d.id_repuesto_comprado.id_repuesto else "0"
-
-            cantidad = float(d.cantidad) if d.cantidad else 1.0
-            item_total = precio_unitario * cantidad
-            
-            # Si es gravada, desglosar IGV del precio unitario
-            if not es_exonerada:
-                precio_base = precio_unitario / 1.18
-                igv_item = item_total - (precio_base * cantidad)
-                total_acumulado_gravada += (precio_base * cantidad)
-                total_acumulado_igv += igv_item
-                tipo_igv_item = "10"
-            else:
-                precio_base = precio_unitario
-                total_acumulado_exonerada += item_total
-                tipo_igv_item = "20"
-
-            items_payload.append({
-                "cantidad": cantidad,
-                "codigo_unidad": "NIU", 
-                "producto": nombre_producto[:200],
-                "precio_base": "{:.2f}".format(precio_base),
-                "tipo_igv_codigo": tipo_igv_item,
-                "codigo_producto": codigo_producto,
-                "codigo_sunat": "-"
-            })
-
-        # Si no hay items validos, error
-        if not items_payload:
-            return False, "La venta no tiene productos válidos para enviar (precios en 0)"
-
-        # Limpiar el número de comprobante (enviar solo la parte numérica)
-        # Si numero_comprobante es "F001-00000034", enviar solo "34"
-        num_limpio = str(venta.numero_comprobante).split('-')[-1].lstrip('0')
-        if not num_limpio: num_limpio = "0"
-
-        # Estructuramos el JSON
-        payload = {
-            "empresa": {
-                "ruc": empresa.ruc if hasattr(empresa, 'ruc') else "20604051984", 
-                "razon_social": empresa.razonsocial if hasattr(empresa, 'razonsocial') else "MONSTRUO E.I.R.L.",
-                "nombre_comercial": empresa.nombrecomercial if hasattr(empresa, 'nombrecomercial') else "MONSTRUO",
-                "domicilio_fiscal": empresa.direccion if hasattr(empresa, 'direccion') else "AV. LA MOLINA NRO. 571",
-                "ubigeo": empresa.ubigueo if hasattr(empresa, 'ubigueo') and empresa.ubigueo else "220601",
-                "departamento": "SAN MARTIN",
-                "provincia": "MARISCAL CACERES",
-                "distrito": "JUANJUI",
-                "modo": empresa.mododev if hasattr(empresa, 'mododev') else 0,
-                "usu_secundario_produccion_user": empresa.usersec if hasattr(empresa, 'usersec') and empresa.usersec else "MODDATOS",
-                "usu_secundario_produccion_password": empresa.passwordsec if hasattr(empresa, 'passwordsec') and empresa.passwordsec else "moddatos"
-            },
-            "cliente": {
-                "codigo_tipo_entidad": "6" if cliente.numdoc and len(cliente.numdoc) == 11 else "1",
-                "numero_documento": cliente.numdoc or "00000000",
-                "razon_social_nombres": cliente.razonsocial or "CLIENTE VARIOS",
-                "cliente_direccion": cliente.direccion if cliente.direccion else "Sin direccion"
-            },
-            "venta": {
-                "tipo_documento_codigo": "01" if "Factura" in (venta.idtipocomprobante.nombre if venta.idtipocomprobante else "") else "03", 
-                "serie": venta.idseriecomprobante.serie if venta.idseriecomprobante else "F001",
-                "numero": num_limpio,
-                "fecha_emision": venta.fecha_venta.strftime("%Y-%m-%d"),
-                "hora_emision": venta.fecha_venta.strftime("%H:%M:%S"),
-                "fecha_vencimiento": venta.fecha_venta.strftime("%Y-%m-%d"), # Vencimiento igual a emision hoy
-                "moneda_id": 1, 
-                "total_gravada": "{:.2f}".format(total_acumulado_gravada),
-                "total_exonerada": "{:.2f}".format(total_acumulado_exonerada),
-                "total_igv": "{:.2f}".format(total_acumulado_igv),
-                "total_a_pagar": "{:.2f}".format(float(venta.total_venta or 0)),
-                "forma_pago_id": 2 if venta.id_forma_pago and venta.id_forma_pago.id_forma_pago == 2 else 1,
-                "nota": "Venta generada desde el sistema"
-            },
-            "items": items_payload,
-            "cuotas": []
-        }
-
-        # Si la venta es a crédito y tiene cuotas, añadirlas y recalcular monto neto
-        if payload["venta"]["forma_pago_id"] == 2:
-            from software.models.CuotasVentaModel import CuotasVenta
-            cuotas_existentes = CuotasVenta.objects.filter(idventa=venta_id).order_by('fecha_vencimiento')
-            
-            # Recopilar montos de cuotas en una lista temporal
-            lista_cuotas = []
-            suma_cuotas_db = 0
-            for c in cuotas_existentes:
-                monto_c = float(c.total or 0)
-                suma_cuotas_db += monto_c
-                lista_cuotas.append({
-                    "monto": monto_c,
-                    "fecha_cuota": c.fecha_vencimiento.strftime("%Y-%m-%d")
-                })
-            
-            # TRUCO DE CUOTA 0: Si la suma de cuotas no cuadra con el total (por el adelanto),
-            # insertamos una "Cuota 0" con el monto del adelanto para que SUNAT vea el 100% de la deuda.
-            total_factura = float(venta.total_venta or 0)
-            if round(suma_cuotas_db, 2) < round(total_factura, 2):
-                adelanto = total_factura - suma_cuotas_db
-                # Insertamos al inicio como Cuota 0 (pago inmediato del adelanto)
-                payload["cuotas"].append({
-                    "monto": "{:.2f}".format(adelanto),
-                    "fecha_cuota": venta.fecha_venta.strftime("%Y-%m-%d")
-                })
-            
-            # Añadimos el resto de cuotas de la DB
-            for c_temp in lista_cuotas:
-                payload["cuotas"].append({
-                    "monto": "{:.2f}".format(c_temp["monto"]),
-                    "fecha_cuota": c_temp["fecha_cuota"]
-                })
-            
-            # El monto neto ahora es el total (porque incluimos el adelanto como cuota inmediata)
-            payload["venta"]["monto_neto"] = "{:.2f}".format(total_factura)
-        
-        # Enviar el monto neto asumiendo que la API PHP lo usará para cac:PaymentTerms
-        if "monto_neto" not in payload["venta"]:
-            payload["venta"]["monto_neto"] = payload["venta"]["total_a_pagar"]
-
-        # Enviamos la petición
-        print(f"DEBUG: Enviando payload a {url_api}")
-        print(json.dumps(payload, indent=2))
-        
         response = requests.post(
-            url_api, 
-            json=payload, 
-            timeout=15
+            endpoint,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=TIMEOUT_SEGUNDOS,
         )
-        
-        print(f"DEBUG: Status Code {response.status_code}")
-        print(f"DEBUG: Raw Response: {response.text}")
-        
-        if response.status_code == 200:
-            try:
-                # Limpiar la respuesta si tiene basura (espacios o warnings PHP)
-                clean_response = response.text.replace('<br />', '').replace('<b>', '').replace('</b>', '').replace('Warning:', '').strip()
-                # Extraer el JSON si hay texto antes o despues
-                if '{' in clean_response:
-                    clean_response = clean_response[clean_response.find('{'):clean_response.rfind('}')+1]
-                
-                resultado = json.loads(clean_response)
-            except Exception as e:
-                error_msg = f"Error procesando JSON de respuesta: {str(e)} - Respuesta cruda: {response.text[:200]}"
-                venta.sunat_estado = 3
-                venta.sunat_error = error_msg
-                venta.save()
-                return False, f"Respuesta no válida: {error_msg}"
+        response.raise_for_status()
+        data = response.json()
+        logger.info("Respuesta SUNAT API: %s", json.dumps(data, ensure_ascii=False)[:500])
+        return True, data
+    except requests.exceptions.Timeout:
+        msg = "Tiempo de espera agotado al conectar con la API SUNAT."
+        logger.error(msg)
+        return False, {"error": msg}
+    except requests.exceptions.ConnectionError:
+        msg = "No se pudo conectar con la API SUNAT. Verifique que el servidor esté activo."
+        logger.error(msg)
+        return False, {"error": msg}
+    except requests.exceptions.RequestException as exc:
+        msg = f"Error en la petición a la API SUNAT: {str(exc)}"
+        logger.error(msg)
+        return False, {"error": msg}
+    except ValueError:
+        msg = "La API SUNAT devolvió una respuesta no válida (no es JSON)."
+        logger.error(msg)
+        return False, {"error": msg}
 
-            if resultado.get('exito') == True or (isinstance(resultado.get('data'), dict) and resultado.get('data').get('respuesta_sunat_codigo') == "0"):
-                # Guardamos como aceptado
-                venta.sunat_estado = 1
-                data = resultado.get('data', {})
-                venta.sunat_pdf = data.get('ruta_pdf', '')
-                venta.sunat_xml = data.get('ruta_xml', '')
-                venta.sunat_hash = data.get('codigo_hash', {}).get('0', '')
-                venta.sunat_error = 'ACEPTADO POR SUNAT'
-                venta.save()
-                return True, "Enviado y aceptado correctamente"
-            else:
-                # Si hay error en la respuesta
-                error_info = resultado.get('mensaje') or (resultado.get('data', {}).get('error_mensaje') if isinstance(resultado.get('data'), dict) else None)
-                venta.sunat_estado = 2
-                venta.sunat_error = error_info or json.dumps(resultado)
-                venta.save()
-                return False, f"Rechazado: {venta.sunat_error}"
+
+def _procesar_respuesta(data):
+    """
+    Analiza la respuesta de la API PHP y retorna:
+      (exito: bool, descripcion: str, campos_extra: dict)
+    La respuesta exitosa tiene: data.error == "false" y data.respuesta_sunat_codigo == "0"
+    """
+    inner = data.get("data", data)  # Algunos endpoints envuelven en "data"
+    error_flag = str(inner.get("error", "true")).lower()
+    codigo_sunat = str(inner.get("respuesta_sunat_codigo", "")).strip()
+    descripcion = inner.get("respuesta_sunat_descripcion", "Sin descripción")
+
+    exito = (error_flag == "false" and codigo_sunat == "0")
+
+    campos_extra = {
+        "sunat_xml": inner.get("ruta_xml", ""),
+        "sunat_hash": inner.get("codigo_hash", ""),
+        "sunat_cdr": inner.get("ruta_cdr", ""),
+        "respuesta_descripcion": descripcion,
+        "respuesta_codigo": codigo_sunat,
+    }
+    return exito, descripcion, campos_extra
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Función principal de despacho (usada por la vista existente)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def enviar_a_sunat(idventa):
+    """
+    Mantiene compatibilidad con la vista existente (sunat.py).
+    Detecta el tipo de comprobante por el código y delega al emisor correcto.
+    Retorna (exito: bool, mensaje: str).
+    """
+    from software.models.VentasModel import Ventas
+    try:
+        venta = Ventas.objects.select_related(
+            'idcliente', 'idtipocomprobante', 'idseriecomprobante'
+        ).get(idventa=idventa)
+    except Ventas.DoesNotExist:
+        return False, "Venta no encontrada."
+
+    codigo = venta.idtipocomprobante.codigo.strip()
+
+    if codigo == "01":
+        return emitir_factura(venta)
+    elif codigo == "03":
+        return emitir_boleta(venta)
+    elif codigo == "04":
+        return emitir_liquidacion(venta)
+    else:
+        return False, f"Tipo de comprobante '{codigo}' no soportado en la integración SUNAT."
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Emisión de Factura Electrónica (código 01)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def emitir_factura(venta):
+    """
+    Emite una Factura Electrónica ante SUNAT.
+    Parámetro: instancia de Ventas con select_related a cliente, serie, tipo.
+    Retorna (exito: bool, mensaje: str).
+    """
+    empresa = _get_empresa()
+    if not empresa:
+        return False, "No se encontró configuración de empresa."
+
+    detalles = _obtener_items(venta)
+    if not detalles:
+        return False, "La venta no tiene items para facturar."
+
+    cliente = venta.idcliente
+    serie_obj = venta.idseriecomprobante
+    fecha = venta.fecha_venta
+
+    # Determinar tipo de entidad del cliente
+    codigo_tipo_entidad = "6"  # RUC por defecto para facturas
+    if hasattr(cliente, 'id_tipo_entidad') and cliente.id_tipo_entidad:
+        codigo_tipo_entidad = cliente.id_tipo_entidad.codigo or "6"
+
+    payload = {
+        "empresa": _build_empresa_payload(empresa),
+        "cliente": {
+            "codigo_tipo_entidad": codigo_tipo_entidad,
+            "numero_documento": cliente.numdoc,
+            "razon_social_nombres": cliente.razonsocial,
+            "cliente_direccion": cliente.direccion or "",
+        },
+        "venta": {
+            "tipo_documento_codigo": "01",
+            "serie": serie_obj.serie,
+            "numero": venta.numero_comprobante,
+            "fecha_emision": fecha.strftime("%Y-%m-%d"),
+            "hora_emision": fecha.strftime("%H:%M:%S"),
+            "fecha_vencimiento": fecha.strftime("%Y-%m-%d"),
+            "moneda_id": 1,  # Soles
+            "forma_pago_id": 1 if venta.id_forma_pago.id_forma_pago == 1 else 2,
+            "total_gravada": _float(venta.subtotal),
+            "total_igv": _float(venta.igv),
+            "total_exonerada": None,
+            "total_inafecta": None,
+            "total_gratuita": None,
+            "total_gratuita_igv": None,
+            "total_bolsa": None,
+            "orden_compra": "",
+            "nota": venta.observaciones or "",
+            "detraccion_codigo": "",
+            "detraccion_porcentaje": None,
+            "percepcion_codigo": "",
+            "percepcion_porcentaje": None,
+            "retencion_porcentaje": None,
+        },
+        "items": detalles,
+        "cuotas": [],
+        "guias_adjuntas": [],
+        "anticipos": [],
+    }
+
+    exito_red, data = _post_to_api(ENDPOINT_COMPROBANTE, payload)
+    if not exito_red:
+        _marcar_error(venta, data.get("error", "Error de conexión"))
+        return False, data.get("error", "Error de conexión")
+
+    exito, descripcion, extra = _procesar_respuesta(data)
+    _actualizar_venta_sunat(venta, exito, descripcion, extra)
+    return exito, descripcion
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Emisión de Boleta de Venta (código 03)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def emitir_boleta(venta):
+    """
+    Emite una Boleta de Venta ante SUNAT.
+    Parámetro: instancia de Ventas con select_related a cliente, serie, tipo.
+    Retorna (exito: bool, mensaje: str).
+    """
+    empresa = _get_empresa()
+    if not empresa:
+        return False, "No se encontró configuración de empresa."
+
+    detalles = _obtener_items(venta)
+    if not detalles:
+        return False, "La venta no tiene items para emitir boleta."
+
+    cliente = venta.idcliente
+    serie_obj = venta.idseriecomprobante
+    fecha = venta.fecha_venta
+
+    # Para boletas, el tipo de entidad puede ser DNI (1) o RUC (6)
+    codigo_tipo_entidad = "1"  # DNI por defecto para boletas
+    if hasattr(cliente, 'id_tipo_entidad') and cliente.id_tipo_entidad:
+        codigo_tipo_entidad = cliente.id_tipo_entidad.codigo or "1"
+
+    payload = {
+        "empresa": _build_empresa_payload(empresa),
+        "cliente": {
+            "codigo_tipo_entidad": codigo_tipo_entidad,
+            "numero_documento": cliente.numdoc,
+            "razon_social_nombres": cliente.razonsocial,
+            "cliente_direccion": cliente.direccion or "",
+        },
+        "venta": {
+            "tipo_documento_codigo": "03",
+            "serie": serie_obj.serie,
+            "numero": venta.numero_comprobante,
+            "fecha_emision": fecha.strftime("%Y-%m-%d"),
+            "hora_emision": fecha.strftime("%H:%M:%S"),
+            "moneda_id": 1,
+            "forma_pago_id": 1 if venta.id_forma_pago.id_forma_pago == 1 else 2,
+            "total_gravada": _float(venta.subtotal),
+            "total_igv": _float(venta.igv),
+            "total_exonerada": None,
+            "total_inafecta": None,
+        },
+        "items": detalles,
+        "cuotas": [],
+        "guias_adjuntas": [],
+        "anticipos": [],
+    }
+
+    exito_red, data = _post_to_api(ENDPOINT_COMPROBANTE, payload)
+    if not exito_red:
+        _marcar_error(venta, data.get("error", "Error de conexión"))
+        return False, data.get("error", "Error de conexión")
+
+    exito, descripcion, extra = _procesar_respuesta(data)
+    _actualizar_venta_sunat(venta, exito, descripcion, extra)
+    return exito, descripcion
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Emisión de Liquidación de Compra (código 04)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def emitir_liquidacion(venta):
+    """
+    Emite una Liquidación de Compra ante SUNAT.
+    Este tipo de comprobante aplica para compras a personas naturales sin RUC.
+    Parámetro: instancia de Ventas con select_related a cliente, serie, tipo.
+    Retorna (exito: bool, mensaje: str).
+    """
+    empresa = _get_empresa()
+    if not empresa:
+        return False, "No se encontró configuración de empresa."
+
+    detalles = _obtener_items(venta)
+    if not detalles:
+        return False, "La venta no tiene items para la liquidación."
+
+    cliente = venta.idcliente
+    serie_obj = venta.idseriecomprobante
+    fecha = venta.fecha_venta
+
+    payload = {
+        "empresa": _build_empresa_payload_simple(empresa),
+        "proveedor": {
+            "numero_documento": cliente.numdoc,
+            "nombres": cliente.razonsocial,
+            "direccion": cliente.direccion or "",
+            "ubigeo": "150101",
+            "departamento": "LIMA",
+            "provincia": "LIMA",
+            "distrito": "LIMA",
+        },
+        "lugar_operacion": {
+            "direccion": empresa.direccion,
+            "ubigeo": empresa.ubigueo or "150101",
+            "departamento": "LIMA",
+            "provincia": "LIMA",
+            "distrito": "LIMA",
+        },
+        "venta": {
+            "tipo_documento_codigo": "04",
+            "serie": serie_obj.serie,
+            "numero": venta.numero_comprobante,
+            "fecha_emision": fecha.strftime("%Y-%m-%d"),
+            "hora_emision": fecha.strftime("%H:%M:%S"),
+            "forma_pago_id": 1 if venta.id_forma_pago.id_forma_pago == 1 else 2,
+            "total_gravada": _float(venta.subtotal),
+            "total_igv": _float(venta.igv),
+            "total_exonerada": None,
+            "total_inafecta": None,
+            "nota": venta.observaciones or "",
+        },
+        "items": detalles,
+        "cuotas": [],
+        "guias_adjuntas": [],
+    }
+
+    exito_red, data = _post_to_api(ENDPOINT_LIQUIDACION, payload)
+    if not exito_red:
+        _marcar_error(venta, data.get("error", "Error de conexión"))
+        return False, data.get("error", "Error de conexión")
+
+    exito, descripcion, extra = _procesar_respuesta(data)
+    _actualizar_venta_sunat(venta, exito, descripcion, extra)
+    return exito, descripcion
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Helpers de items y actualización de BD
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _obtener_items(venta):
+    """
+    Construye la lista de items para el JSON de SUNAT a partir de VentaDetalle.
+    Soporta vehiculos, repuestos y servicios.
+    """
+    from software.models.VentaDetalleModel import VentaDetalle
+
+    detalles = VentaDetalle.objects.filter(idventa=venta, estado=1).select_related(
+        'id_vehiculo', 'id_repuesto_comprado', 'id_servicio'
+    )
+
+    items = []
+    for det in detalles:
+        # Determinar nombre, código producto y código SUNAT según tipo de item
+        if det.tipo_item == 'vehiculo' and det.id_vehiculo:
+            veh = det.id_vehiculo
+            nombre = f"{getattr(veh, 'nombre', '')}".strip() or "VEHICULO"
+            codigo_prod = getattr(veh, 'serie', f"VEH{det.idventadetalle}")
+            codigo_sunat = "50202201"  # Partes y accesorios de vehículos
+        elif det.tipo_item == 'repuesto' and det.id_repuesto_comprado:
+            rep = det.id_repuesto_comprado
+            nombre = getattr(rep, 'descripcion', 'REPUESTO') or 'REPUESTO'
+            codigo_prod = getattr(rep, 'codigo', f"REP{det.idventadetalle}")
+            codigo_sunat = "44101701"  # Accesorios y repuestos
+        elif det.tipo_item == 'servicio' and det.id_servicio:
+            srv = det.id_servicio
+            nombre = getattr(srv, 'nombre', 'SERVICIO') or 'SERVICIO'
+            codigo_prod = f"SRV{det.idventadetalle}"
+            codigo_sunat = "84111506"  # Servicios generales
         else:
-            venta.sunat_estado = 3
-            venta.sunat_error = f"HTTP {response.status_code}: {response.text[:200]}"
-            venta.save()
-            return False, f"Error del servidor PHP: Status {response.status_code}"
-            
-    except Exception as e:
-        error_msg = str(e)
-        try:
-            venta.sunat_estado = 3
-            venta.sunat_error = f"Excepción Django: {error_msg}"[:500] 
-            venta.save()
-        except:
-            pass
-        return False, f"Error interno: {str(e)}"
+            nombre = "PRODUCTO"
+            codigo_prod = f"PROD{det.idventadetalle}"
+            codigo_sunat = "50202201"
+
+        # Determinar el tipo de IGV basado en la venta
+        tipo_igv = "10"  # Gravado por defecto
+        if hasattr(venta, 'id_tipo_igv') and venta.id_tipo_igv:
+            tipo_igv_codigo = str(getattr(venta.id_tipo_igv, 'codigo', '10')).strip()
+            tipo_igv = tipo_igv_codigo if tipo_igv_codigo else "10"
+
+        precio_base = _float(det.precio_venta_contado)
+        if precio_base is None or precio_base <= 0:
+            precio_base = _float(det.subtotal) or 0
+
+        items.append({
+            "codigo_producto": str(codigo_prod)[:50],
+            "producto": str(nombre).upper()[:250],
+            "codigo_sunat": codigo_sunat,
+            "cantidad": int(det.cantidad),
+            "codigo_unidad": "NIU",  # Unidad de medida estándar
+            "precio_base": precio_base,
+            "tipo_igv_codigo": tipo_igv,
+            "descuento_precio_base": 0,
+            "bolsa": False,
+        })
+
+    return items
+
+
+def _actualizar_venta_sunat(venta, exito, descripcion, extra):
+    """Actualiza los campos SUNAT en el registro de Ventas."""
+    from software.models.VentasModel import Ventas
+    venta.sunat_estado = 1 if exito else 2
+    venta.sunat_xml = extra.get("sunat_xml", "")
+    venta.sunat_hash = extra.get("sunat_hash", "")
+    venta.sunat_error = None if exito else descripcion
+    venta.save(update_fields=["sunat_estado", "sunat_xml", "sunat_hash", "sunat_error"])
+    logger.info(
+        "Venta %s actualizada: estado_sunat=%s, descripcion=%s",
+        venta.idventa, venta.sunat_estado, descripcion
+    )
+
+
+def _marcar_error(venta, mensaje):
+    """Marca la venta con estado de error de conexión (3)."""
+    venta.sunat_estado = 3
+    venta.sunat_error = str(mensaje)[:500]
+    venta.save(update_fields=["sunat_estado", "sunat_error"])

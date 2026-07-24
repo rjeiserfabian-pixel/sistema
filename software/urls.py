@@ -59,6 +59,7 @@ from .views import configuracion_repuestos
 from .views import trazabilidad
 from .views import cuentas_por_cobrar
 from .views.sunat import api_tipo_cambio
+from .views import facturacion_comprobantes
 
 urlpatterns = [
 
@@ -457,9 +458,16 @@ urlpatterns = [
     path('reportes/contactos/', reportes.reporte_contactos, name='reporte_contactos'),
     path('reportes/contactos/api/clientes/', reportes.api_listar_contactos_clientes, name='api_listar_contactos_clientes'),
     path('reportes/contactos/api/proveedores/', reportes.api_listar_contactos_proveedores, name='api_listar_contactos_proveedores'),
-    # SUNAT Integración
+    # SUNAT Integración (módulo existente)
     path('sunat/', sunat.lista_sunat, name='lista_sunat'),
     path('sunat/enviar/<int:idventa>/', sunat.enviar_sunat_manual, name='enviar_sunat_manual'),
+
+    # ── Facturación Electrónica → Comprobantes de Venta (submódulo nuevo) ──
+    path('facturacion/comprobantes/', facturacion_comprobantes.comprobantes_venta, name='comprobantes_venta'),
+    path('facturacion/comprobantes/api/facturas/', facturacion_comprobantes.api_listar_facturas, name='api_listar_facturas_sunat'),
+    path('facturacion/comprobantes/api/boletas/', facturacion_comprobantes.api_listar_boletas, name='api_listar_boletas_sunat'),
+    path('facturacion/comprobantes/api/liquidaciones/', facturacion_comprobantes.api_listar_liquidaciones, name='api_listar_liquidaciones_sunat'),
+    path('facturacion/comprobantes/enviar/<int:idventa>/', facturacion_comprobantes.enviar_comprobante_sunat, name='enviar_comprobante_sunat'),
 
     # PRE-FINANCIAMIENTO
     path('pre-financiamiento/', pre_financiamiento.index_pre_financiamiento, name='index_pre_financiamiento'),

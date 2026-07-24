@@ -1,0 +1,138 @@
+{% comment %}
+  Partial reutilizable para cada pestaña de comprobantes.
+  Variables esperadas (via 'with'):
+    - tab_id       : "facturas" | "boletas" | "liquidaciones"
+    - titulo       : texto del encabezado
+    - color        : clase de color Bootstrap (primary, success, warning)
+    - icono        : clase Bootstrap Icons (ej: bi-file-earmark-text-fill)
+{% endcomment %}
+
+<!-- Filtros de fecha -->
+<div class="row g-2 mb-3 align-items-end">
+  <div class="col-sm-auto">
+    <label class="form-label text-muted small mb-1">Desde</label>
+    <input type="date" class="form-control form-control-sm filtro-fecha-inicio"
+           id="fecha-inicio-{{ tab_id }}"
+           style="min-width:140px;">
+  </div>
+  <div class="col-sm-auto">
+    <label class="form-label text-muted small mb-1">Hasta</label>
+    <input type="date" class="form-control form-control-sm filtro-fecha-fin"
+           id="fecha-fin-{{ tab_id }}"
+           style="min-width:140px;">
+  </div>
+  <div class="col-sm-auto">
+    <button class="btn btn-sm btn-outline-{{ color }} btn-filtrar-fechas"
+            data-tab="{{ tab_id }}"
+            type="button">
+      <i class="bi bi-funnel-fill me-1"></i>Filtrar
+    </button>
+    <button class="btn btn-sm btn-outline-secondary btn-limpiar-fechas ms-1"
+            data-tab="{{ tab_id }}"
+            type="button">
+      <i class="bi bi-x-circle me-1"></i>Limpiar
+    </button>
+  </div>
+  
+  <!-- Contenedor para inyectar botones de Excel/PDF al mismo nivel -->
+  <div class="col-sm-auto d-flex align-items-center" id="botones-exportar-{{ tab_id }}">
+  </div>
+  <div class="col-sm-auto ms-auto">
+    <span class="text-muted small">
+      <i class="bi {{ icono }} text-{{ color }} me-1"></i>{{ titulo }}
+    </span>
+  </div>
+</div>
+
+<!-- Tabla -->
+<div class="table-responsive">
+  <table class="table table-hover align-middle w-100" id="tabla-{{ tab_id }}">
+    <thead class="table-dark">
+      <tr>
+        <th style="width:100px">Fecha</th>
+        <th style="width:160px">Comprobante</th>
+        <th>Cliente / Proveedor</th>
+        <th style="width:110px">Total</th>
+        <th class="text-center" style="width:150px">Estado SUNAT</th>
+        <th class="text-center" style="width:130px">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Cargado vía DataTables AJAX -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Filtros de fecha para la pestaña "{{ tab_id }}"
+(function() {
+  var tabId = "{{ tab_id }}";
+
+  // Establecer fechas por defecto: del primer día del mes a hoy
+  var inputInicio = document.getElementById("fecha-inicio-" + tabId);
+  var inputFin = document.getElementById("fecha-fin-" + tabId);
+  
+  if (!inputInicio.value && !inputFin.value) {
+    var hoy = new Date();
+    // Ajustar zona horaria local
+    var offset = hoy.getTimezoneOffset() * 60000;
+    var localHoy = new Date(hoy.getTime() - offset);
+    var localPrimerDia = new Date(localHoy.getFullYear(), localHoy.getMonth(), 1, 0, 0, 0);
+    
+    // YYYY-MM-DD
+    var isoHoy = localHoy.toISOString().split('T')[0];
+    var isoPrimerDia = new Date(localPrimerDia.getTime() - localPrimerDia.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    
+    inputInicio.value = isoPrimerDia;
+    inputFin.value = isoHoy;
+  }
+
+  document.getElementById("fecha-inicio-{{ tab_id }}")
+    .addEventListener("change", function() {
+      var dt = $.fn.DataTable.isDataTable("#tabla-" + tabId)
+                 ? $("#tabla-" + tabId).DataTable() : null;
+      if (dt) dt.ajax.url(buildUrl(tabId)).load();
+    });
+
+  document.getElementById("fecha-fin-{{ tab_id }}")
+    .addEventListener("change", function() {
+      var dt = $.fn.DataTable.isDataTable("#tabla-" + tabId)
+                 ? $("#tabla-" + tabId).DataTable() : null;
+      if (dt) dt.ajax.url(buildUrl(tabId)).load();
+    });
+
+  document.querySelectorAll(".btn-filtrar-fechas[data-tab='{{ tab_id }}']")
+    .forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var dt = $.fn.DataTable.isDataTable("#tabla-" + tabId)
+                   ? $("#tabla-" + tabId).DataTable() : null;
+        if (dt) dt.ajax.url(buildUrl(tabId)).load();
+      });
+    });
+
+  document.querySelectorAll(".btn-limpiar-fechas[data-tab='{{ tab_id }}']")
+    .forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.getElementById("fecha-inicio-" + tabId).value = "";
+        document.getElementById("fecha-fin-"   + tabId).value = "";
+        var dt = $.fn.DataTable.isDataTable("#tabla-" + tabId)
+                   ? $("#tabla-" + tabId).DataTable() : null;
+        if (dt) dt.ajax.url(buildUrl(tabId)).load();
+      });
+    });
+
+  function buildUrl(tab) {
+    var base = {
+      facturas:      "{% url 'api_listar_facturas_sunat' %}",
+      boletas:       "{% url 'api_listar_boletas_sunat' %}",
+      liquidaciones: "{% url 'api_listar_liquidaciones_sunat' %}",
+    }[tab];
+    var inicio = document.getElementById("fecha-inicio-" + tab).value;
+    var fin    = document.getElementById("fecha-fin-"    + tab).value;
+    var params = new URLSearchParams();
+    if (inicio) params.set("fecha_inicio", inicio);
+    if (fin)    params.set("fecha_fin",    fin);
+    return params.toString() ? base + "?" + params.toString() : base;
+  }
+})();
+</script>
