@@ -20,6 +20,7 @@ class Usuario(models.Model):
     notificaciones_sonido = models.BooleanField(default=True)
     sonido_notificacion = models.FileField(upload_to='notificaciones/sonidos/', null=True, blank=True)
     imagen_perfil = models.CharField(max_length=255, null=True, blank=True)
+    puede_gestionar_logistica = models.BooleanField(default=False, null=True, blank=True)
     
 
     class Meta: 

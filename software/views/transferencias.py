@@ -24,6 +24,15 @@ def transferencias(request):
     Vista principal de transferencias.
     Ahora carga vacía para Server-Side Processing.
     """
+    idtipousuario = request.session.get('idtipousuario')
+    puede_gestionar_logistica = request.session.get('puede_gestionar_logistica', False)
+    
+    # Allow access if they are admin/gerente OR if they have the specific flag
+    tiene_acceso = idtipousuario in [1, 5] or puede_gestionar_logistica
+    
+    if not tiene_acceso:
+        return redirect('/')
+
     almacenes = Almacenes.objects.filter(estado=1)
     almacenes_principal = Almacenes.objects.filter(estado=1, id_sucursal__es_principal=True)
 
@@ -38,7 +47,7 @@ def transferencias(request):
         'vehiculos_transporte': vehiculos_transporte,
         'conductores': conductores,
         'es_admin': request.session.get('idtipousuario') == 1,
-        'puede_gestionar_transferencias': request.session.get('idtipousuario') in [1, 5],
+        'puede_gestionar_transferencias': tiene_acceso,
         'stats': {
             'pendientes': Transferencia.objects.filter(estado='pendiente').count(),
             'en_transito': Transferencia.objects.filter(estado='en_transito').count(),
@@ -104,7 +113,8 @@ def api_listar_transferencias(request):
 
         data = []
         es_admin = request.session.get('idtipousuario') == 1
-        puede_gestionar_transferencias = request.session.get('idtipousuario') in [1, 5]
+        puede_gestionar_logistica = request.session.get('puede_gestionar_logistica', False)
+        puede_gestionar_transferencias = request.session.get('idtipousuario') in [1, 5] or puede_gestionar_logistica
         id_almacen_session = request.session.get('id_almacen')
         
         # Calculate continuous index across pages
@@ -114,6 +124,8 @@ def api_listar_transferencias(request):
             almacen_origen_nom = trans.id_almacen_origen.nombre_almacen if trans.id_almacen_origen else '---'
             almacen_destino_nom = trans.id_almacen_destino.nombre_almacen if trans.id_almacen_destino else '---'
             
+            # Validación ESTRICTA: El usuario DEBE tener un almacén seleccionado.
+            # Solo verá los botones si el almacén de su sesión coincide exactamente con el origen o destino.
             es_almacen_destino = str(trans.id_almacen_destino_id) == str(id_almacen_session) if id_almacen_session else False
             es_almacen_origen = str(trans.id_almacen_origen_id) == str(id_almacen_session) if id_almacen_session else False
 

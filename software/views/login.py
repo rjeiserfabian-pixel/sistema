@@ -68,6 +68,7 @@ def login(request):
             request.session['nombrecompleto'] = usuario_encontrado.nombrecompleto
             request.session['idusuario'] = usuario_encontrado.idusuario
             request.session['es_admin'] = es_admin
+            request.session['puede_gestionar_logistica'] = usuario_encontrado.puede_gestionar_logistica
             
             if usuario_encontrado.idempresa:
                 request.session['idempresa'] = usuario_encontrado.idempresa.idempresa

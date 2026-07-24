@@ -38,7 +38,36 @@ def modulos_sidebar(request):
         # Organizar módulos en estructura jerárquica
         modulos_organizados = {}
 
-        for permiso in permisos:
+        # 🚀 INYECCIÓN MANUAL PARA LA OPCIÓN 2 (ACCESO A LOGÍSTICA)
+        puede_gestionar_logistica = request.session.get('puede_gestionar_logistica', False)
+        modulos_permitidos = list(permisos)
+
+        if puede_gestionar_logistica:
+            from software.models.ModulosModel import Modulos
+            try:
+                # Verificar si ya tiene el módulo de transferencias (ID 15)
+                ya_tiene_transferencias = any(p.idmodulo.idmodulo == 15 for p in modulos_permitidos)
+                if not ya_tiene_transferencias:
+                    # Crear un objeto "permiso falso" para inyectarlo en la lista
+                    class PermisoFalso:
+                        pass
+                    
+                    modulo_transferencias = Modulos.objects.select_related('idmodulo_padre').get(idmodulo=15)
+                    permiso_falso = PermisoFalso()
+                    permiso_falso.idmodulo = modulo_transferencias
+                    modulos_permitidos.append(permiso_falso)
+                    
+                    # También necesitamos asegurar que tenga el módulo padre (Almacén)
+                    if modulo_transferencias.idmodulo_padre:
+                        ya_tiene_padre = any(p.idmodulo.idmodulo == modulo_transferencias.idmodulo_padre.idmodulo for p in modulos_permitidos)
+                        if not ya_tiene_padre:
+                            permiso_falso_padre = PermisoFalso()
+                            permiso_falso_padre.idmodulo = modulo_transferencias.idmodulo_padre
+                            modulos_permitidos.append(permiso_falso_padre)
+            except Exception as e:
+                print(f"Error inyectando módulo de transferencias: {e}")
+
+        for permiso in modulos_permitidos:
             modulo = permiso.idmodulo
 
             # Si el módulo tiene padre

@@ -161,6 +161,12 @@
                                                         <input type="text" value="{{ usuario.gmail|default:'' }}" name="gmailUsuario"
                                                             class="form-control rounded-pill">
                                                     </div>
+                                                    <div class="col-md-6 mb-3 d-flex align-items-center mt-4">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" id="puede_gestionar_logistica_{{ usuario.idusuario }}" name="puede_gestionar_logistica" {% if usuario.puede_gestionar_logistica %}checked{% endif %}>
+                                                            <label class="form-check-label fw-semibold" for="puede_gestionar_logistica_{{ usuario.idusuario }}">Acceso a Logística y Transferencias</label>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div class="mb-3">
@@ -246,6 +252,12 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Gmail</label>
                             <input type="text" name="gmailUsuario2" class="form-control rounded-pill">
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-center mt-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="puede_gestionar_logistica2" name="puede_gestionar_logistica2">
+                                <label class="form-check-label fw-semibold" for="puede_gestionar_logistica2">Acceso a Logística y Transferencias</label>
+                            </div>
                         </div>
                     </div>
 

@@ -132,7 +132,8 @@ def agregar(request):
                 gmail=gmailUsuario,
                 id_sucursal_id=id_sucursal_session,  # ✅ ASIGNAR SUCURSAL
                 idempresa_id=id_empresa,             # ✅ ASIGNAR EMPRESA
-                estado=1
+                estado=1,
+                puede_gestionar_logistica=request.POST.get('puede_gestionar_logistica2') == 'on'
             )
             usuario.save()
             
@@ -190,6 +191,7 @@ def editar(request):
             usuario.celular = celularUsuario
             usuario.dni = dniUsuario
             usuario.gmail = gmailUsuario
+            usuario.puede_gestionar_logistica = request.POST.get('puede_gestionar_logistica') == 'on'
             # NO modificar id_sucursal ni idempresa - se mantienen los originales
             
             # Verificar si el usuario cambió
