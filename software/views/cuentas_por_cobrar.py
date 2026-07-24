@@ -8,6 +8,37 @@ from software.models.ClienteModel import Cliente
 from software.models.CreditoModel import Credito
 from software.models.CuotasVentaModel import CuotasVenta
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
+from django.core.cache import cache
+from software.models.empresaModel import Empresa
+from software.views.creditos import calcular_interes_mora
+
+def _calcular_mora_dict(cuota_dict, empresa, hoy):
+    if cuota_dict.get('interes_mora_manual') is not None:
+        return cuota_dict['interes_mora_manual']
+    
+    fecha_vencimiento = cuota_dict.get('fecha_vencimiento')
+    if not fecha_vencimiento or cuota_dict.get('estado_pago') == 'Pagado':
+        return Decimal('0')
+        
+    if hoy <= fecha_vencimiento:
+        return Decimal('0')
+        
+    dias_retraso = (hoy - fecha_vencimiento).days
+    
+    dias_inicio = empresa.dias_mora_inicio if empresa and empresa.dias_mora_inicio else 4
+    tasa_base = empresa.interes_mora_base if empresa else Decimal('5.00')
+
+    if empresa and not empresa.cobrar_mora:
+        return Decimal('0')
+
+    if dias_retraso < dias_inicio:
+        return Decimal('0')
+    
+    tasa_adicional = dias_retraso - dias_inicio
+    tasa_final = tasa_base + tasa_adicional
+    
+    saldo_cuota = cuota_dict.get('saldo_cuota', Decimal('0'))
+    return (saldo_cuota * tasa_final / 100).quantize(Decimal('0.01'))
 
 def index(request):
     """
@@ -79,17 +110,26 @@ def api_listar_clientes_cobrar(request):
         'idventa__idcliente', 
         'idcredito__idcliente', 
         'saldo_cuota', 
-        'fecha_vencimiento'
+        'fecha_vencimiento',
+        'interes_mora_manual',
+        'estado_pago'
     )
     
+    empresa = cache.get('config_empresa_mora')
+    if not empresa:
+        empresa = Empresa.objects.all().first()
+        if empresa:
+            cache.set('config_empresa_mora', empresa, 3600)
+            
     hoy = timezone.now().date()
     client_stats = {c_id: {'saldo': Decimal('0.00'), 'vencidas': 0} for c_id in client_ids}
     
     for cuota in cuotas:
         c_id = cuota['idventa__idcliente'] or cuota['idcredito__idcliente']
         if c_id in client_stats:
-            client_stats[c_id]['saldo'] += cuota['saldo_cuota']
-            if cuota['fecha_vencimiento'] < hoy:
+            mora = _calcular_mora_dict(cuota, empresa, hoy)
+            client_stats[c_id]['saldo'] += cuota['saldo_cuota'] + mora
+            if cuota['fecha_vencimiento'] and cuota['fecha_vencimiento'] < hoy:
                 client_stats[c_id]['vencidas'] += 1
 
     # 5. Serialización
@@ -149,7 +189,12 @@ def detalle_cobro(request, idcliente):
     # Ordenar cronológicamente
     todas_cuotas.sort(key=lambda x: (x.fecha_vencimiento, x.numero_cuota))
 
-    total_deuda = sum([c.saldo_cuota for c in todas_cuotas])
+    total_deuda = Decimal('0')
+    for c in todas_cuotas:
+        mora, _, _ = calcular_interes_mora(c)
+        c.mora_calculada = mora
+        c.saldo_total = c.saldo_cuota + mora
+        total_deuda += c.saldo_total
     metodos_pago = TipoPago.objects.filter(estado=1)
 
     data = {
@@ -234,8 +279,11 @@ def procesar_cobro(request):
                     if monto_restante <= 0:
                         break
                     
-                    if cuota.saldo_cuota <= monto_restante:
-                        monto_aplicado = cuota.saldo_cuota
+                    mora, _, _ = calcular_interes_mora(cuota)
+                    saldo_total_vld = cuota.saldo_cuota + mora
+                    
+                    if saldo_total_vld <= monto_restante:
+                        monto_aplicado = saldo_total_vld
                     else:
                         monto_aplicado = monto_restante
                         
@@ -251,8 +299,12 @@ def procesar_cobro(request):
                     )
                     pagos_creados.append(pago)
                     
-                    cuota.monto_pagado += monto_aplicado
-                    cuota.saldo_cuota -= monto_aplicado
+                    interes_mora_cobrado = min(monto_aplicado, mora)
+                    monto_capital = monto_aplicado - interes_mora_cobrado
+                    
+                    cuota.interes_mora += interes_mora_cobrado
+                    cuota.monto_pagado += monto_capital
+                    cuota.saldo_cuota -= monto_capital
                     if cuota.saldo_cuota <= 0:
                         cuota.estado_pago = 'Pagado'
                         cuota.fecha_pago = timezone.now()

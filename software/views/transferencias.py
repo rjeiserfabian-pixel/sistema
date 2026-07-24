@@ -38,6 +38,7 @@ def transferencias(request):
         'vehiculos_transporte': vehiculos_transporte,
         'conductores': conductores,
         'es_admin': request.session.get('idtipousuario') == 1,
+        'puede_gestionar_transferencias': request.session.get('idtipousuario') in [1, 5],
         'stats': {
             'pendientes': Transferencia.objects.filter(estado='pendiente').count(),
             'en_transito': Transferencia.objects.filter(estado='en_transito').count(),
@@ -103,6 +104,7 @@ def api_listar_transferencias(request):
 
         data = []
         es_admin = request.session.get('idtipousuario') == 1
+        puede_gestionar_transferencias = request.session.get('idtipousuario') in [1, 5]
         
         # Calculate continuous index across pages
         start_index = (page_obj.number - 1) * paginator.per_page + 1
@@ -121,7 +123,8 @@ def api_listar_transferencias(request):
                 'solicitante': trans.idusuario_solicita.nombrecompleto if trans.idusuario_solicita else '',
                 'numero_guia': trans.numero_guia or '---',
                 'estado': trans.estado,
-                'es_admin': es_admin
+                'es_admin': es_admin,
+                'puede_gestionar_transferencias': puede_gestionar_transferencias
             })
 
         stats = {

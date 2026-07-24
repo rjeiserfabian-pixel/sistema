@@ -115,14 +115,19 @@
                             id="cuota_{{ cuota.idcuotaventa }}" 
                             name="cuotas_ids[]" 
                             value="{{ cuota.idcuotaventa }}"
-                            data-saldo="{{ cuota.saldo_cuota|stringformat:'f' }}">
+                            data-saldo="{{ cuota.saldo_total|stringformat:'f' }}">
                     </div>
                     <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
                             <span class="fw-bold">
                                 {% if cuota.numero_cuota == 0 %}Inicial{% else %}Cuota {{ cuota.numero_cuota }}{% endif %}
                             </span>
-                            <span class="fw-bold text-danger">S/ {{ cuota.saldo_cuota|floatformat:2 }}</span>
+                            <span class="fw-bold text-danger ms-3 text-end">
+                                S/ {{ cuota.saldo_total|floatformat:2 }}
+                                {% if cuota.mora_calculada > 0 %}
+                                    <br><small class="text-danger" style="font-size: 0.70rem;">(Inc. S/ {{ cuota.mora_calculada|floatformat:2 }} mora)</small>
+                                {% endif %}
+                            </span>
                         </div>
                         <div class="text-muted small">
                             <i class="far fa-calendar-alt"></i> Vence: {{ cuota.fecha_vencimiento|date:"d/m/Y" }}

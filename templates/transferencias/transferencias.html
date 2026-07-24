@@ -15,7 +15,7 @@
         </ol>
       </nav>
     </div>
-    {% if es_admin %}
+    {% if puede_gestionar_transferencias %}
     <button type="button" class="btn btn-primary btn-lg rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#modalNuevaTransferencia">
       <i class="bi bi-plus-circle me-2"></i>Nueva Transferencia
     </button>
@@ -221,7 +221,7 @@
   </div>
 
   <!-- MODAL NUEVA TRANSFERENCIA (SIMPLIFICADO) -->
-  {% if es_admin %}
+  {% if puede_gestionar_transferencias %}
   <div class="modal fade" id="modalNuevaTransferencia" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content border-0 shadow-lg rounded-4">
@@ -979,24 +979,34 @@ $('#btnGuardarTransferencia').click(function() {
   });
 });
 
-function rechazarTransferencia(id) {
-  Swal.fire({
-    title: '¿Rechazar?',
-    text: "Esta acción anulará la solicitud de transferencia.",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc3545',
-    confirmButtonText: 'Sí, rechazar'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      $.ajax({
-        url: `/transferencias/rechazar/${id}/`,
-        method: 'POST',
-        data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
-        success: function(res) { 
-            cargarTransferencias(currentPage); 
-        }
-      });
+function rechazarTransferencia(id, esAdmin) {
+  if (!esAdmin) {
+    AuthWhatsApp.init('eliminar', 'transferencias', id, function() {
+      ejecutarRechazo(id);
+    });
+  } else {
+    Swal.fire({
+      title: '¿Rechazar?',
+      text: "Esta acción anulará la solicitud de transferencia.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Sí, rechazar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        ejecutarRechazo(id);
+      }
+    });
+  }
+}
+
+function ejecutarRechazo(id) {
+  $.ajax({
+    url: `/transferencias/rechazar/${id}/`,
+    method: 'POST',
+    data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
+    success: function(res) { 
+        cargarTransferencias(currentPage); 
     }
   });
 }
@@ -1075,12 +1085,12 @@ function renderizarTabla(transferencias) {
                 <i class="bi bi-file-earmark-pdf"></i>
             </a>`;
             
-        if (row.estado === 'pendiente' && row.es_admin) {
+        if (row.estado === 'pendiente' && row.puede_gestionar_transferencias) {
             btns += `
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirModalLogistica(${row.id_transferencia})" title="Registrar Salida">
                 <i class="bi bi-truck"></i>
             </button>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="rechazarTransferencia(${row.id_transferencia})" title="Rechazar">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="rechazarTransferencia(${row.id_transferencia}, ${row.es_admin})" title="Rechazar">
                 <i class="bi bi-x-lg"></i>
             </button>`;
         }
