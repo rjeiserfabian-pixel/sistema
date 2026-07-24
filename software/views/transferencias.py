@@ -105,6 +105,7 @@ def api_listar_transferencias(request):
         data = []
         es_admin = request.session.get('idtipousuario') == 1
         puede_gestionar_transferencias = request.session.get('idtipousuario') in [1, 5]
+        id_almacen_session = request.session.get('id_almacen')
         
         # Calculate continuous index across pages
         start_index = (page_obj.number - 1) * paginator.per_page + 1
@@ -113,6 +114,9 @@ def api_listar_transferencias(request):
             almacen_origen_nom = trans.id_almacen_origen.nombre_almacen if trans.id_almacen_origen else '---'
             almacen_destino_nom = trans.id_almacen_destino.nombre_almacen if trans.id_almacen_destino else '---'
             
+            es_almacen_destino = str(trans.id_almacen_destino_id) == str(id_almacen_session) if id_almacen_session else False
+            es_almacen_origen = str(trans.id_almacen_origen_id) == str(id_almacen_session) if id_almacen_session else False
+
             data.append({
                 'index': start_index + idx,
                 'id_transferencia': trans.id_transferencia,
@@ -124,7 +128,9 @@ def api_listar_transferencias(request):
                 'numero_guia': trans.numero_guia or '---',
                 'estado': trans.estado,
                 'es_admin': es_admin,
-                'puede_gestionar_transferencias': puede_gestionar_transferencias
+                'puede_gestionar_transferencias': puede_gestionar_transferencias,
+                'es_almacen_destino': es_almacen_destino,
+                'es_almacen_origen': es_almacen_origen
             })
 
         stats = {

@@ -1085,7 +1085,7 @@ function renderizarTabla(transferencias) {
                 <i class="bi bi-file-earmark-pdf"></i>
             </a>`;
             
-        if (row.estado === 'pendiente' && row.puede_gestionar_transferencias) {
+        if (row.estado === 'pendiente' && row.puede_gestionar_transferencias && row.es_almacen_origen) {
             btns += `
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirModalLogistica(${row.id_transferencia})" title="Registrar Salida">
                 <i class="bi bi-truck"></i>
@@ -1094,19 +1094,19 @@ function renderizarTabla(transferencias) {
                 <i class="bi bi-x-lg"></i>
             </button>`;
         }
-        if (row.estado === 'en_transito') {
+        if (row.estado === 'en_transito' && row.es_almacen_destino) {
             btns += `
             <button type="button" class="btn btn-sm btn-success" onclick="confirmarRecepcion(${row.id_transferencia})" title="Confirmar Recepción">
                 <i class="bi bi-box-seam me-1"></i> Recibir
             </button>`;
         }
-        if (row.estado === 'recibido' && row.tipo_transferencia === 'sucursal_a_exhibicion') {
+        if (row.estado === 'recibido' && row.tipo_transferencia === 'sucursal_a_exhibicion' && row.es_almacen_destino) {
             btns += `
             <button type="button" class="btn btn-sm btn-warning" onclick="iniciarRetorno(${row.id_transferencia})" title="Iniciar Retorno al Almacén">
                 <i class="bi bi-arrow-return-left me-1"></i> Retornar
             </button>`;
         }
-        if (row.estado === 'en_retorno') {
+        if (row.estado === 'en_retorno' && row.es_almacen_origen) {
             btns += `
             <button type="button" class="btn btn-sm btn-success" onclick="confirmarRecepcion(${row.id_transferencia})" title="Confirmar Ingreso a Almacén">
                 <i class="bi bi-check-circle me-1"></i> Recibir Stock
