@@ -166,7 +166,7 @@ def api_listar_historial(request):
         
         data.append({
             'id_movimiento': a.id_movimiento,
-            'caja': a.id_caja.nombre_caja if a.id_caja else 'N/A',
+            'caja': f"{a.id_caja.nombre_caja} (Nro: {a.id_caja.numero_caja})" if a.id_caja else 'N/A',
             'usuario': a.idusuario.nombrecompleto if a.idusuario else 'N/A',
             'fecha_apertura': a.fecha_apertura.strftime('%d/%m/%Y') if a.fecha_apertura else '---',
             'hora_apertura': a.hora_apertura.strftime('%H:%M') if a.hora_apertura else '',

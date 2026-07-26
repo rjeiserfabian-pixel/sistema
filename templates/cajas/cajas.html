@@ -44,8 +44,16 @@
                 <td class="text-center">
                   <span class="badge bg-info">{{ caja_registro.numero_caja }}</span>
                 </td>
-                <td>{{ caja_registro.id_sucursal.nombre_sucursal }}</td>
-                <td>{{ caja_registro.id_sucursal.idempresa.razonsocial }}</td>
+                <td>{% if caja_registro.id_sucursal %}{{ caja_registro.id_sucursal.nombre_sucursal }}{% else %}<span class="badge bg-secondary">Global</span>{% endif %}</td>
+                <td>
+                  {% if caja_registro.id_empresa %}
+                    {{ caja_registro.id_empresa.razonsocial }}
+                  {% elif caja_registro.id_sucursal %}
+                    {{ caja_registro.id_sucursal.idempresa.razonsocial }}
+                  {% else %}
+                    <span class="badge bg-secondary">Global</span>
+                  {% endif %}
+                </td>
                 <td class="text-center">
                   <a type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal"
                     data-bs-target="#myModal2{{ caja_registro.id_caja }}" title="Editar">
@@ -161,9 +169,9 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label fw-semibold">Sucursal <span class="text-danger">*</span></label>
-              <select name="idSucursalAgregar" id="sucursalAgregar" class="form-select rounded-pill" required>
-                <option value="">Primero seleccione una empresa</option>
+              <label class="form-label fw-semibold">Sucursal</label>
+              <select name="idSucursalAgregar" id="sucursalAgregar" class="form-select rounded-pill">
+                <option value="">Global (Sin sucursal)</option>
               </select>
             </div>
 
@@ -278,14 +286,14 @@ $(document).ready(function(){
         type: "GET",
         data: { id_empresa: idEmpresa },
         success: function(data){
-          $('#sucursalAgregar').html('<option value="">Seleccione una sucursal</option>');
+          $('#sucursalAgregar').html('<option value="">Global (Sin sucursal específica)</option>');
           $.each(data, function(index, sucursal){
             $('#sucursalAgregar').append('<option value="'+sucursal.id_sucursal+'">'+sucursal.nombre_sucursal+'</option>');
           });
         }
       });
     } else {
-      $('#sucursalAgregar').html('<option value="">Primero seleccione una empresa</option>');
+      $('#sucursalAgregar').html('<option value="">Global (Sin sucursal)</option>');
     }
   });
 
@@ -363,15 +371,7 @@ $(document).ready(function(){
     return false;
   }
   
-  if (!idSucursal || idSucursal === '') {
-    Swal.fire({
-      title: 'Campo requerido',
-      text: 'Debe seleccionar una sucursal',
-      icon: 'warning',
-      confirmButtonText: 'OK'
-    });
-    return false;
-  }
+  // Eliminado la validación obligatoria de sucursal para permitir cajas globales
   
   var formData = new FormData($('#formAgregarCaja')[0]);
   
@@ -493,15 +493,7 @@ $(".btn-editar").click(function(e){
     return false;
   }
   
-  if (!idSucursal || idSucursal === '') {
-    Swal.fire({
-      title: 'Campo requerido',
-      text: 'Debe seleccionar una sucursal',
-      icon: 'warning',
-      confirmButtonText: 'OK'
-    });
-    return false;
-  }
+  // Eliminado la validación obligatoria de sucursal para permitir cajas globales
   
   var form = modal.find('form');
   var formData = new FormData(form[0]);

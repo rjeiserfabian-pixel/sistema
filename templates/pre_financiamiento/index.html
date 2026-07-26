@@ -174,11 +174,31 @@
     </div>
 
   </section>
-</main>{% endblock %}
+</main>
+
+<!-- Modal Detalles -->
+<div class="modal fade" id="modalDetalles" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-invoice me-2"></i>Detalle de Pre-Financiamiento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="modalDetallesBody">
+          <!-- Contenido dinámico -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
 
 {% block extra_scripts %}
 <script>
 const CSRF_TOKEN = '{{ csrf_token }}';
+const ID_TIPO_USUARIO = parseInt('{{ idtipousuario|default:"0" }}', 10);
 
 let currentPage = 1;
 let searchTimeout = null;
@@ -215,6 +235,11 @@ function cargarPreFinanciamientos(page=1) {
             pagination.innerHTML = '';
             return;
         }
+
+        window.preCreditosData = {};
+        data.solicitudes.forEach(s => {
+            window.preCreditosData[s.id_pre_credito] = s;
+        });
 
         tbody.innerHTML = data.solicitudes.map(s => renderFilaPreFinanciamiento(s)).join('');
 
@@ -267,22 +292,38 @@ function renderFilaPreFinanciamiento(s) {
     }
 
     // Acciones HTML
-    let accionesHtml = '<div class="d-flex gap-1 justify-content-center">';
-    if (s.estado === 'pendiente') {
-        accionesHtml += `
-            <button type="button" class="btn btn-success btn-accion btn-evaluar" data-id="${s.id_pre_credito}" data-accion="aprobar" title="Aprobar solicitud"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
-            <button type="button" class="btn btn-danger btn-accion btn-evaluar" data-id="${s.id_pre_credito}" data-accion="rechazar" title="Rechazar solicitud"><i class="fa-solid fa-xmark me-1"></i>Rechazar</button>
-        `;
-    } else if (s.estado === 'aprobado') {
-        accionesHtml += `<a href="/ventas/?pre_credito_id=${s.id_pre_credito}" class="btn btn-primary btn-accion" title="Procesar Venta a Crédito"><i class="fa-solid fa-cart-shopping me-1"></i>Procesar Venta</a>`;
+    let accionesHtml = '<div class="d-flex gap-1 justify-content-center flex-wrap" style="max-width: 140px; margin: 0 auto;">';
+    
+    // Botón Detalle (Para todos)
+    accionesHtml += `<button type="button" class="btn btn-info btn-accion btn-detalles text-white" data-id="${s.id_pre_credito}" title="Ver Detalles"><i class="fa-solid fa-eye"></i></button>`;
+
+    if (ID_TIPO_USUARIO !== 2) {
+        if (!s.cobrado) {
+            if (s.estado === 'pendiente' || s.estado === 'aprobado') {
+                accionesHtml += `<button type="button" class="btn btn-success btn-accion btn-cobrar" data-id="${s.id_pre_credito}" title="Cobrar Monto Inicial"><i class="fa-solid fa-hand-holding-dollar me-1"></i>Cobrar</button>`;
+            }
+        } else {
+            accionesHtml += `<a href="/pre-financiamiento/recibo/${s.id_pre_credito}/" target="_blank" class="btn btn-secondary btn-accion" title="Reimprimir Ticket"><i class="fa-solid fa-print"></i></a>`;
+        }
+        
+        if (s.estado === 'pendiente') {
+            accionesHtml += `
+                <button type="button" class="btn btn-success btn-accion btn-evaluar" data-id="${s.id_pre_credito}" data-accion="aprobar" title="Aprobar solicitud"><i class="fa-solid fa-check"></i></button>
+                <button type="button" class="btn btn-danger btn-accion btn-evaluar" data-id="${s.id_pre_credito}" data-accion="rechazar" title="Rechazar solicitud"><i class="fa-solid fa-xmark"></i></button>
+            `;
+        }
+    }
+
+    if (s.estado === 'aprobado') {
+        accionesHtml += `<a href="/ventas/?pre_credito_id=${s.id_pre_credito}" class="btn btn-primary btn-accion" title="Procesar Venta a Crédito"><i class="fa-solid fa-cart-shopping me-1"></i>Vender</a>`;
     } else if (s.estado === 'completado') {
-        accionesHtml += `<span class="text-muted small fw-bold" style="color: #0284c7 !important;"><i class="fa-solid fa-check-double me-1"></i>Venta Exitosa</span>`;
-    } else {
-        accionesHtml += `<span class="text-muted small">Cerrado</span>`;
+        accionesHtml += `<span class="text-muted small fw-bold mt-1 w-100 text-center" style="color: #0284c7 !important;"><i class="fa-solid fa-check-double me-1"></i>Venta Exitosa</span>`;
     }
-    if (s.observaciones) {
-        accionesHtml += `<button type="button" class="btn btn-light btn-accion btn-obs" data-obs="${s.observaciones}"><i class="fa-solid fa-comment-dots"></i></button>`;
+    
+    if (s.observacion_evaluacion && (s.estado === 'aprobado' || s.estado === 'rechazado')) {
+        accionesHtml += `<button type="button" class="btn btn-warning btn-accion btn-obs-eval text-dark" data-obs="${s.observacion_evaluacion}" title="Ver Observación de Evaluación"><i class="fa-solid fa-comment-dots"></i></button>`;
     }
+    
     accionesHtml += '</div>';
 
     return `
@@ -365,19 +406,22 @@ document.getElementById('tbodyPreFinanciamiento').addEventListener('click', func
         Swal.fire({
             title: label,
             icon: icon,
+            input: 'textarea',
+            inputPlaceholder: 'Escribe una observación o motivo (opcional)...',
             showCancelButton: true,
             confirmButtonText: accion === 'aprobar' ? '✅ Sí, aprobar' : '❌ Sí, rechazar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: accion === 'aprobar' ? '#198754' : '#dc3545',
         }).then(result => {
             if (!result.isConfirmed) return;
+            const observacion = result.value || '';
             fetch(`/pre-financiamiento/evaluar/${id}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': CSRF_TOKEN,
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `accion=${accion}`,
+                body: `accion=${accion}&observacion_evaluacion=${encodeURIComponent(observacion)}`,
             })
             .then(r => r.json())
             .then(data => {
@@ -419,9 +463,97 @@ document.getElementById('tbodyPreFinanciamiento').addEventListener('click', func
     const btnObs = e.target.closest('.btn-obs');
     if (btnObs) {
         Swal.fire({
-            title: 'Observaciones',
+            title: 'Observación Inicial',
             text: btnObs.dataset.obs,
             icon: 'info',
+        });
+    }
+    
+    const btnObsEval = e.target.closest('.btn-obs-eval');
+    if (btnObsEval) {
+        Swal.fire({
+            title: 'Observación de Evaluación',
+            text: btnObsEval.dataset.obs,
+            icon: 'info',
+        });
+    }
+
+    const btnDetalles = e.target.closest('.btn-detalles');
+    if (btnDetalles) {
+        const id = btnDetalles.dataset.id;
+        const s = window.preCreditosData[id];
+        if (s) {
+            const body = document.getElementById('modalDetallesBody');
+            body.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-muted small">Cliente:</label>
+                        <div>${s.cliente_razonsocial} <br><small class="text-muted">Doc: ${s.cliente_numdoc}</small></div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-muted small">Vehículo:</label>
+                        <div>${s.vehiculo_nombre} <br><small class="text-muted">Chasis: ${s.vehiculo_chasis} | Motor: ${s.vehiculo_motor}</small></div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-muted small">Monto Inicial:</label>
+                        <div class="text-success fw-bold fs-5">S/ ${parseFloat(s.monto_inicial).toFixed(2)}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-muted small">Estado de Cobro:</label>
+                        <div>${s.cobrado ? '<span class="badge bg-success">Cobrado a Caja</span>' : '<span class="badge bg-warning text-dark">Pendiente de Cobro</span>'}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-muted small">Fecha Registro:</label>
+                        <div>${s.fecha_registro}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-muted small">Registrado por:</label>
+                        <div>${s.usuario_nombre}</div>
+                    </div>
+                    ${s.observaciones ? `
+                    <div class="col-md-12 mb-3">
+                        <label class="fw-bold text-muted small">Observación Inicial:</label>
+                        <div class="p-2 bg-light border rounded">${s.observaciones}</div>
+                    </div>
+                    ` : ''}
+                    ${s.observacion_evaluacion ? `
+                    <div class="col-md-12 mb-3">
+                        <label class="fw-bold text-muted small">Observación Evaluación:</label>
+                        <div class="p-2 bg-warning bg-opacity-10 border border-warning rounded">${s.observacion_evaluacion}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('modalDetalles')).show();
+        }
+    }
+
+    const btnCobrar = e.target.closest('.btn-cobrar');
+    if (btnCobrar) {
+        const id = btnCobrar.dataset.id;
+        Swal.fire({
+            title: '¿Confirmar cobro?',
+            text: 'Esto registrará el ingreso en caja y generará el recibo en formato ticket.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cobrar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#198754'
+        }).then(result => {
+            if (result.isConfirmed) {
+                fetch(`/pre-financiamiento/cobrar/${id}/`, {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': CSRF_TOKEN}
+                }).then(r => r.json()).then(data => {
+                    if (data.ok) {
+                        Swal.fire('¡Cobrado!', data.message, 'success');
+                        window.open(data.url_recibo, '_blank');
+                        cargarPreFinanciamientos(currentPage);
+                    } else {
+                        Swal.fire('Error', data.error, 'error');
+                    }
+                });
+            }
         });
     }
 });

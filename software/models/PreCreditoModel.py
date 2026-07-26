@@ -75,6 +75,15 @@ class PreCredito(models.Model):
         null=True,
         verbose_name='Observaciones'
     )
+    cobrado = models.BooleanField(
+        default=False,
+        verbose_name='Cobrado'
+    )
+    observacion_evaluacion = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Observación de Evaluación'
+    )
 
     class Meta:
         managed = True

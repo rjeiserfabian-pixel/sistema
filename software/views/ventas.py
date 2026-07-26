@@ -760,10 +760,17 @@ def _validar_lineas_venta(request, items_count, almacen, id_venta_edicion=None):
             stock_disponible = stock.cantidad_disponible if stock else 0
 
             if stock_disponible < cantidad:
-                return JsonResponse({
-                    'ok': False,
-                    'error': f'No hay stock suficiente para {vehiculo.idproducto.nomproducto}. Disponible: {stock_disponible}'
-                }, status=400)
+                otro_stock = Stock.objects.filter(id_vehiculo_id=id_vehiculo_int, cantidad_disponible__gte=cantidad, estado=1).first()
+                if otro_stock:
+                    return JsonResponse({
+                        'ok': False,
+                        'error': f'No hay stock de {vehiculo.idproducto.nomproducto} en su almacén actual. El vehículo se encuentra en {otro_stock.id_almacen.nombre_almacen}.'
+                    }, status=400)
+                else:
+                    return JsonResponse({
+                        'ok': False,
+                        'error': f'No hay stock suficiente para {vehiculo.idproducto.nomproducto}. Disponible: {stock_disponible}'
+                    }, status=400)
         elif tipo_item == "repuesto":
             id_repuesto = (request.POST.get(f"id_repuesto_{i}") or "").strip()
             if not id_repuesto:

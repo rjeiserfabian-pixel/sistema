@@ -45,6 +45,7 @@ def index_pre_financiamiento(request):
     busqueda = request.GET.get('busqueda', '').strip()
 
     data = {
+        'idtipousuario': id_tipo_usuario,
         'solicitudes': [],  # Se cargará vía AJAX
         'estado_filtro': estado_filtro,
         'busqueda': busqueda,
@@ -79,6 +80,16 @@ def api_listar_pre_financiamiento(request):
         'idcliente', 'id_vehiculo__idproducto', 'idusuario', 'id_sucursal'
     ).order_by('-fecha_registro')
 
+    id_almacen_session = request.session.get('id_almacen')
+    if id_almacen_session:
+        from software.models.stockModel import Stock
+        # Obtener los IDs de los vehículos que tienen stock en el almacén actual
+        vehiculos_en_almacen = Stock.objects.filter(
+            id_almacen_id=id_almacen_session,
+            estado=1
+        ).values_list('id_vehiculo_id', flat=True)
+        qs = qs.filter(id_vehiculo_id__in=vehiculos_en_almacen)
+
     if estado_filtro != 'todos':
         qs = qs.filter(estado=estado_filtro)
 
@@ -98,6 +109,8 @@ def api_listar_pre_financiamiento(request):
         )
 
     qs_stats = PreCredito.objects.all()
+    if id_almacen_session:
+        qs_stats = qs_stats.filter(id_vehiculo_id__in=vehiculos_en_almacen)
     if fecha_desde: qs_stats = qs_stats.filter(fecha_registro__date__gte=fecha_desde)
     if fecha_hasta: qs_stats = qs_stats.filter(fecha_registro__date__lte=fecha_hasta)
 
@@ -127,9 +140,11 @@ def api_listar_pre_financiamiento(request):
             'vehiculo_motor': s.id_vehiculo.serie_motor if getattr(s, 'id_vehiculo', None) else '',
             'monto_inicial': str(s.monto_inicial),
             'estado': s.estado,
+            'cobrado': s.cobrado,
             'fecha_registro': s.fecha_registro.strftime("%d/%m/%Y %H:%M") if s.fecha_registro else '',
             'usuario_nombre': s.idusuario.nombrecompleto if getattr(s, 'idusuario', None) else '—',
             'observaciones': s.observaciones or '',
+            'observacion_evaluacion': s.observacion_evaluacion or '',
             'pagos': pagos_list
         })
 
@@ -241,18 +256,6 @@ def _guardar_pre_financiamiento(request):
         if monto_total_inicial <= 0:
             return JsonResponse({'ok': False, 'error': 'El monto inicial total debe ser mayor a cero.'}, status=400)
 
-        # 0. Verificar caja abierta antes de proceder
-        apertura = AperturaCierreCaja.objects.filter(
-            idusuario_id=idusuario,
-            estado__in=['abierta', 'reabierta']
-        ).first()
-
-        if not apertura:
-            return JsonResponse({
-                'ok': False, 
-                'error': 'Debe tener una caja abierta para registrar el pago inicial.'
-            }, status=400)
-
         cliente  = get_object_or_404(Cliente, pk=idcliente)
         vehiculo = get_object_or_404(Vehiculo, pk=id_vehiculo)
 
@@ -275,17 +278,6 @@ def _guardar_pre_financiamiento(request):
         )
         vehiculo.id_situacion = situacion_reservado
         vehiculo.save()
-
-        # 1. Registrar movimiento en caja
-        MovimientoCaja.objects.create(
-            id_caja=apertura.id_caja,
-            id_movimiento=apertura,
-            idusuario_id=idusuario,
-            tipo_movimiento='ingreso',
-            monto=monto_total_inicial,
-            descripcion=f"Pago Inicial Pre-Crédito #{pre_credito.id_pre_credito} - Cliente: {cliente.razonsocial}",
-            estado=1
-        )
 
         # Crear el detalle de pago (mixto)
         for detalle in detalles_pago:
@@ -324,6 +316,9 @@ def evaluar_pre_financiamiento(request, id_pre_credito):
     id_tipo_usuario = request.session.get('idtipousuario')
     if not id_tipo_usuario:
         return JsonResponse({'ok': False, 'error': 'Sesión expirada.'}, status=403)
+    
+    if id_tipo_usuario == 2:
+        return JsonResponse({'ok': False, 'error': 'No tiene permisos para evaluar solicitudes.'}, status=403)
 
     pre_credito = get_object_or_404(PreCredito, pk=id_pre_credito)
 
@@ -334,6 +329,10 @@ def evaluar_pre_financiamiento(request, id_pre_credito):
         }, status=400)
 
     accion = request.POST.get('accion', '').strip().lower()
+    observacion_eval = request.POST.get('observacion_evaluacion', '').strip()
+    
+    if observacion_eval:
+        pre_credito.observacion_evaluacion = observacion_eval
 
     if accion == 'aprobar':
         pre_credito.estado = 'aprobado'
@@ -346,18 +345,19 @@ def evaluar_pre_financiamiento(request, id_pre_credito):
         })
 
     elif accion == 'rechazar':
-        # 1. Verificar caja abierta para devolución
-        idusuario = request.session.get('idusuario')
-        apertura = AperturaCierreCaja.objects.filter(
-            idusuario_id=idusuario,
-            estado__in=['abierta', 'reabierta']
-        ).first()
+        if pre_credito.cobrado:
+            # 1. Verificar caja abierta para devolución
+            idusuario = request.session.get('idusuario')
+            apertura = AperturaCierreCaja.objects.filter(
+                idusuario_id=idusuario,
+                estado__in=['abierta', 'reabierta']
+            ).first()
 
-        if not apertura:
-            return JsonResponse({
-                'ok': False, 
-                'error': 'Debe tener una caja abierta para procesar el rechazo (devolución de inicial).'
-            }, status=400)
+            if not apertura:
+                return JsonResponse({
+                    'ok': False, 
+                    'error': 'Debe tener una caja abierta para procesar el rechazo (devolución de inicial cobrado).'
+                }, status=400)
 
         pre_credito.estado = 'rechazado'
         pre_credito.save()
@@ -372,25 +372,241 @@ def evaluar_pre_financiamiento(request, id_pre_credito):
             pre_credito.id_vehiculo.id_situacion = situacion_disponible
             pre_credito.id_vehiculo.save()
 
-        # 2. Registrar egreso en caja
-        MovimientoCaja.objects.create(
-            id_caja=apertura.id_caja,
-            id_movimiento=apertura,
-            idusuario_id=idusuario,
-            tipo_movimiento='egreso',
-            monto=pre_credito.monto_inicial,
-            descripcion=f"Devolución Inicial Pre-Crédito #{pre_credito.id_pre_credito} (Rechazado) - Cliente: {pre_credito.idcliente.razonsocial}",
-            estado=1
-        )
+        # 2. Registrar egreso en caja si fue cobrado
+        if pre_credito.cobrado:
+            MovimientoCaja.objects.create(
+                id_caja=apertura.id_caja,
+                id_movimiento=apertura,
+                idusuario_id=idusuario,
+                tipo_movimiento='egreso',
+                monto=pre_credito.monto_inicial,
+                descripcion=f"Devolución Inicial Pre-Crédito #{pre_credito.id_pre_credito} (Rechazado) - Cliente: {pre_credito.idcliente.razonsocial}",
+                estado=1
+            )
 
         return JsonResponse({
             'ok': True,
-            'message': '❌ Solicitud rechazada y monto inicial devuelto desde caja.',
+            'message': '❌ Solicitud rechazada' + (' y monto inicial devuelto desde caja.' if pre_credito.cobrado else '.'),
             'nuevo_estado': 'rechazado',
         })
 
     else:
         return JsonResponse({'ok': False, 'error': 'Acción no válida. Use "aprobar" o "rechazar".'}, status=400)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COBRAR E IMPRIMIR RECIBO
+# ─────────────────────────────────────────────────────────────────────────────
+
+@transaction.atomic
+def cobrar_pre_financiamiento(request, id_pre_credito):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido.'}, status=405)
+
+    id_tipo_usuario = request.session.get('idtipousuario')
+    if not id_tipo_usuario:
+        return JsonResponse({'ok': False, 'error': 'Sesión expirada.'}, status=403)
+    if id_tipo_usuario == 2:
+        return JsonResponse({'ok': False, 'error': 'No tiene permisos para cobrar solicitudes.'}, status=403)
+
+    pre_credito = get_object_or_404(PreCredito, pk=id_pre_credito)
+
+    if pre_credito.cobrado:
+        return JsonResponse({'ok': False, 'error': 'Esta solicitud ya ha sido cobrada.'}, status=400)
+
+    idusuario = request.session.get('idusuario')
+    apertura = AperturaCierreCaja.objects.filter(
+        idusuario_id=idusuario,
+        estado__in=['abierta', 'reabierta']
+    ).first()
+
+    if not apertura:
+        return JsonResponse({
+            'ok': False, 
+            'error': 'Debe tener una caja abierta para registrar el cobro.'
+        }, status=400)
+
+    # 1. Registrar movimiento en caja
+    MovimientoCaja.objects.create(
+        id_caja=apertura.id_caja,
+        id_movimiento=apertura,
+        idusuario_id=idusuario,
+        tipo_movimiento='ingreso',
+        monto=pre_credito.monto_inicial,
+        descripcion=f"Cobro Inicial Pre-Crédito #{pre_credito.id_pre_credito} - Cliente: {pre_credito.idcliente.razonsocial}",
+        estado=1
+    )
+
+    pre_credito.cobrado = True
+    pre_credito.save()
+
+    return JsonResponse({
+        'ok': True,
+        'message': 'Cobro registrado correctamente en caja.',
+        'url_recibo': f'/pre-financiamiento/recibo/{pre_credito.id_pre_credito}/'
+    })
+
+
+def imprimir_recibo_pre_financiamiento(request, id_pre_credito):
+    """Genera el ticket térmico para el cliente en formato PDF."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from io import BytesIO
+        from django.http import HttpResponse
+        
+        from software.models.empresaModel import Empresa
+        from software.utils.logo_utils import get_logo_image_for_pdf
+        from software.models.movimientoCajaModel import MovimientoCaja
+        
+        pre_credito = get_object_or_404(PreCredito, pk=id_pre_credito)
+        
+        # Buscar empresa (la primera activa)
+        empresa = Empresa.objects.filter(activo=True).first()
+        if not empresa:
+            return HttpResponse("No se encontró información de la empresa.", status=400)
+            
+        buffer = BytesIO()
+        ticket_width = 80 * mm
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        style_company = ParagraphStyle('CompanyName', parent=styles['Normal'], fontSize=10, textColor=colors.black, alignment=TA_CENTER, fontName='Helvetica-Bold', spaceAfter=1, leading=11)
+        style_header = ParagraphStyle('TicketHeader', parent=styles['Normal'], fontSize=9, textColor=colors.black, alignment=TA_CENTER, fontName='Helvetica-Bold', spaceAfter=2, leading=10)
+        style_normal_center = ParagraphStyle('NormalCenter', parent=styles['Normal'], fontSize=7, alignment=TA_CENTER, spaceAfter=1, leading=8)
+        style_bold = ParagraphStyle('TicketBold', parent=styles['Normal'], fontSize=7, fontName='Helvetica-Bold', spaceAfter=1, alignment=TA_CENTER, leading=8)
+        style_small = ParagraphStyle('SmallText', parent=styles['Normal'], fontSize=6, alignment=TA_CENTER, spaceAfter=0.5, leading=7)
+        
+        # LOGO
+        logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
+        if logo_rl:
+            elements.append(logo_rl)
+            elements.append(Spacer(1, 3*mm))
+            
+        # ENCABEZADO
+        nombre_empresa = empresa.razonsocial if empresa.razonsocial else empresa.nombrecomercial
+        elements.append(Paragraph(nombre_empresa.upper(), style_company))
+        elements.append(Paragraph(f"RUC: {empresa.ruc}", style_normal_center))
+        elements.append(Paragraph(empresa.direccion.upper(), style_normal_center))
+        if empresa.ubigueo:
+            elements.append(Paragraph(f"UBIGEO: {empresa.ubigueo}", style_normal_center))
+        elements.append(Paragraph(f"Telf: {empresa.telefono}", style_normal_center))
+        if empresa.pagina:
+            elements.append(Paragraph(f"Pagina: {empresa.pagina}", style_small))
+        
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph("=" * 48, style_normal_center))
+        elements.append(Spacer(1, 2*mm))
+        
+        # TITULO
+        elements.append(Paragraph("<b>RECIBO DE ADELANTO</b>", style_header))
+        elements.append(Paragraph(f"<b>PRE-FINANCIAMIENTO #{pre_credito.id_pre_credito}</b>", style_header))
+        elements.append(Spacer(1, 2*mm))
+        
+        # CLIENTE
+        cliente_nombre = pre_credito.idcliente.razonsocial
+        if len(cliente_nombre) > 35:
+            cliente_nombre = cliente_nombre[:32] + '...'
+            
+        elements.append(Paragraph("<b>CLIENTE:</b>", style_bold))
+        elements.append(Paragraph(f"{cliente_nombre}", style_normal_center))
+        elements.append(Paragraph(f"<b>RUC/DNI:</b> {pre_credito.idcliente.numdoc or '---'}", style_normal_center))
+        if pre_credito.idcliente.direccion:
+            elements.append(Paragraph(f"<b>DIR:</b> {pre_credito.idcliente.direccion[:40]}", style_small))
+        
+        if pre_credito.idcliente.telefono:
+            elements.append(Paragraph(f"<b>Tel:</b> {pre_credito.idcliente.telefono}", style_small))
+            
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph("-" * 50, style_normal_center))
+        
+        # VEHICULO
+        elements.append(Paragraph("<b>VEHÍCULO RESERVADO:</b>", style_bold))
+        vehiculo_nombre = pre_credito.nombre_vehiculo
+        elements.append(Paragraph(f"{vehiculo_nombre}", style_normal_center))
+        
+        if pre_credito.id_vehiculo:
+            if pre_credito.id_vehiculo.serie_chasis:
+                elements.append(Paragraph(f"<b>CHASIS:</b> {pre_credito.id_vehiculo.serie_chasis}", style_normal_center))
+            if pre_credito.id_vehiculo.serie_motor:
+                elements.append(Paragraph(f"<b>MOTOR:</b> {pre_credito.id_vehiculo.serie_motor}", style_normal_center))
+                
+        elements.append(Spacer(1, 2*mm))
+        
+        # MONTO Y ESTADO
+        elements.append(Paragraph(f"<b>MONTO ADELANTO:</b> S/ {pre_credito.monto_inicial}", style_bold))
+        estado_txt = "PAGADO" if pre_credito.cobrado else "PENDIENTE"
+        elements.append(Paragraph(f"<b>ESTADO:</b> {estado_txt}", style_normal_center))
+        
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph("-" * 50, style_normal_center))
+        
+        # DATOS ADICIONALES
+        fecha_str = pre_credito.fecha_registro.strftime('%d/%m/%Y')
+        hora_str = pre_credito.fecha_registro.strftime('%I:%M %p')
+        elements.append(Paragraph(f"<b>FECHA:</b> {fecha_str} <b>HORA:</b> {hora_str}", style_normal_center))
+        
+        cajero_nombre = pre_credito.idusuario.nombrecompleto if pre_credito.idusuario else "Admin"
+        elements.append(Paragraph(f"<b>VENDEDOR/CAJERO:</b> {cajero_nombre}", style_normal_center))
+        
+        # CAJA QUE COBRÓ
+        caja_nombre = "---"
+        if pre_credito.cobrado:
+            mov = MovimientoCaja.objects.filter(
+                descripcion__contains=f"Cobro Inicial Pre-Crédito #{pre_credito.id_pre_credito}"
+            ).first()
+            if mov and mov.id_caja:
+                caja_nombre = mov.id_caja.nombre_caja
+        elements.append(Paragraph(f"<b>CAJA:</b> {caja_nombre}", style_normal_center))
+        
+        elements.append(Spacer(1, 4*mm))
+        
+        # PIE DE PÁGINA
+        elements.append(Paragraph("Conserve este recibo para cualquier reclamo o devolución en caso de rechazo del crédito.", style_small))
+        elements.append(Paragraph("¡Gracias por su preferencia!", style_bold))
+        
+        # Calcular altura total de todos los elementos
+        total_height = 0
+        ancho_util = ticket_width - (6 * mm)
+        for element in elements:
+            if hasattr(element, 'wrap'):
+                try:
+                    w, h = element.wrap(ancho_util, 2000 * mm)
+                    total_height += h
+                except:
+                    total_height += 15 * mm # Valor por defecto seguro
+                    
+        doc_height = total_height + (35 * mm) # Amplio margen para evitar saltos de página a otra hoja
+        if doc_height < 100 * mm:  # Minimo
+            doc_height = 100 * mm
+
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=(ticket_width, doc_height),
+            rightMargin=3 * mm,
+            leftMargin=3 * mm,
+            topMargin=5 * mm,
+            bottomMargin=5 * mm
+        )
+        
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+        
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="recibo_pre_credito_{pre_credito.id_pre_credito}.pdf"'
+        response.write(pdf)
+        
+        return response
+        
+    except Exception as e:
+        import traceback
+        print(f"Error generando recibo pre-credito: {e}")
+        traceback.print_exc()
+        return HttpResponse(f"Error al generar el recibo PDF: {e}", status=500)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

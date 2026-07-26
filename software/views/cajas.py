@@ -13,7 +13,7 @@ def cajas(request):
     if id2:
         permisos = Detalletipousuarioxmodulos.objects.filter(idtipousuario=id2)
         cajas_registros = Caja.objects.filter(estado=1).select_related(
-            'id_sucursal__idempresa'
+            'id_sucursal__idempresa', 'id_empresa'
         )
         sucursales_registros = Sucursales.objects.filter(estado=1).select_related('idempresa')
         empresas_registros = Empresa.objects.filter(activo=1)
@@ -36,6 +36,7 @@ def cajasEliminar(request, id):
 def agregarCajas(request):
     try:
         id_sucursal = request.POST.get('idSucursalAgregar')
+        id_empresa = request.POST.get('empresaAgregar') # assuming we send this
         nombre_caja = request.POST.get('nameCajaAgregar')
         numero_caja = request.POST.get('numeroCajaAgregar')
         
@@ -54,12 +55,17 @@ def agregarCajas(request):
                 status=400
             )
         
-        if not id_sucursal or id_sucursal.strip() == '':
-            return HttpResponse(
-                json.dumps({'error': 'Debe seleccionar una sucursal'}),
-                content_type='application/json',
-                status=400
-            )
+        # La sucursal es opcional para cajas globales
+        sucursal = None
+        if id_sucursal and id_sucursal.strip() != '':
+            try:
+                sucursal = Sucursales.objects.get(id_sucursal=id_sucursal)
+            except Sucursales.DoesNotExist:
+                return HttpResponse(
+                    json.dumps({'error': 'La sucursal seleccionada no existe'}),
+                    content_type='application/json',
+                    status=400
+                )
         
         try:
             numero_caja_int = int(numero_caja)
@@ -76,37 +82,39 @@ def agregarCajas(request):
                 status=400
             )
         
-        # Verificar que la sucursal existe
-        try:
-            sucursal = Sucursales.objects.get(id_sucursal=id_sucursal)
-        except Sucursales.DoesNotExist:
-            return HttpResponse(
-                json.dumps({'error': 'La sucursal seleccionada no existe'}),
-                content_type='application/json',
-                status=400
-            )
+        # Verificar que la sucursal existe se maneja arriba
         
         # La validación de una sola caja por sucursal ha sido eliminada para permitir múltiples cajas.
         
-        # Verificar si el número de caja ya existe en esa sucursal
-        numero_existente = Caja.objects.filter(
-            numero_caja=numero_caja_int,
-            id_sucursal=id_sucursal,
-            estado=1
-        ).exists()
+        # Verificar si el número de caja ya existe en esa sucursal (si aplica)
+        if sucursal:
+            numero_existente = Caja.objects.filter(
+                numero_caja=numero_caja_int,
+                id_sucursal=id_sucursal,
+                estado=1
+            ).exists()
+            
+            if numero_existente:
+                return HttpResponse(
+                    json.dumps({
+                        'error': f'El número de caja {numero_caja_int} ya está siendo usado en esta sucursal.'
+                    }),
+                    content_type='application/json',
+                    status=400
+                )
         
-        if numero_existente:
-            return HttpResponse(
-                json.dumps({
-                    'error': f'El número de caja {numero_caja_int} ya está siendo usado en esta sucursal.'
-                }),
-                content_type='application/json',
-                status=400
-            )
+        # Obtener la empresa si es posible (en caso de caja global)
+        empresa = None
+        if not sucursal and id_empresa:
+            try:
+                empresa = Empresa.objects.get(idempresa=id_empresa)
+            except Empresa.DoesNotExist:
+                pass
         
         # Crear la caja
         Caja.objects.create(
             id_sucursal=sucursal,
+            id_empresa=empresa,
             nombre_caja=nombre_caja.strip(),
             numero_caja=numero_caja_int,
             estado=1
@@ -154,6 +162,7 @@ def editarCajas(request):
     try:
         id_caja = request.POST.get('idCaja')
         id_sucursal = request.POST.get('idSucursal')
+        id_empresa = request.POST.get('idEmpresaEdit' + id_caja) if id_caja else None
         nombre_caja = request.POST.get('nameCaja')
         numero_caja = request.POST.get('numeroCaja')
         
@@ -186,12 +195,17 @@ def editarCajas(request):
                 status=400
             )
         
-        if not id_sucursal or id_sucursal.strip() == '':
-            return HttpResponse(
-                json.dumps({'error': 'Debe seleccionar una sucursal'}),
-                content_type='application/json',
-                status=400
-            )
+        # La sucursal es opcional para cajas globales
+        sucursal = None
+        if id_sucursal and id_sucursal.strip() != '':
+            try:
+                sucursal = Sucursales.objects.get(id_sucursal=id_sucursal)
+            except Sucursales.DoesNotExist:
+                return HttpResponse(
+                    json.dumps({'error': 'La sucursal seleccionada no existe'}),
+                    content_type='application/json',
+                    status=400
+                )
         
         try:
             numero_caja_int = int(numero_caja)
@@ -218,36 +232,39 @@ def editarCajas(request):
                 status=400
             )
         
-        # Obtener la sucursal
-        try:
-            sucursal = Sucursales.objects.get(id_sucursal=id_sucursal)
-        except Sucursales.DoesNotExist:
-            return HttpResponse(
-                json.dumps({'error': 'La sucursal seleccionada no existe'}),
-                content_type='application/json',
-                status=400
-            )
+        # La validación de sucursal se hace arriba
         
         # La validación de una sola caja por sucursal ha sido eliminada.
         
         # Verificar si el número de caja ya está siendo usado en la misma sucursal
-        numero_en_uso = Caja.objects.filter(
-            numero_caja=numero_caja_int,
-            id_sucursal=id_sucursal,
-            estado=1
-        ).exclude(id_caja=id_caja).exists()
-        
-        if numero_en_uso:
-            return HttpResponse(
-                json.dumps({
-                    'error': f'El número de caja {numero_caja_int} ya está siendo usado en esta sucursal.'
-                }),
-                content_type='application/json',
-                status=400
-            )
+        if sucursal:
+            numero_en_uso = Caja.objects.filter(
+                numero_caja=numero_caja_int,
+                id_sucursal=id_sucursal,
+                estado=1
+            ).exclude(id_caja=id_caja).exists()
+            
+            if numero_en_uso:
+                return HttpResponse(
+                    json.dumps({
+                        'error': f'El número de caja {numero_caja_int} ya está siendo usado en esta sucursal.'
+                    }),
+                    content_type='application/json',
+                    status=400
+                )
         
         # Actualizar los campos
         caja.id_sucursal = sucursal
+        
+        if not sucursal and id_empresa:
+            try:
+                empresa = Empresa.objects.get(idempresa=id_empresa)
+                caja.id_empresa = empresa
+            except Empresa.DoesNotExist:
+                caja.id_empresa = None
+        else:
+            caja.id_empresa = None
+            
         caja.nombre_caja = nombre_caja.strip()
         caja.numero_caja = numero_caja_int
         caja.save()

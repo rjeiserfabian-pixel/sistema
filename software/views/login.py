@@ -303,15 +303,24 @@ def obtener_cajas_almacenes(request):
         return JsonResponse({'error': 'Sucursal no especificada'}, status=400)
     
     try:
-        # Obtener cajas activas de la sucursal
-        cajas = Caja.objects.filter(
-            id_sucursal_id=id_sucursal,
-            estado=1
-        )
+        from django.db.models import Q
+        id_tipo_usuario = request.session.get('idtipousuario')
+        
+        # Obtener cajas
+        if id_tipo_usuario in [1, 5, 6]:
+            cajas = Caja.objects.filter(
+                Q(id_sucursal_id=id_sucursal) | Q(id_sucursal__isnull=True),
+                estado=1
+            )
+        else:
+            cajas = Caja.objects.filter(
+                id_sucursal_id=id_sucursal,
+                estado=1
+            )
         
         print(f"   Total cajas encontradas: {cajas.count()}")
         for caja in cajas:
-            print(f"   - Caja: {caja.nombre_caja} (ID: {caja.id_caja})")
+            print(f"   - Caja: {caja.nombre_caja} (ID: {caja.id_caja}, Sucursal: {caja.id_sucursal_id})")
         
         # Filtrar cajas disponibles
         cajas_disponibles = []
@@ -324,10 +333,14 @@ def obtener_cajas_almacenes(request):
             print(f"   - Caja {caja.nombre_caja}: apertura_activa={apertura_activa}")
             
             if not apertura_activa:
+                caja_tipo = 'global' if caja.id_sucursal_id is None else 'local'
+                nombre_caja = f"{caja.nombre_caja} (Global)" if caja_tipo == 'global' else caja.nombre_caja
+                
                 cajas_disponibles.append({
                     'id': caja.id_caja,
-                    'nombre': caja.nombre_caja,
-                    'numero': caja.numero_caja
+                    'nombre': nombre_caja,
+                    'numero': caja.numero_caja,
+                    'tipo': caja_tipo
                 })
         
         print(f"   Cajas disponibles: {len(cajas_disponibles)}")

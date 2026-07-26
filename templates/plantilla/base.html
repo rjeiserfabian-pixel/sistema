@@ -55,6 +55,36 @@
     })();
   </script>
 
+  <style>
+    /* Estilos para destacar los grupos de opciones (optgroup) en los selects */
+    optgroup {
+      background-color: #1e293b; /* Fondo un poco más oscuro que el contenedor */
+      color: #0dcf97; /* Verde/Cian vibrante para resaltar */
+      font-weight: 700;
+      font-size: 14px;
+      font-style: normal;
+      padding: 5px 0;
+    }
+    
+    optgroup option {
+      background-color: #111827; /* Fondo estándar oscuro */
+      color: #e5e7eb; /* Texto claro estándar */
+      font-weight: 400;
+      font-size: 13px;
+      padding: 3px 10px;
+    }
+    
+    /* Para el tema claro si lo tiene (opcional, pero buena práctica) */
+    [data-theme="light"] optgroup {
+      background-color: #e5e7eb;
+      color: #0f4c81;
+    }
+    
+    [data-theme="light"] optgroup option {
+      background-color: #ffffff;
+      color: #374151;
+    }
+  </style>
 </head>
 
 <body>
@@ -800,26 +830,67 @@
                 selectCaja.innerHTML = '<option value="">-- Sin caja --</option>';
 
                 if (data.cajas && data.cajas.length > 0) {
-                  data.cajas.forEach(caja => {
-                    const option = document.createElement('option');
-                    option.value = caja.id;
-                    option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
-                    if (data.id_caja_actual && caja.id == data.id_caja_actual) {
-                      option.selected = true;
-                    }
-                    selectCaja.appendChild(option);
-                  });
+                  const locales = data.cajas.filter(c => c.tipo !== 'global');
+                  const globales = data.cajas.filter(c => c.tipo === 'global');
+                  
+                  if (locales.length > 0) {
+                      const optGroupLocales = document.createElement('optgroup');
+                      optGroupLocales.label = '🏢 CAJAS DE LA SUCURSAL';
+                      locales.forEach(caja => {
+                          const option = document.createElement('option');
+                          option.value = caja.id;
+                          option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
+                          if (data.id_caja_actual && caja.id == data.id_caja_actual) { option.selected = true; }
+                          optGroupLocales.appendChild(option);
+                      });
+                      selectCaja.appendChild(optGroupLocales);
+                  }
+                  
+                  if (globales.length > 0) {
+                      const optGroupGlobales = document.createElement('optgroup');
+                      optGroupGlobales.label = '🌍 CAJAS GLOBALES (EMPRESA)';
+                      globales.forEach(caja => {
+                          const option = document.createElement('option');
+                          option.value = caja.id;
+                          option.textContent = `${caja.nombre}`;
+                          if (data.id_caja_actual && caja.id == data.id_caja_actual) { option.selected = true; }
+                          optGroupGlobales.appendChild(option);
+                      });
+                      selectCaja.appendChild(optGroupGlobales);
+                  }
                 }
 
                 // Duplicar para formulario de apertura
                 if (cajaApertura) {
                   cajaApertura.innerHTML = '<option value="">-- Seleccionar --</option>';
-                  data.cajas.forEach(caja => {
-                    const option = document.createElement('option');
-                    option.value = caja.id;
-                    option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
-                    cajaApertura.appendChild(option);
-                  });
+                  if (data.cajas && data.cajas.length > 0) {
+                      const locales = data.cajas.filter(c => c.tipo !== 'global');
+                      const globales = data.cajas.filter(c => c.tipo === 'global');
+                      
+                      if (locales.length > 0) {
+                          const optGroupLocales = document.createElement('optgroup');
+                          optGroupLocales.label = '🏢 CAJAS DE LA SUCURSAL';
+                          locales.forEach(caja => {
+                              const option = document.createElement('option');
+                              option.value = caja.id;
+                              option.textContent = `${caja.nombre} - Caja #${caja.numero}`;
+                              optGroupLocales.appendChild(option);
+                          });
+                          cajaApertura.appendChild(optGroupLocales);
+                      }
+                      
+                      if (globales.length > 0) {
+                          const optGroupGlobales = document.createElement('optgroup');
+                          optGroupGlobales.label = '🌍 CAJAS GLOBALES (EMPRESA)';
+                          globales.forEach(caja => {
+                              const option = document.createElement('option');
+                              option.value = caja.id;
+                              option.textContent = `${caja.nombre}`;
+                              optGroupGlobales.appendChild(option);
+                          });
+                          cajaApertura.appendChild(optGroupGlobales);
+                      }
+                  }
                 }
 
                 // Llenar almacenes

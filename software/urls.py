@@ -474,6 +474,8 @@ urlpatterns = [
     path('pre-financiamiento/registrar/', pre_financiamiento.registrar_pre_financiamiento, name='registrar_pre_financiamiento'),
     path('pre-financiamiento/api/listar/', pre_financiamiento.api_listar_pre_financiamiento, name='api_listar_pre_financiamiento'),
     path('pre-financiamiento/evaluar/<int:id_pre_credito>/', pre_financiamiento.evaluar_pre_financiamiento, name='evaluar_pre_financiamiento'),
+    path('pre-financiamiento/cobrar/<int:id_pre_credito>/', pre_financiamiento.cobrar_pre_financiamiento, name='cobrar_pre_financiamiento'),
+    path('pre-financiamiento/recibo/<int:id_pre_credito>/', pre_financiamiento.imprimir_recibo_pre_financiamiento, name='imprimir_recibo_pre_financiamiento'),
     path('pre-financiamiento/api/get-data/<int:id_pre_credito>/', pre_financiamiento.get_pre_credito_data, name='get_pre_credito_data'),
 
     path('creditos/descargar-contrato/<int:idcredito>/', creditos.descargar_contrato_pdf, name='descargar_contrato_pdf'),

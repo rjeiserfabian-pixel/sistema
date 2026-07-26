@@ -85,8 +85,11 @@ def api_listar_movimientos(request):
     idusuario = request.session.get('idusuario')
     id_caja_session = request.session.get('id_caja')
     
-    if not id_tipo_usuario or not idusuario or not id_caja_session:
-        return JsonResponse({'error': 'No tiene acceso o no hay caja abierta'}, status=403)
+    if not id_tipo_usuario or not idusuario:
+        return JsonResponse({'error': 'No tiene acceso'}, status=403)
+        
+    if not id_caja_session:
+        return JsonResponse({'data': [], 'total_pages': 0, 'current_page': 1})
         
     apertura_actual = AperturaCierreCaja.objects.filter(
         idusuario_id=idusuario,
