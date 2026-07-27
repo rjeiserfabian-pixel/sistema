@@ -1715,13 +1715,18 @@ def obtener_venta(request, id):
 
             tiene_pagos = tiene_pagos_cuota or tiene_pagos_reales
 
+            bloqueo_parcial = False
             if tiene_pagos:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'No se puede editar esta venta a crédito porque ya registra pagos o abonos realizados.',
-                    'codigo': 'VENTA_CON_PAGOS_NO_EDITABLE'
-                }, status=400)
-
+                if request.session.get('idtipousuario') == 1:
+                    bloqueo_parcial = True
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'No se puede editar esta venta a crédito porque ya registra pagos o abonos realizados.',
+                        'codigo': 'VENTA_CON_PAGOS_NO_EDITABLE'
+                    }, status=400)
+            else:
+                bloqueo_parcial = False
         detalles = VentaDetalle.objects.filter(idventa=venta, estado=1).select_related(
             'id_vehiculo__idproducto',
             'id_vehiculo__idestadoproducto',
@@ -2008,6 +2013,7 @@ def obtener_detalle_venta(request, id):
             "subtotal": float(venta.subtotal or 0),
             "igv": float(venta.igv or 0),
             "total_ganancia": float(venta.total_ganancia or 0),
+            "idusuario": venta.idusuario.idusuario if venta.idusuario else None,
             "usuario_nombre": venta.idusuario.nombrecompleto if venta.idusuario else "Sistema",
         }
 
@@ -2017,6 +2023,7 @@ def obtener_detalle_venta(request, id):
             "detalles": detalles_list,
             "cuotas": cuotas_list,
             "credito": credito_data,
+            "bloqueo_parcial": bloqueo_parcial,
         })
 
     except Ventas.DoesNotExist:
@@ -2140,11 +2147,25 @@ def actualizar_venta(request, id):
                     monto_pagado__gt=0
                 ).exists()
                 if tiene_pagos:
-                    return JsonResponse({
-                        'ok': False,
-                        'error': 'No se puede editar esta venta a crédito porque ya registra pagos o abonos realizados.',
-                        'codigo': 'VENTA_CON_PAGOS_NO_EDITABLE'
-                    }, status=400)
+                    if request.session.get('idtipousuario') == 1:
+                        # BLOQUEO PARCIAL: ACTUALIZAR SÓLO VENDEDOR
+                        nuevo_vendedor = request.POST.get('idusuario')
+                        if nuevo_vendedor:
+                            venta.idusuario_id = nuevo_vendedor
+                            venta.save()
+                        return JsonResponse({
+                            'ok': True,
+                            'message': 'Se actualizó únicamente el vendedor debido a que la venta ya tiene pagos.',
+                            'idventa': venta.idventa,
+                            'numero_comprobante': venta.numero_comprobante,
+                            'es_credito': True
+                        })
+                    else:
+                        return JsonResponse({
+                            'ok': False,
+                            'error': 'No se puede editar esta venta a crédito porque ya registra pagos o abonos realizados.',
+                            'codigo': 'VENTA_CON_PAGOS_NO_EDITABLE'
+                        }, status=400)
 
             err_cabecera, cabecera = _validar_cabecera_venta(request)
             if err_cabecera:

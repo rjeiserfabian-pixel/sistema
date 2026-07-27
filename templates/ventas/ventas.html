@@ -3530,7 +3530,7 @@
               html: `<p>${res.message || 'Venta guardada correctamente'}</p>
                    <p><strong>Comprobante:</strong> ${res.numero_comprobante}</p>
                    <p><strong>Código Crédito:</strong> ${res.codigo_credito}</p>
-                   <p class="mt-2"><small>Se abrirá el comprobante para imprimir...</small></p>
+                   ${!esEdicion ? '<p class="mt-2"><small>Se abrirá el comprobante para imprimir...</small></p>' : ''}
                    <div class="alert alert-info mt-2 mb-0 py-2">
                      <i class="fa-solid fa-info-circle me-1"></i>
                      <small>El cronograma de pagos estará disponible en el módulo de Créditos o Listado de Ventas.</small>
@@ -3541,8 +3541,8 @@
               allowOutsideClick: false
             }).then((result) => {
               if (result.isConfirmed) {
-                // Abrir comprobante en nueva ventana
-                if (res.idventa) {
+                // Abrir comprobante en nueva ventana si NO es edición
+                if (res.idventa && !esEdicion) {
                   const urlComprobante = `/ventas/imprimir/${res.idventa}/`;
                   const ventanaComprobante = window.open(urlComprobante, '_blank');
 
@@ -3565,6 +3565,9 @@
                       window.location.href = '/ventas/';
                     }, 1500);
                   }
+                } else {
+                  // Si es edición o no hay id, simplemente recargar la página
+                  window.location.href = '/ventas/';
                 }
               }
             });
@@ -3583,7 +3586,8 @@
             }).then((result) => {
               if (result.isConfirmed) {
                 // Abrir comprobante en nueva ventana
-                if (res.idventa) {
+                // Abrir comprobante en nueva ventana si NO es edición
+                if (res.idventa && !esEdicion) {
                   const urlComprobante = `/ventas/imprimir/${res.idventa}/`;
                   const ventanaComprobante = window.open(urlComprobante, '_blank');
 
@@ -3606,6 +3610,9 @@
                       window.location.href = '/ventas/';
                     }, 1500);
                   }
+                } else {
+                  // Si es edición o no hay id, simplemente recargar la página
+                  window.location.href = '/ventas/';
                 }
               }
             });
@@ -4044,6 +4051,22 @@
           $('select[name="tipo_comprobante"]').val(data.venta.idtipocomprobante).trigger('change');
           $('select[name="tipo_igv"]').val(data.venta.id_tipo_igv || '');
           $('input[name="fecha_venta"]').val(data.venta.fecha_venta);
+          let idVendedorEncontrado = data.venta.idusuario;
+          if (!idVendedorEncontrado && data.venta.usuario_nombre) {
+            $('#idusuario option').each(function() {
+              if ($(this).text().trim() === data.venta.usuario_nombre.trim()) {
+                idVendedorEncontrado = $(this).val();
+              }
+            });
+          }
+
+          if (idVendedorEncontrado) {
+            // Verificar si el vendedor existe en el select
+            if ($(`#idusuario option[value='${idVendedorEncontrado}']`).length === 0) {
+              $('#idusuario').append(new Option(data.venta.usuario_nombre, idVendedorEncontrado));
+            }
+            $('#idusuario').val(idVendedorEncontrado);
+          }
 
           const formaPago = data.venta.id_forma_pago;
           formaPagoActual = formaPago.toString();
@@ -4356,6 +4379,36 @@
             // Abrir modal
             const modalVenta = new bootstrap.Modal(document.getElementById('modalNuevaVenta'));
             modalVenta.show();
+
+            // ⭐ LOGICA DE BLOQUEO PARCIAL
+            if (data.bloqueo_parcial) {
+              setTimeout(() => {
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'Edición Restringida',
+                  html: 'Esta venta ya tiene pagos registrados.<br><br><b>Solo puedes modificar el Vendedor.</b>',
+                  confirmButtonText: 'Entendido',
+                  confirmButtonColor: '#f59e0b'
+                });
+              }, 500);
+
+              // Bloquear todos los inputs, selects y textareas del formulario (incluyendo botones)
+              $('#formNuevaVenta input, #formNuevaVenta select, #formNuevaVenta textarea, #formNuevaVenta button').prop('disabled', true);
+              
+              // Ocultar botones de acción específicos
+              $('#btnAgregarVehiculo, #btnAgregarRepuesto, #btnAgregarTramite, #btnCalcularCuotas').hide();
+              $('#tbodyItems .btn-danger').hide();
+
+              // Desbloquear lo necesario: Vendedor, botones para cerrar y Guardar
+              $('#idusuario').prop('disabled', false);
+              $('#btnGuardarVenta').prop('disabled', false);
+              $('#modalNuevaVenta .btn-close, #modalNuevaVenta [data-bs-dismiss="modal"]').prop('disabled', false);
+            } else {
+              // Asegurar que estén desbloqueados y visibles por si se reutiliza el DOM
+              $('#formNuevaVenta input, #formNuevaVenta select, #formNuevaVenta textarea, #formNuevaVenta button').prop('disabled', false);
+              $('#btnAgregarVehiculo, #btnAgregarRepuesto, #btnAgregarTramite, #btnCalcularCuotas').show();
+              $('#tbodyItems .btn-danger').show();
+            }
           }, 300);
 
         } else if (data.codigo === 'VENTA_CON_PAGOS_NO_EDITABLE') {
