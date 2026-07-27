@@ -7,6 +7,7 @@
       <i class="fa-solid fa-warehouse me-2"></i>Stock de Inventario
     </h1>
     <div>
+      {% if request.session.idtipousuario == 1 or request.session.idtipousuario == 5 %}
       <a href="?export=pdf" class="btn btn-outline-danger rounded-pill">
         <i class="fa-solid fa-print me-2"></i>Imprimir
       </a>
@@ -24,6 +25,7 @@
       <button class="btn btn-primary rounded-pill ms-1" data-bs-toggle="modal" data-bs-target="#modalStockRepuesto">
         <i class="fa-solid fa-plus me-1"></i> Repuesto Rápido
       </button>
+      {% endif %}
     </div>
   </div>
 
@@ -1540,7 +1542,7 @@ function renderGrupoVehiculo(grupo) {
       '<td class="text-center"><span class="badge bg-info">' + det.estado + '</span></td>' +
       '<td class="text-center"><span class="badge ' + sitClass + '">' + det.situacion + '</span></td>' +
       '<td>' + imperfHtml + '</td>' +
-      '<td class="text-end fw-semibold text-danger">S/ ' + pc + '</td>' +
+      (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<td class="text-end fw-semibold text-danger">S/ ' + pc + '</td>' : '') +
       '<td class="text-end fw-semibold text-success">S/ ' + pm + '</td>' +
       '<td class="text-end fw-semibold" style="color:#6f42c1;">S/ ' + px + '</td>' +
       '<td class="text-center"><span class="badge bg-success rounded-pill fs-6 cantidad-badge">' + det.cantidad + '</span></td>' +
@@ -1580,13 +1582,13 @@ function renderGrupoVehiculo(grupo) {
     '<th class="text-center"><i class="fa-solid fa-circle-check me-1"></i>Estado</th>' +
     '<th class="text-center"><i class="fa-solid fa-location-dot me-1"></i>Situación</th>' +
     '<th><i class="fa-solid fa-triangle-exclamation me-1"></i>Imperfecciones</th>' +
-    '<th class="text-end"><i class="fa-solid fa-arrow-down me-1"></i>P. Compra</th>' +
+    (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<th class="text-end"><i class="fa-solid fa-arrow-down me-1"></i>P. Compra</th>' : '') +
     '<th class="text-end"><i class="fa-solid fa-arrow-up me-1"></i>P. x Mayor</th>' +
     '<th class="text-end"><i class="fa-solid fa-arrow-up-right-dots me-1"></i>P. x Menor</th>' +
     '<th class="text-center"><i class="fa-solid fa-hashtag me-1"></i>Cant.</th>' +
     '<th class="text-center"><i class="fa-solid fa-cogs me-1"></i>Acciones</th>' +
     '</tr></thead><tbody>' + filas + '</tbody>' +
-    '<tfoot class="table-secondary fw-bold"><tr><td colspan="9" class="text-end">SUBTOTAL:</td><td></td>' +
+    '<tfoot class="table-secondary fw-bold"><tr><td colspan="' + (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? 9 : 8) + '" class="text-end">SUBTOTAL:</td><td></td>' +
     '<td class="text-center"><span class="badge bg-success fs-6">' + grupo.cantidad_total + '</span></td><td></td>' +
     '</tr></tfoot></table></div>' + paginationHtml + '</div></div>';
 }
@@ -1648,7 +1650,7 @@ function renderGrupoRepuesto(grupo) {
         '<strong>Mod/Ref:</strong> <span class="modelo-repuesto">' + det.modelo + '</span></div></td>' +
       '<td class="ubicacion-repuesto align-middle">' + det.ubicacion + '</td>' +
       '<td class="align-middle"><div class="small fw-semibold">' +
-        '<span>C: S/ ' + pc + '</span><br>' +
+        (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<span>C: S/ ' + pc + '</span><br>' : '') +
         '<span class="text-muted mt-1 d-inline-block">P. x Mayor: S/ ' + pm + ' | P. x Menor: S/ ' + px + '</span>' +
       '</div></td>' +
       '<td class="text-center align-middle"><span class="badge bg-primary rounded-pill fs-6 cantidad-badge">' + det.cantidad + '</span></td>' +
@@ -2007,6 +2009,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </style>
 
 <script>
+// ============================================================
+const ROL_USUARIO = parseInt("{{ request.session.idtipousuario }}") || 0;
 // ============================================================
 // INICIALIZACIÓN Y BUSCADORES CON DEBOUNCE
 // ============================================================
