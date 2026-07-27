@@ -20,6 +20,8 @@ from software.models.ProductoModel import Producto
 from software.models.almacenesModel import Almacenes
 from software.models.movimientoCajaModel import MovimientoCaja
 from software.models.AperturaCierreCajaModel import AperturaCierreCaja
+from software.models.Tipo_entidadModel import TipoEntidad
+from software.models.RegionModel import Region
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +46,8 @@ def index_pre_financiamiento(request):
     estado_filtro = request.GET.get('estado', 'todos')
     busqueda = request.GET.get('busqueda', '').strip()
 
+    tipos_pago = TipoPago.objects.filter(estado=1).order_by('nombre')
+
     data = {
         'idtipousuario': id_tipo_usuario,
         'solicitudes': [],  # Se cargará vía AJAX
@@ -54,6 +58,7 @@ def index_pre_financiamiento(request):
         'total_pendientes': 0,
         'total_aprobados': 0,
         'total_rechazados': 0,
+        'tipos_pago': tipos_pago,
     }
     return render(request, 'pre_financiamiento/index.html', data)
 
@@ -77,7 +82,10 @@ def api_listar_pre_financiamiento(request):
     fecha_hasta = request.GET.get('fecha_hasta', '')
 
     qs = PreCredito.objects.select_related(
-        'idcliente', 'id_vehiculo__idproducto', 'idusuario', 'id_sucursal'
+        'idcliente', 'idusuario', 'id_sucursal'
+    ).prefetch_related(
+        'detalles_vehiculos__id_vehiculo__idproducto',
+        'detalles_pago__id_tipo_pago'
     ).order_by('-fecha_registro')
 
     id_almacen_session = request.session.get('id_almacen')
@@ -88,7 +96,8 @@ def api_listar_pre_financiamiento(request):
             id_almacen_id=id_almacen_session,
             estado=1
         ).values_list('id_vehiculo_id', flat=True)
-        qs = qs.filter(id_vehiculo_id__in=vehiculos_en_almacen)
+        # Filtrar pre-créditos que tengan al menos uno de sus vehículos en este almacén
+        qs = qs.filter(detalles_vehiculos__id_vehiculo_id__in=vehiculos_en_almacen).distinct()
 
     if estado_filtro != 'todos':
         qs = qs.filter(estado=estado_filtro)
@@ -103,14 +112,14 @@ def api_listar_pre_financiamiento(request):
         qs = qs.filter(
             Q(idcliente__razonsocial__icontains=busqueda) |
             Q(idcliente__numdoc__icontains=busqueda) |
-            Q(id_vehiculo__idproducto__nomproducto__icontains=busqueda) |
-            Q(id_vehiculo__serie_motor__icontains=busqueda) |
-            Q(id_vehiculo__serie_chasis__icontains=busqueda)
-        )
+            Q(detalles_vehiculos__id_vehiculo__idproducto__nomproducto__icontains=busqueda) |
+            Q(detalles_vehiculos__id_vehiculo__serie_motor__icontains=busqueda) |
+            Q(detalles_vehiculos__id_vehiculo__serie_chasis__icontains=busqueda)
+        ).distinct()
 
     qs_stats = PreCredito.objects.all()
     if id_almacen_session:
-        qs_stats = qs_stats.filter(id_vehiculo_id__in=vehiculos_en_almacen)
+        qs_stats = qs_stats.filter(detalles_vehiculos__id_vehiculo_id__in=vehiculos_en_almacen).distinct()
     if fecha_desde: qs_stats = qs_stats.filter(fecha_registro__date__gte=fecha_desde)
     if fecha_hasta: qs_stats = qs_stats.filter(fecha_registro__date__lte=fecha_hasta)
 
@@ -131,13 +140,30 @@ def api_listar_pre_financiamiento(request):
                 'monto': str(d.monto)
             })
 
+        # Extraer info de vehículos del prefetch
+        vehiculos_detalle = s.detalles_vehiculos.all()
+        vehiculos_list = []
+        for dv in vehiculos_detalle:
+            if dv.id_vehiculo:
+                vehiculos_list.append({
+                    'nombre': dv.id_vehiculo.idproducto.nomproducto if dv.id_vehiculo.idproducto else 'Sin vehículo',
+                    'chasis': dv.id_vehiculo.serie_chasis or '',
+                    'motor': dv.id_vehiculo.serie_motor or ''
+                })
+
+        # Retrocompatibilidad en caso no haya detalles
+        if not vehiculos_list:
+            vehiculos_list.append({
+                'nombre': s.nombre_vehiculo,
+                'chasis': '',
+                'motor': ''
+            })
+
         data.append({
             'id_pre_credito': s.id_pre_credito,
             'cliente_razonsocial': s.idcliente.razonsocial if getattr(s, 'idcliente', None) else '',
             'cliente_numdoc': s.idcliente.numdoc if getattr(s, 'idcliente', None) else '',
-            'vehiculo_nombre': s.nombre_vehiculo,
-            'vehiculo_chasis': s.id_vehiculo.serie_chasis if getattr(s, 'id_vehiculo', None) else '',
-            'vehiculo_motor': s.id_vehiculo.serie_motor if getattr(s, 'id_vehiculo', None) else '',
+            'vehiculos_list': vehiculos_list,
             'monto_inicial': str(s.monto_inicial),
             'estado': s.estado,
             'cobrado': s.cobrado,
@@ -192,6 +218,10 @@ def registrar_pre_financiamiento(request):
     # GET: Obtener datos para el formulario
     clientes = Cliente.objects.filter(estado=1).order_by('razonsocial')
     tipos_pago = TipoPago.objects.filter(estado=1)
+    
+    # Datos para el modal de nuevo cliente (consultas directas sin N+1)
+    tipos_entidad = TipoEntidad.objects.filter(estado=1)
+    regiones = Region.objects.all()
 
     # Obtener vehículos con stock en el almacén de sesión
     id_almacen_session = request.session.get('id_almacen')
@@ -200,8 +230,11 @@ def registrar_pre_financiamiento(request):
     data = {
         'clientes': clientes,
         'tipos_pago': tipos_pago,
+        'tipos_entidad': tipos_entidad,
+        'regiones': regiones,
         'vehiculos_disponibles_json': json.dumps(vehiculos_disponibles),
         'id_almacen_session': id_almacen_session,
+        'id_tipo_usuario': id_tipo_usuario,
     }
     return render(request, 'pre_financiamiento/registrar.html', data)
 
@@ -211,7 +244,7 @@ def _guardar_pre_financiamiento(request):
     """Lógica de guardado de la nueva solicitud de pre-financiamiento."""
     try:
         idcliente    = request.POST.get('idcliente', '').strip()
-        id_vehiculo  = request.POST.get('id_vehiculo', '').strip()
+        ids_vehiculos = request.POST.getlist('id_vehiculo[]')
         observaciones = request.POST.get('observaciones', '').strip()
         idusuario    = request.session.get('idusuario')
         id_sucursal  = request.session.get('id_sucursal')
@@ -219,50 +252,51 @@ def _guardar_pre_financiamiento(request):
         # Validaciones básicas
         if not idcliente:
             return JsonResponse({'ok': False, 'error': 'Debe seleccionar un cliente.'}, status=400)
-        if not id_vehiculo:
-            return JsonResponse({'ok': False, 'error': 'Debe seleccionar un vehículo.'}, status=400)
-
-        # Obtener montos de pago (puede ser mixto: varios métodos)
-        tipos_pago_ids   = request.POST.getlist('tipo_pago_id[]')
-        montos_pago      = request.POST.getlist('monto_pago[]')
-        nros_operacion   = request.POST.getlist('nro_operacion[]')
-
-        if not tipos_pago_ids or not montos_pago:
-            return JsonResponse({'ok': False, 'error': 'Debe registrar al menos un pago inicial.'}, status=400)
+        if not ids_vehiculos:
+            return JsonResponse({'ok': False, 'error': 'Debe seleccionar al menos un vehículo.'}, status=400)
 
         # Calcular monto total inicial
         monto_total_inicial = Decimal('0')
         detalles_pago = []
-        # Usar zip_longest o similar si el tamaño varía, pero aquí asumimos que coinciden
-        for i in range(len(tipos_pago_ids)):
-            tipo_id = tipos_pago_ids[i]
-            monto_str = montos_pago[i]
-            nro_op = nros_operacion[i] if i < len(nros_operacion) else ''
+        
+        id_tipo_usuario = request.session.get('idtipousuario')
+        
+        if id_tipo_usuario != 2:
+            # Obtener montos de pago (puede ser mixto: varios métodos)
+            tipos_pago_ids   = request.POST.getlist('tipo_pago_id[]')
+            montos_pago      = request.POST.getlist('monto_pago[]')
+            nros_operacion   = request.POST.getlist('nro_operacion[]')
 
-            try:
-                monto = Decimal(monto_str)
-                if monto <= 0:
-                    raise ValueError
-            except Exception:
-                return JsonResponse({'ok': False, 'error': f'Monto inválido: {monto_str}'}, status=400)
-            
-            monto_total_inicial += monto
-            detalles_pago.append({
-                'tipo_id': tipo_id, 
-                'monto': monto,
-                'nro_op': nro_op
-            })
+            if not tipos_pago_ids or not montos_pago:
+                return JsonResponse({'ok': False, 'error': 'Debe registrar al menos un pago inicial.'}, status=400)
 
-        if monto_total_inicial <= 0:
-            return JsonResponse({'ok': False, 'error': 'El monto inicial total debe ser mayor a cero.'}, status=400)
+            for i in range(len(tipos_pago_ids)):
+                tipo_id = tipos_pago_ids[i]
+                monto_str = montos_pago[i]
+                nro_op = nros_operacion[i] if i < len(nros_operacion) else ''
+
+                try:
+                    monto = Decimal(monto_str)
+                    if monto <= 0:
+                        raise ValueError
+                except Exception:
+                    return JsonResponse({'ok': False, 'error': f'Monto inválido: {monto_str}'}, status=400)
+                
+                monto_total_inicial += monto
+                detalles_pago.append({
+                    'tipo_id': tipo_id, 
+                    'monto': monto,
+                    'nro_op': nro_op
+                })
+
+            if monto_total_inicial <= 0:
+                return JsonResponse({'ok': False, 'error': 'El monto inicial total debe ser mayor a cero.'}, status=400)
 
         cliente  = get_object_or_404(Cliente, pk=idcliente)
-        vehiculo = get_object_or_404(Vehiculo, pk=id_vehiculo)
 
-        # Crear el PreCredito
+        # Crear el PreCredito sin id_vehiculo (ya que ahora va a tabla detalle)
         pre_credito = PreCredito.objects.create(
             idcliente=cliente,
-            id_vehiculo=vehiculo,
             monto_inicial=monto_total_inicial,
             estado='pendiente',
             idusuario_id=idusuario,
@@ -270,14 +304,25 @@ def _guardar_pre_financiamiento(request):
             observaciones=observaciones,
         )
 
-        # ✅ ACTUALIZAR SITUACIÓN DEL VEHÍCULO A RESERVADO
+        # Guardar en detalle y actualizar situación a reservado
         from software.models.SituacionVehiculoModel import SituacionVehiculo
+        from software.models.PreCreditoDetalleVehiculoModel import PreCreditoDetalleVehiculo
+        
         situacion_reservado, _ = SituacionVehiculo.objects.get_or_create(
             nombre_situacion='RESERVADO (PRE-FINANC.)', 
             defaults={'estado': 1}
         )
-        vehiculo.id_situacion = situacion_reservado
-        vehiculo.save()
+
+        detalles_vehiculo_crear = []
+        for id_vehiculo in ids_vehiculos:
+            if id_vehiculo:
+                detalles_vehiculo_crear.append(
+                    PreCreditoDetalleVehiculo(id_pre_credito=pre_credito, id_vehiculo_id=id_vehiculo)
+                )
+
+        if detalles_vehiculo_crear:
+            PreCreditoDetalleVehiculo.objects.bulk_create(detalles_vehiculo_crear)
+            Vehiculo.objects.filter(id_vehiculo__in=ids_vehiculos).update(id_situacion=situacion_reservado)
 
         # Crear el detalle de pago (mixto)
         for detalle in detalles_pago:
@@ -362,15 +407,16 @@ def evaluar_pre_financiamiento(request, id_pre_credito):
         pre_credito.estado = 'rechazado'
         pre_credito.save()
 
-        # ✅ VOLVER VEHÍCULO A DISPONIBLE
+        # ✅ VOLVER VEHÍCULOS A DISPONIBLE
         from software.models.SituacionVehiculoModel import SituacionVehiculo
         situacion_disponible, _ = SituacionVehiculo.objects.get_or_create(
             nombre_situacion='DISPONIBLE', 
             defaults={'estado': 1}
         )
-        if pre_credito.id_vehiculo:
-            pre_credito.id_vehiculo.id_situacion = situacion_disponible
-            pre_credito.id_vehiculo.save()
+        
+        ids_vehiculos_asociados = [v.id_vehiculo for v in pre_credito.vehiculos_asociados]
+        if ids_vehiculos_asociados:
+            Vehiculo.objects.filter(id_vehiculo__in=ids_vehiculos_asociados).update(id_situacion=situacion_disponible)
 
         # 2. Registrar egreso en caja si fue cobrado
         if pre_credito.cobrado:
@@ -426,14 +472,65 @@ def cobrar_pre_financiamiento(request, id_pre_credito):
             'error': 'Debe tener una caja abierta para registrar el cobro.'
         }, status=400)
 
-    # 1. Registrar movimiento en caja
+    if pre_credito.monto_inicial == Decimal('0.00') or pre_credito.monto_inicial == 0:
+        tipos_pago_ids = request.POST.getlist('tipo_pago_id[]')
+        montos_pago    = request.POST.getlist('monto_pago[]')
+        nros_operacion = request.POST.getlist('nro_operacion[]')
+        
+        if not tipos_pago_ids or not montos_pago:
+            return JsonResponse({'ok': False, 'error': 'Debe ingresar al menos un método de pago.'}, status=400)
+            
+        monto_total_inicial = Decimal('0')
+        detalles_pago = []
+        for i in range(len(tipos_pago_ids)):
+            tipo_id = tipos_pago_ids[i]
+            monto_str = montos_pago[i]
+            nro_op = nros_operacion[i] if i < len(nros_operacion) else ''
+            
+            try:
+                monto = Decimal(monto_str)
+                if monto <= 0: raise ValueError
+            except:
+                return JsonResponse({'ok': False, 'error': f'Monto inválido: {monto_str}'}, status=400)
+                
+            monto_total_inicial += monto
+            detalles_pago.append({
+                'tipo_id': tipo_id,
+                'monto': monto,
+                'nro_op': nro_op
+            })
+            
+        if monto_total_inicial <= 0:
+            return JsonResponse({'ok': False, 'error': 'El monto a cobrar debe ser mayor a 0.'}, status=400)
+            
+        for det in detalles_pago:
+            DetallePagoInicial.objects.create(
+                id_pre_credito=pre_credito,
+                id_tipo_pago_id=det['tipo_id'],
+                monto=det['monto'],
+                numero_operacion=det['nro_op']
+            )
+            
+        pre_credito.monto_inicial = monto_total_inicial
+
+    # 1. Registrar movimiento en caja (UN SOLO MOVIMIENTO)
+    detalles_guardados = DetallePagoInicial.objects.filter(id_pre_credito=pre_credito)
+    desc_pagos = ""
+    if detalles_guardados.exists():
+        metodos = []
+        for p in detalles_guardados:
+            metodos.append(f"{p.id_tipo_pago.nombre}")
+        # Quitar duplicados
+        metodos = list(set(metodos))
+        desc_pagos = f" ({' / '.join(metodos)})"
+
     MovimientoCaja.objects.create(
         id_caja=apertura.id_caja,
         id_movimiento=apertura,
         idusuario_id=idusuario,
         tipo_movimiento='ingreso',
         monto=pre_credito.monto_inicial,
-        descripcion=f"Cobro Inicial Pre-Crédito #{pre_credito.id_pre_credito} - Cliente: {pre_credito.idcliente.razonsocial}",
+        descripcion=f"Cobro Inicial Pre-Crédito #{pre_credito.id_pre_credito} - Cliente: {pre_credito.idcliente.razonsocial}{desc_pagos}",
         estado=1
     )
 
@@ -523,16 +620,25 @@ def imprimir_recibo_pre_financiamiento(request, id_pre_credito):
         elements.append(Spacer(1, 2*mm))
         elements.append(Paragraph("-" * 50, style_normal_center))
         
-        # VEHICULO
-        elements.append(Paragraph("<b>VEHÍCULO RESERVADO:</b>", style_bold))
-        vehiculo_nombre = pre_credito.nombre_vehiculo
-        elements.append(Paragraph(f"{vehiculo_nombre}", style_normal_center))
+        # FECHA DE CREACION
+        fecha_creacion_str = pre_credito.fecha_registro.strftime('%d/%m/%Y')
+        hora_creacion_str = pre_credito.fecha_registro.strftime('%I:%M %p')
+        elements.append(Paragraph(f"<b>FECHA CREACIÓN:</b> {fecha_creacion_str} <b>HORA:</b> {hora_creacion_str}", style_normal_center))
+        elements.append(Spacer(1, 2*mm))
         
-        if pre_credito.id_vehiculo:
-            if pre_credito.id_vehiculo.serie_chasis:
-                elements.append(Paragraph(f"<b>CHASIS:</b> {pre_credito.id_vehiculo.serie_chasis}", style_normal_center))
-            if pre_credito.id_vehiculo.serie_motor:
-                elements.append(Paragraph(f"<b>MOTOR:</b> {pre_credito.id_vehiculo.serie_motor}", style_normal_center))
+        # VEHICULOS
+        elements.append(Paragraph("<b>VEHÍCULOS RESERVADOS:</b>", style_bold))
+        vehiculos_asociados = pre_credito.vehiculos_asociados
+        if vehiculos_asociados:
+            for vehiculo in vehiculos_asociados:
+                v_nombre = vehiculo.idproducto.nomproducto if vehiculo.idproducto else 'Desconocido'
+                elements.append(Paragraph(f"- {v_nombre}", style_normal_center))
+                if vehiculo.serie_chasis:
+                    elements.append(Paragraph(f"  <b>CHASIS:</b> {vehiculo.serie_chasis}", style_normal_center))
+                if vehiculo.serie_motor:
+                    elements.append(Paragraph(f"  <b>MOTOR:</b> {vehiculo.serie_motor}", style_normal_center))
+        else:
+            elements.append(Paragraph("Sin vehículos", style_normal_center))
                 
         elements.append(Spacer(1, 2*mm))
         
@@ -544,23 +650,36 @@ def imprimir_recibo_pre_financiamiento(request, id_pre_credito):
         elements.append(Spacer(1, 2*mm))
         elements.append(Paragraph("-" * 50, style_normal_center))
         
-        # DATOS ADICIONALES
-        fecha_str = pre_credito.fecha_registro.strftime('%d/%m/%Y')
-        hora_str = pre_credito.fecha_registro.strftime('%I:%M %p')
-        elements.append(Paragraph(f"<b>FECHA:</b> {fecha_str} <b>HORA:</b> {hora_str}", style_normal_center))
+        # DATOS ADICIONALES (COBRO)
+        vendedor_nombre = pre_credito.idusuario.nombrecompleto if pre_credito.idusuario else "Admin"
         
-        cajero_nombre = pre_credito.idusuario.nombrecompleto if pre_credito.idusuario else "Admin"
-        elements.append(Paragraph(f"<b>VENDEDOR/CAJERO:</b> {cajero_nombre}", style_normal_center))
-        
-        # CAJA QUE COBRÓ
+        cajero_nombre = "---"
         caja_nombre = "---"
+        fecha_cobro = "---"
+        hora_cobro = "---"
         if pre_credito.cobrado:
             mov = MovimientoCaja.objects.filter(
                 descripcion__contains=f"Cobro Inicial Pre-Crédito #{pre_credito.id_pre_credito}"
             ).first()
-            if mov and mov.id_caja:
-                caja_nombre = mov.id_caja.nombre_caja
-        elements.append(Paragraph(f"<b>CAJA:</b> {caja_nombre}", style_normal_center))
+            if mov:
+                fecha_cobro = mov.fecha_movimiento.strftime('%d/%m/%Y')
+                hora_cobro = mov.fecha_movimiento.strftime('%I:%M %p')
+                if mov.id_caja:
+                    caja_nombre = mov.id_caja.nombre_caja
+                if mov.idusuario:
+                    cajero_nombre = mov.idusuario.nombrecompleto
+                    
+        if pre_credito.cobrado:
+            elements.append(Paragraph(f"<b>FECHA COBRO:</b> {fecha_cobro}   <b>HORA:</b> {hora_cobro}", style_normal_center))
+            if vendedor_nombre == cajero_nombre:
+                elements.append(Paragraph(f"<b>VENDEDOR/CAJERO:</b> {vendedor_nombre}", style_normal_center))
+            else:
+                elements.append(Paragraph(f"<b>VENDEDOR:</b> {vendedor_nombre}", style_normal_center))
+                elements.append(Paragraph(f"<b>CAJERO:</b> {cajero_nombre}", style_normal_center))
+            elements.append(Paragraph(f"<b>CAJA:</b> {caja_nombre}", style_normal_center))
+        else:
+            elements.append(Paragraph("<b>FECHA COBRO:</b> PENDIENTE", style_normal_center))
+            elements.append(Paragraph(f"<b>VENDEDOR:</b> {vendedor_nombre}", style_normal_center))
         
         elements.append(Spacer(1, 4*mm))
         
@@ -638,45 +757,51 @@ def get_pre_credito_data(request, id_pre_credito):
         'numdoc': cliente.numdoc,
     }
 
-    # Datos del vehículo
-    vehiculo_data = None
-    if pre_credito.id_vehiculo:
-        vehiculo = pre_credito.id_vehiculo
-        # Buscar precio desde stock o compradetalle
+    # Datos de los vehículos
+    vehiculos_data = []
+    vehiculos_asociados = pre_credito.vehiculos_asociados
+    if vehiculos_asociados:
         id_almacen = request.session.get('id_almacen')
-        precio_venta = 0
-        precio_compra = 0
+        ids_vehiculos = [v.id_vehiculo for v in vehiculos_asociados]
         
-        # 1. Intentar obtener desde el stock del almacén actual
-        stock = None
+        stocks_info = {}
         if id_almacen:
-            stock = Stock.objects.filter(
+            stocks = Stock.objects.filter(
                 id_almacen_id=id_almacen,
-                id_vehiculo=vehiculo,
+                id_vehiculo_id__in=ids_vehiculos,
                 estado=1
-            ).select_related('idcompradetalle').first()
+            ).select_related('idcompradetalle')
+            for s in stocks:
+                stocks_info[s.id_vehiculo_id] = s
         
-        # 2. Fallback: Buscar en CompraDetalle si no hay stock o no tiene detalle
-        detalle_compra = None
-        if stock and stock.idcompradetalle:
-            detalle_compra = stock.idcompradetalle
-        else:
-            detalle_compra = CompraDetalle.objects.filter(
-                id_vehiculo=vehiculo
-            ).order_by('-idcompradetalle').first()
-
-        if detalle_compra:
-            precio_venta  = float(detalle_compra.precio_maximo)
-            precio_compra = float(detalle_compra.precio_compra)
-
-        vehiculo_data = {
-            'id_vehiculo': vehiculo.id_vehiculo,
-            'nombre': vehiculo.idproducto.nomproducto if vehiculo.idproducto else 'N/A',
-            'serie_motor': vehiculo.serie_motor,
-            'serie_chasis': vehiculo.serie_chasis,
-            'precio_venta': precio_venta,
-            'precio_compra': precio_compra,
-        }
+        detalles_compra = {}
+        compras_det = CompraDetalle.objects.filter(id_vehiculo_id__in=ids_vehiculos)
+        for cd in compras_det:
+            detalles_compra[cd.id_vehiculo_id] = cd
+            
+        for vehiculo in vehiculos_asociados:
+            precio_venta = 0
+            precio_compra = 0
+            
+            stock_obj = stocks_info.get(vehiculo.id_vehiculo)
+            detalle_compra = None
+            if stock_obj and stock_obj.idcompradetalle:
+                detalle_compra = stock_obj.idcompradetalle
+            else:
+                detalle_compra = detalles_compra.get(vehiculo.id_vehiculo)
+                
+            if detalle_compra:
+                precio_venta = float(detalle_compra.precio_maximo)
+                precio_compra = float(detalle_compra.precio_compra)
+                
+            vehiculos_data.append({
+                'id_vehiculo': vehiculo.id_vehiculo,
+                'nombre': vehiculo.idproducto.nomproducto if vehiculo.idproducto else 'N/A',
+                'serie_motor': vehiculo.serie_motor,
+                'serie_chasis': vehiculo.serie_chasis,
+                'precio_venta': precio_venta,
+                'precio_compra': precio_compra,
+            })
 
     # Detalles del pago inicial (para mostrar en la UI)
     detalles = []
@@ -694,7 +819,7 @@ def get_pre_credito_data(request, id_pre_credito):
             'observaciones': pre_credito.observaciones or '',
         },
         'cliente': cliente_data,
-        'vehiculo': vehiculo_data,
+        'vehiculos': vehiculos_data,
         'detalles_pago': detalles,
     })
 
@@ -714,7 +839,7 @@ def _get_vehiculos_disponibles(id_almacen):
     # Obtener IDs de vehículos que ya tienen una solicitud activa (pendiente o aprobada)
     vehiculos_en_proceso = PreCredito.objects.filter(
         estado__in=['pendiente', 'aprobado']
-    ).values_list('id_vehiculo_id', flat=True)
+    ).values_list('detalles_vehiculos__id_vehiculo_id', flat=True)
 
     vehiculos = []
     stocks = Stock.objects.filter(

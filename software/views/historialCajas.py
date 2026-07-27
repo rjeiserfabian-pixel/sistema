@@ -547,6 +547,28 @@ def obtener_movimientos_caja(request, id_movimiento):
     total_egresos = movimientos.filter(tipo_movimiento='egreso').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
     saldo_calculado = (apertura.saldo_inicial or Decimal('0.00')) + total_ingresos - total_egresos
     
+    import re
+    # PRE-FETCH MANUAL para evitar N+1 en Pre-Créditos
+    pre_credito_ids = []
+    for m in movimientos:
+        if 'Pre-Crédito' in (m.descripcion or ''):
+            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
+            if m_pre:
+                pre_credito_ids.append(m_pre.group(1))
+    
+    detalles_por_precredito = {}
+    if pre_credito_ids:
+        try:
+            from software.models.DetallePagoInicialModel import DetallePagoInicial
+            dps = DetallePagoInicial.objects.filter(id_pre_credito_id__in=pre_credito_ids).select_related('id_tipo_pago')
+            for p in dps:
+                pid = str(p.id_pre_credito_id)
+                if pid not in detalles_por_precredito:
+                    detalles_por_precredito[pid] = []
+                detalles_por_precredito[pid].append(p)
+        except Exception:
+            pass
+
     # Construir listado enriquecido
     movimientos_list = []
     for mov in movimientos:
@@ -565,11 +587,10 @@ def obtener_movimientos_caja(request, id_movimiento):
             forma_pago = "Crédito"
             nro_operacion = "Múltiple"
             
-            import re as _re
             frac_detail = ""
             for p in pagos_cuota_list:
                 if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                    m_frac = _re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
+                    m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
                     if m_frac:
                         frac_detail = m_frac.group(1)
                         break
@@ -582,7 +603,6 @@ def obtener_movimientos_caja(request, id_movimiento):
                 if len(metodos_unicos) == 1:
                     metodo_pago = metodos_unicos.pop()
                     detalles_metodo = ""
-                    # Opcional: si todos comparten el mismo nro de operación, podríamos ponerlo, pero "Múltiple" o el primero está bien.
                     ops = set(p.numero_operacion for p in pagos_cuota_list if p.numero_operacion and p.numero_operacion.lower() != 'múltiple')
                     if ops:
                         nro_operacion = " / ".join(ops)
@@ -613,8 +633,7 @@ def obtener_movimientos_caja(request, id_movimiento):
             if pago_cuota.id_tipo_pago:
                 metodo_pago = pago_cuota.id_tipo_pago.nombre
                 if pago_cuota.observaciones and '[FRACCIONADO:' in pago_cuota.observaciones:
-                    import re as _re
-                    m_frac = _re.search(r'\[FRACCIONADO:\s*(.*?)\]', pago_cuota.observaciones)
+                    m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', pago_cuota.observaciones)
                     if m_frac:
                         detalles_metodo = m_frac.group(1)
             nro_operacion = pago_cuota.numero_operacion or "---"
@@ -638,8 +657,7 @@ def obtener_movimientos_caja(request, id_movimiento):
             if mov.idventa.id_tipo_pago:
                 metodo_pago = mov.idventa.id_tipo_pago.nombre
                 if mov.idventa.observaciones and '[FRACCIONADO:' in mov.idventa.observaciones:
-                    import re as _re
-                    m_frac = _re.search(r'\[FRACCIONADO:\s*(.*?)\]', mov.idventa.observaciones)
+                    m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', mov.idventa.observaciones)
                     if m_frac:
                         detalles_metodo = m_frac.group(1)
             comprobante = {
@@ -656,10 +674,26 @@ def obtener_movimientos_caja(request, id_movimiento):
             if mov.idcompra.id_tipo_pago:
                 metodo_pago = mov.idcompra.id_tipo_pago.nombre
                 if mov.idcompra.observaciones and '[FRACCIONADO:' in mov.idcompra.observaciones:
-                    import re as _re
-                    m_frac = _re.search(r'\[FRACCIONADO:\s*(.*?)\]', mov.idcompra.observaciones)
+                    m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', mov.idcompra.observaciones)
                     if m_frac:
                         detalles_metodo = m_frac.group(1)
+        
+        # 4. Evaluar si es un Cobro Inicial Pre-Crédito
+        elif 'Pre-Crédito' in (mov.descripcion or ''):
+            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', mov.descripcion)
+            if m_pre:
+                pid = m_pre.group(1)
+                dp_list = detalles_por_precredito.get(pid, [])
+                if len(dp_list) > 1:
+                    metodo_pago = "Múltiple"
+                    arr = []
+                    for p in dp_list:
+                        n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
+                        op = f' (Op:{p.numero_operacion})' if p.numero_operacion else ''
+                        arr.append(f"{n}: S/ {p.monto}{op}")
+                    detalles_metodo = " | ".join(arr)
+                elif len(dp_list) == 1:
+                    metodo_pago = dp_list[0].id_tipo_pago.nombre if dp_list[0].id_tipo_pago else 'Efectivo'
                 
         movimientos_list.append({
             'id': mov.id_movimiento_caja,

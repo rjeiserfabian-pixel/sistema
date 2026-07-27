@@ -94,17 +94,18 @@ def ventas(request):
     from software.models.PreCreditoModel import PreCredito
     vehiculos_reservados_qs = PreCredito.objects.filter(
         estado__in=['pendiente', 'aprobado']
-    ).values_list('id_vehiculo_id', flat=True)
+    ).values_list('detalles_vehiculos__id_vehiculo_id', flat=True)
     
     vehiculos_reservados = set(vehiculos_reservados_qs)
     
-    # Si estamos procesando una venta desde un pre-crédito específico, permitimos su vehículo
+    # Si estamos procesando una venta desde un pre-crédito específico, permitimos sus vehículos
     pre_credito_id = request.GET.get('pre_credito_id', '').strip()
     if pre_credito_id:
         try:
             pc = PreCredito.objects.get(pk=int(pre_credito_id))
-            if pc.id_vehiculo_id and pc.id_vehiculo_id in vehiculos_reservados:
-                vehiculos_reservados.remove(pc.id_vehiculo_id)
+            for dv in pc.detalles_vehiculos.all():
+                if dv.id_vehiculo_id and dv.id_vehiculo_id in vehiculos_reservados:
+                    vehiculos_reservados.remove(dv.id_vehiculo_id)
         except Exception:
             pass
 
@@ -273,20 +274,24 @@ def ventas(request):
             from software.models.PreCreditoModel import PreCredito
             from software.models.stockModel import Stock as _Stock
             pc = PreCredito.objects.select_related(
-                'idcliente', 'id_vehiculo__idproducto'
+                'idcliente'
+            ).prefetch_related(
+                'detalles_vehiculos__id_vehiculo__idproducto'
             ).get(pk=int(pre_credito_id), estado='aprobado')
 
-            # Precio del vehículo en el almacén actual
+            # Para la vista antigua, si esperaba un solo vehículo (fallback), devolvemos el primero.
+            # Idealmente la vista frontend en ventas debe soportar el array de vehículos que ya preparamos.
             precio_minimo_pc  = 0
             precio_maximo_pc  = 0
             precio_compra_pc = 0
-            if pc.id_vehiculo:
+            primer_vehiculo = pc.vehiculos_asociados[0] if pc.vehiculos_asociados else None
+            if primer_vehiculo:
                 # 1. Intentar obtener desde el stock del almacén actual
                 stock_pc = None
                 if id_almacen_session:
                     stock_pc = _Stock.objects.filter(
                         id_almacen_id=id_almacen_session,
-                        id_vehiculo=pc.id_vehiculo,
+                        id_vehiculo=primer_vehiculo,
                         estado=1
                     ).select_related('idcompradetalle').first()
                 
@@ -297,7 +302,7 @@ def ventas(request):
                 else:
                     # Fallback: Buscar el último precio registrado para este vehículo
                     detalle_compra = CompraDetalle.objects.filter(
-                        id_vehiculo=pc.id_vehiculo
+                        id_vehiculo=primer_vehiculo
                     ).order_by('-idcompradetalle').first()
 
                 if detalle_compra:
@@ -312,15 +317,15 @@ def ventas(request):
                     'razonsocial': pc.idcliente.razonsocial,
                     'numdoc':      pc.idcliente.numdoc,
                 },
-                'vehiculo': {
-                    'id_vehiculo':   pc.id_vehiculo.id_vehiculo if pc.id_vehiculo else None,
-                    'nombre':        pc.id_vehiculo.idproducto.nomproducto if pc.id_vehiculo and pc.id_vehiculo.idproducto else None,
-                    'serie_motor':   pc.id_vehiculo.serie_motor  if pc.id_vehiculo else '',
-                    'serie_chasis':  pc.id_vehiculo.serie_chasis if pc.id_vehiculo else '',
-                    'precio_minimo':  precio_minimo_pc,
+                'vehiculos': [{
+                    'id_vehiculo':   v.id_vehiculo,
+                    'nombre':        v.idproducto.nomproducto if v.idproducto else None,
+                    'serie_motor':   v.serie_motor,
+                    'serie_chasis':  v.serie_chasis,
+                    'precio_minimo':  precio_minimo_pc, # Por simplificación, le asignamos el del primer vehiculo si es que no buscamos uno por uno.
                     'precio_maximo':  precio_maximo_pc,
                     'precio_compra': precio_compra_pc,
-                } if pc.id_vehiculo else None,
+                } for v in pc.vehiculos_asociados],
                 'monto_inicial': float(pc.monto_inicial),
             })
         except Exception:
@@ -1417,17 +1422,33 @@ def nueva_venta(request):
                             else:
                                 fecha_cuota_0 = fecha_venta  # por defecto: fecha de la venta
                             
-                            # ✅ REGLA DE NEGOCIO: Si viene de pre-financiamiento, la inicial ya fue pagada
+                            # ✅ REGLA DE NEGOCIO: Si viene de pre-financiamiento, evaluar lo que realmente pagó
                             monto_pagado = Decimal('0')
                             saldo_cuota = monto_adelanto
                             fecha_pago = None
                             estado_pago = 'Pendiente'
                             
                             if id_pre_credito:
-                                monto_pagado = monto_adelanto
-                                saldo_cuota = Decimal('0')
-                                fecha_pago = timezone.now()
-                                estado_pago = 'Pagado'
+                                try:
+                                    from software.models.PreCreditoModel import PreCredito
+                                    pc_obj_for_calc = PreCredito.objects.get(pk=int(id_pre_credito))
+                                    
+                                    # Solo sumar si ya fue cobrado en la caja
+                                    if pc_obj_for_calc.cobrado:
+                                        monto_pc_pagado = Decimal(str(pc_obj_for_calc.monto_inicial))
+                                    else:
+                                        monto_pc_pagado = Decimal('0')
+                                    
+                                    monto_pagado = min(monto_pc_pagado, monto_adelanto)
+                                    saldo_cuota = monto_adelanto - monto_pagado
+                                    
+                                    if saldo_cuota <= 0:
+                                        fecha_pago = timezone.now()
+                                        estado_pago = 'Pagado'
+                                    elif monto_pagado > 0:
+                                        estado_pago = 'Parcial'
+                                except Exception as e:
+                                    print(f"Error calculando saldo de inicial de Pre-Credito: {e}")
 
                             cuota_0 = CuotasVenta.objects.create(
                                 idventa=venta,
@@ -1452,41 +1473,43 @@ def nueva_venta(request):
                                 try:
                                     from software.models.PreCreditoModel import PreCredito
                                     pc_obj = PreCredito.objects.get(pk=int(id_pre_credito))
-                                    detalles_pc = pc_obj.detalles_pago.all()
                                     
-                                    if detalles_pc.count() > 1:
-                                        # 🔄 CONSOLIDACIÓN DE PAGOS MIXTOS (NUEVA LÓGICA)
-                                        monto_total_pc = sum(d.monto for d in detalles_pc)
-                                        resumen_metodos = " | ".join([f"{d.id_tipo_pago.nombre}: S/ {d.monto}" + (f" (Op:{d.numero_operacion})" if d.numero_operacion else "") for d in detalles_pc])
+                                    if pc_obj.cobrado:
+                                        detalles_pc = pc_obj.detalles_pago.all()
                                         
-                                        # Buscar el tipo de pago 'Múltiple'
-                                        tp_multiple = TipoPago.objects.filter(nombre__iexact='Múltiple').first()
-                                        if not tp_multiple:
-                                            tp_multiple = TipoPago.objects.filter(nombre__icontains='Multip').first()
-                                        
-                                        PagoCuota.objects.create(
-                                            idcuotaventa=cuota_0,
-                                            idusuario_id=idusuario,
-                                            id_tipo_pago=tp_multiple if tp_multiple else detalles_pc[0].id_tipo_pago,
-                                            monto_pago=monto_total_pc,
-                                            numero_operacion="Múltiple",
-                                            observaciones=f"Pago inicial (Multipago) transferido desde Pre-Crédito #{id_pre_credito} [{resumen_metodos}]",
-                                            estado=1
-                                        )
-                                        print(f"    → Pago inicial consolidado (Múltiple) por S/ {monto_total_pc}")
-                                    else:
-                                        # Pago único (Lógica original)
-                                        for det in detalles_pc:
+                                        if detalles_pc.count() > 1:
+                                            # 🔄 CONSOLIDACIÓN DE PAGOS MIXTOS (NUEVA LÓGICA)
+                                            monto_total_pc = sum(d.monto for d in detalles_pc)
+                                            resumen_metodos = " | ".join([f"{d.id_tipo_pago.nombre}: S/ {d.monto}" + (f" (Op:{d.numero_operacion})" if d.numero_operacion else "") for d in detalles_pc])
+                                            
+                                            # Buscar el tipo de pago 'Múltiple'
+                                            tp_multiple = TipoPago.objects.filter(nombre__iexact='Múltiple').first()
+                                            if not tp_multiple:
+                                                tp_multiple = TipoPago.objects.filter(nombre__icontains='Multip').first()
+                                            
                                             PagoCuota.objects.create(
                                                 idcuotaventa=cuota_0,
                                                 idusuario_id=idusuario,
-                                                id_tipo_pago=det.id_tipo_pago,
-                                                monto_pago=det.monto,
-                                                numero_operacion=det.numero_operacion,
-                                                observaciones=f"Pago inicial transferido desde Pre-Crédito #{id_pre_credito}",
+                                                id_tipo_pago=tp_multiple if tp_multiple else detalles_pc[0].id_tipo_pago,
+                                                monto_pago=monto_total_pc,
+                                                numero_operacion="Múltiple",
+                                                observaciones=f"Pago inicial (Multipago) transferido desde Pre-Crédito #{id_pre_credito} [{resumen_metodos}]",
                                                 estado=1
                                             )
-                                        print(f"    → {detalles_pc.count()} registro de pago creado en el historial.")
+                                            print(f"    → Pago inicial consolidado (Múltiple) por S/ {monto_total_pc}")
+                                        else:
+                                            # Pago único (Lógica original)
+                                            for det in detalles_pc:
+                                                PagoCuota.objects.create(
+                                                    idcuotaventa=cuota_0,
+                                                    idusuario_id=idusuario,
+                                                    id_tipo_pago=det.id_tipo_pago,
+                                                    monto_pago=det.monto,
+                                                    numero_operacion=det.numero_operacion,
+                                                    observaciones=f"Pago inicial transferido desde Pre-Crédito #{id_pre_credito}",
+                                                    estado=1
+                                                )
+                                            print(f"    → {detalles_pc.count()} registro de pago creado en el historial.")
                                 except Exception as e_pago:
                                     print(f"    ⚠️ Error al registrar historial de pago de inicial: {e_pago}")
                         

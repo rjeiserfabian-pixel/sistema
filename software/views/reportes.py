@@ -899,7 +899,10 @@ def reporte_caja(request):
             fecha_movimiento__date__range=[fi, ff]
         )
         if id_suc:
-            movimientos_qs = movimientos_qs.filter(id_caja__id_sucursal_id=id_suc)
+            from django.db.models import Q
+            movimientos_qs = movimientos_qs.filter(
+                Q(id_caja__id_sucursal_id=id_suc) | Q(id_caja__id_sucursal__isnull=True)
+            )
         if tipo_movimiento:
             movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
         if metodo_pago_id:
@@ -1038,7 +1041,10 @@ def api_listar_reporte_caja(request):
     )
     
     if id_suc:
-        movimientos_qs = movimientos_qs.filter(id_caja__id_sucursal_id=id_suc)
+        from django.db.models import Q
+        movimientos_qs = movimientos_qs.filter(
+            Q(id_caja__id_sucursal_id=id_suc) | Q(id_caja__id_sucursal__isnull=True)
+        )
         
     if tipo_movimiento in ['ingreso', 'egreso']:
         movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
@@ -1080,6 +1086,28 @@ def api_listar_reporte_caja(request):
         
     mov_page = movimientos_qs[start:start+length]
     
+    import re
+    # PRE-FETCH MANUAL para evitar N+1 en Pre-Créditos
+    pre_credito_ids = []
+    for m in mov_page:
+        if 'Pre-Crédito' in (m.descripcion or ''):
+            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
+            if m_pre:
+                pre_credito_ids.append(m_pre.group(1))
+    
+    detalles_por_precredito = {}
+    if pre_credito_ids:
+        try:
+            from software.models.DetallePagoInicialModel import DetallePagoInicial
+            dps = DetallePagoInicial.objects.filter(id_pre_credito_id__in=pre_credito_ids).select_related('id_tipo_pago')
+            for p in dps:
+                pid = str(p.id_pre_credito_id)
+                if pid not in detalles_por_precredito:
+                    detalles_por_precredito[pid] = []
+                detalles_por_precredito[pid].append(p)
+        except Exception:
+            pass
+
     data = []
     for m in mov_page:
         metodo_pago = "Efectivo"
@@ -1088,11 +1116,10 @@ def api_listar_reporte_caja(request):
         pagos_cuota = [p for p in m.pagos_cuota.all() if p.estado == 1]
         
         if len(pagos_cuota) > 1:
-            import re as _re
             frac_detail = ""
             for p in pagos_cuota:
                 if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                    m_frac = _re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
+                    m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
                     if m_frac:
                         frac_detail = m_frac.group(1)
                         break
@@ -1119,7 +1146,6 @@ def api_listar_reporte_caja(request):
                 metodo_pago = p.id_tipo_pago.nombre
                 # Verificar por FRACCIONADO directamente (evitar fallo con tilde en 'Múltiple')
                 if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                    import re
                     match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
                     if match:
                         detalles_metodo = match.group(1)
@@ -1127,7 +1153,6 @@ def api_listar_reporte_caja(request):
             metodo_pago = m.idventa.id_tipo_pago.nombre
             # Verificar por FRACCIONADO directamente
             if m.idventa.observaciones and '[FRACCIONADO:' in m.idventa.observaciones:
-                import re
                 match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', m.idventa.observaciones)
                 if match:
                     detalles_metodo = match.group(1)
@@ -1135,10 +1160,24 @@ def api_listar_reporte_caja(request):
             metodo_pago = m.idcompra.id_tipo_pago.nombre
             # Verificar por FRACCIONADO directamente
             if m.idcompra.observaciones and '[FRACCIONADO:' in m.idcompra.observaciones:
-                import re
                 match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', m.idcompra.observaciones)
                 if match:
                     detalles_metodo = match.group(1)
+        elif 'Pre-Crédito' in (m.descripcion or ''):
+            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
+            if m_pre:
+                pid = m_pre.group(1)
+                dp_list = detalles_por_precredito.get(pid, [])
+                if len(dp_list) > 1:
+                    metodo_pago = "Múltiple"
+                    arr = []
+                    for p in dp_list:
+                        n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
+                        op = f' (Op:{p.numero_operacion})' if p.numero_operacion else ''
+                        arr.append(f"{n}: S/ {p.monto}{op}")
+                    detalles_metodo = " | ".join(arr)
+                elif len(dp_list) == 1:
+                    metodo_pago = dp_list[0].id_tipo_pago.nombre if dp_list[0].id_tipo_pago else 'Efectivo'
 
         data.append({
             'fecha': m.fecha_movimiento.strftime("%d/%m/%Y %H:%M"),

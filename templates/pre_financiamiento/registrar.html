@@ -108,14 +108,20 @@
               <label class="form-label fw-semibold">
                 Cliente <span class="text-danger">*</span>
               </label>
-              <div class="autocomplete-wrapper">
-                <input type="text" id="cliente_search" class="form-control autocomplete-input" 
-                       placeholder="Buscar por nombre o documento..." autocomplete="off">
-                <button type="button" class="autocomplete-arrow" onclick="toggleAutocomplete('cliente_search', 'cliente_results')">
-                  <i class="fa-solid fa-chevron-down"></i>
+              <div class="d-flex align-items-center gap-2">
+                <div class="autocomplete-wrapper flex-grow-1">
+                  <input type="text" id="cliente_search" class="form-control autocomplete-input" 
+                         placeholder="Buscar por nombre o documento..." autocomplete="off">
+                  <button type="button" class="autocomplete-arrow" onclick="toggleAutocomplete('cliente_search', 'cliente_results')">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                  <input type="hidden" name="idcliente" id="idcliente">
+                  <div class="autocomplete-results" id="cliente_results"></div>
+                </div>
+                <button type="button" class="btn btn-success btn-add-cliente" data-bs-toggle="modal"
+                  data-bs-target="#modalAgregarClientePreCredito" title="Agregar nuevo cliente">
+                  <i class="fa-solid fa-user-plus"></i>
                 </button>
-                <input type="hidden" name="idcliente" id="idcliente">
-                <div class="autocomplete-results" id="cliente_results"></div>
               </div>
             </div>
 
@@ -145,13 +151,32 @@
               <div id="vehiculos-container" class="row g-2 mb-3">
                 <!-- Se llena por JS -->
               </div>
-              <input type="hidden" name="id_vehiculo" id="id_vehiculo_hidden">
-              <small class="text-muted">Haga clic en el vehículo que desea seleccionar (se muestran hasta 9 resultados).</small>
+              <small class="text-muted mb-3 d-block">Haga clic en los vehículos que desea agregar (se muestran hasta 9 resultados).</small>
+              
+              <h6 class="fw-bold mt-4 mb-2"><i class="fa-solid fa-list-check me-2"></i>Vehículos Seleccionados</h6>
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle mb-0" id="tablaVehiculosSeleccionados">
+                  <thead class="table-dark">
+                    <tr>
+                      <th>VEHÍCULO</th>
+                      <th>CHASIS / MOTOR</th>
+                      <th class="text-end">PRECIO (S/)</th>
+                      <th class="text-center" style="width:80px;">QUITAR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr id="rowVacio">
+                      <td colspan="4" class="text-center text-muted py-4">Ningún vehículo seleccionado</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             {% endif %}
 
             <hr class="my-4">
 
             <!-- ─────── 3. PAGO INICIAL ─────── -->
+            {% if id_tipo_usuario != 2 %}
             <div class="pf-section-title">
               <i class="fa-solid fa-money-bill-wave me-2"></i>3. Registro del Pago Inicial
             </div>
@@ -203,6 +228,7 @@
                 <div id="resumen-total">S/ 0.00</div>
               </div>
             </div>
+            {% endif %}
 
             <hr class="my-4">
 
@@ -231,6 +257,187 @@
   </section>
 </main>
 
+
+<!-- MODAL NUEVO CLIENTE -->
+<div class="modal fade" id="modalAgregarClientePreCredito" tabindex="-1" data-bs-backdrop="static"
+    data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-user-plus me-2"></i>Agregar Nuevo Cliente</h5>
+          <button type="button" class="btn-close btn-close-white" onclick="cerrarModalClientePreCredito()"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Alerta de información TokenPeru -->
+          <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-info me-2"></i>
+            <strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) o RUC (11 dígitos) y los datos se completarán
+            automáticamente.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+
+          <!-- Alerta de carga -->
+          <div class="alert alert-primary d-none" id="alertCargandoPreCredito" role="alert">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <div>Consultando documento en RENIEC/SUNAT...</div>
+            </div>
+          </div>
+
+          <!-- Alerta de error -->
+          <div class="alert alert-danger d-none" id="alertErrorPreCredito" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>
+            <span id="mensajeErrorPreCredito"></span>
+          </div>
+
+          <!-- Alerta de éxito -->
+          <div class="alert alert-success d-none" id="alertExitoPreCredito" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i>
+            <span id="mensajeExitoPreCredito"></span>
+          </div>
+
+          <form id="formAgregarClientePreCredito">
+            {% csrf_token %}
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Tipo de Entidad <span class="text-danger">*</span></label>
+                <select name="tipoEntidadCliente" id="tipoEntidadClientePreCredito" class="form-select rounded-pill"
+                  required>
+                  <option value="">Seleccione...</option>
+                  {% for tipo in tipos_entidad %}
+                  <option value="{{ tipo.id_tipo_entidad }}">{{ tipo.tipo_entidad }}</option>
+                  {% empty %}
+                  <option value="1">Persona Natural</option>
+                  <option value="6">Persona Jurídica</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">
+                  Número de Documento <span class="text-danger">*</span>
+                  <span id="badgeTipoDocPreCredito" class="badge bg-secondary ms-2" style="display: none;"></span>
+                </label>
+                <div class="input-group">
+                  <input type="text" name="numdocCliente" id="numdocClientePreCredito" class="form-control rounded-start"
+                    maxlength="11" placeholder="DNI (8) o RUC (11)" required>
+                  <button class="btn btn-primary rounded-end" type="button" id="btnConsultarDocPreCredito"
+                    title="Consultar documento">
+                    <i class="fa-solid fa-search"></i>
+                  </button>
+                </div>
+                <small class="text-muted">Presione Enter o el botón de búsqueda</small>
+              </div>
+            </div>
+
+            <!-- Info adicional RUC (oculto inicialmente) -->
+            <div class="row d-none" id="infoRucPreCredito">
+              <div class="col-md-12 mb-3">
+                <div class="alert alert-light border" role="alert">
+                  <strong>Estado SUNAT:</strong> <span id="estadoSunatPreCredito" class="badge"></span>
+                  <strong class="ms-3">Condición:</strong> <span id="condicionSunatPreCredito"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label fw-semibold">Razón Social / Nombre Completo <span
+                    class="text-danger">*</span></label>
+                <input type="text" name="razonsocialCliente" id="razonsocialClientePreCredito"
+                  class="form-control rounded-pill" maxlength="255" required>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label fw-semibold">Nombre Comercial</label>
+                <input type="text" name="nombreComercialCliente" id="nombreComercialClientePreCredito"
+                  class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Teléfono</label>
+                <input type="text" name="telefonoCliente" id="telefonoClientePreCredito" class="form-control rounded-pill" maxlength="150">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-semibold">Email</label>
+                <input type="email" name="emailCliente" id="emailClientePreCredito" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label fw-semibold">Dirección</label>
+                <input type="text" name="direccionCliente" id="direccionClientePreCredito" class="form-control rounded-pill" maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Departamento</label>
+                <select name="idRegion" id="idRegionPreCredito" class="form-select rounded-pill select-region-venta">
+                  <option value="">Seleccione...</option>
+                  {% for region in regiones %}
+                  <option value="{{ region.id_region }}">{{ region.nombre_region }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Provincia</label>
+                <select name="idProvincia" id="idProvinciaPreCredito" class="form-select rounded-pill select-provincia-venta">
+                  <option value="">Seleccione...</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Distrito</label>
+                <select name="idDistrito" id="idDistritoPreCredito" class="form-select rounded-pill">
+                  <option value="">Seleccione...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Cónyuge -->
+            <hr>
+            <h6 class="mb-3 text-muted fw-bold"><i class="bi bi-people-fill"></i> Datos del Cónyuge (Opcional)</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                  <label for="conyugeNombrePreCredito" class="form-label fw-semibold">Nombre del Cónyuge</label>
+                  <input type="text" class="form-control rounded-pill" id="conyugeNombrePreCredito" name="conyugeNombre">
+              </div>
+              <div class="col-md-6 mb-3">
+                  <label for="conyugeDniPreCredito" class="form-label fw-semibold">DNI del Cónyuge</label>
+                  <div class="input-group">
+                      <input type="text" class="form-control rounded-start" id="conyugeDniPreCredito" name="conyugeDni" maxlength="8">
+                      <button class="btn btn-primary rounded-end btn-consultar-conyuge-venta" type="button" title="Consultar DNI Cónyuge">
+                          <i class="fa-solid fa-search"></i>
+                      </button>
+                  </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarClientePreCredito">
+                <i class="fa-solid fa-save me-2"></i>Guardar Cliente
+              </button>
+              <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="cerrarModalClientePreCredito()">
+                <i class="fa-solid fa-xmark me-2"></i>Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -239,6 +446,317 @@ const CSRF_TOKEN = '{{ csrf_token }}';
 const VEHICULOS_JSON = {{ vehiculos_disponibles_json|safe }};
 const TIPOS_PAGO_TEMPLATE = `{% for tp in tipos_pago %}<option value="{{ tp.id_tipo_pago }}">{{ tp.nombre }}</option>{% endfor %}`;
 let pagoCount = 1;
+let vehiculosSeleccionados = []; // Array to store multiple vehicles
+
+// ⭐ FUNCIÓN PARA CERRAR MODAL DE CLIENTE
+  // ========================================
+  function cerrarModalClientePreCredito() {
+    const modalCliente = bootstrap.Modal.getInstance(document.getElementById('modalAgregarClientePreCredito'));
+    if (modalCliente) {
+      modalCliente.hide();
+    }
+
+    // Limpiar formulario
+    document.getElementById('formAgregarClientePreCredito').reset();
+    limpiarCamposClientePreCredito();
+  }
+
+  // ========================================
+  // ⭐ FUNCIÓN PARA CONSULTAR DOCUMENTO EN TOKENPERU
+  // ========================================
+  async function consultarDocumentoTokenPeruPreCredito(numero) {
+    const alertCargando = $('#alertCargandoPreCredito');
+    const alertError = $('#alertErrorPreCredito');
+    const alertExito = $('#alertExitoPreCredito');
+
+    // Validar longitud
+    if (numero.length !== 8 && numero.length !== 11) {
+      return;
+    }
+
+    // Mostrar loading
+    alertCargando.removeClass('d-none');
+    alertError.addClass('d-none');
+    alertExito.addClass('d-none');
+
+    try {
+      const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
+      const data = await response.json();
+
+      alertCargando.addClass('d-none');
+
+      if (data.success) {
+        // Autocompletar campos
+        $('#razonsocialClientePreCredito').val(data.razonsocial).addClass('campo-autocompletado');
+        $('#direccionClientePreCredito').val(data.direccion || '').addClass('campo-autocompletado');
+        $('#nombreComercialClientePreCredito').val(data.nombre_comercial || '').addClass('campo-autocompletado');
+        $('#tipoEntidadClientePreCredito').val(data.id_tipo_entidad);
+
+        if (data.tipo === 'RUC') {
+          // Mostrar info SUNAT
+          $('#infoRucPreCredito').removeClass('d-none');
+          $('#estadoSunatPreCredito').text(data.estado || 'N/A')
+            .removeClass('bg-success bg-danger')
+            .addClass(data.estado === 'ACTIVO' ? 'bg-success' : 'bg-danger');
+          $('#condicionSunatPreCredito').text(data.condicion || 'N/A');
+
+          // Badge RUC
+          $('#badgeTipoDocPreCredito').text('RUC').removeClass('bg-secondary bg-info').addClass('bg-info').show();
+
+          // Validar estado
+          if (data.estado !== 'ACTIVO') {
+            alertExito.removeClass('d-none');
+            $('#mensajeExitoPreCredito').html(`<strong>RUC encontrado:</strong> ${data.razonsocial}<br><small class="text-warning">⚠️ Advertencia: El RUC no está ACTIVO en SUNAT</small>`);
+          } else {
+            alertExito.removeClass('d-none');
+            $('#mensajeExitoPreCredito').html(`<strong>RUC encontrado:</strong> ${data.razonsocial}`);
+          }
+        } else {
+          // DNI
+          $('#infoRucPreCredito').addClass('d-none');
+          $('#badgeTipoDocPreCredito').text('DNI').removeClass('bg-secondary bg-info').addClass('bg-secondary').show();
+
+          alertExito.removeClass('d-none');
+          $('#mensajeExitoPreCredito').html(`<strong>DNI encontrado:</strong> ${data.razonsocial}`);
+        }
+
+        // Remover animación después de 600ms
+        setTimeout(() => {
+          $('.campo-autocompletado').removeClass('campo-autocompletado');
+        }, 600);
+
+      } else {
+        // Error de API
+        alertError.removeClass('d-none');
+        $('#mensajeErrorPreCredito').text(data.error || 'No se encontró el documento');
+        limpiarCamposClientePreCredito();
+      }
+    } catch (error) {
+      alertCargando.addClass('d-none');
+      alertError.removeClass('d-none');
+      $('#mensajeErrorPreCredito').text('Error de conexión. Intente nuevamente.');
+      console.error('Error:', error);
+    }
+  }
+
+  // Función para limpiar campos del cliente
+  function limpiarCamposClientePreCredito() {
+    $('#razonsocialClientePreCredito').val('');
+    $('#nombreComercialClientePreCredito').val('');
+    $('#direccionClientePreCredito').val('');
+    $('#infoRucPreCredito').addClass('d-none');
+    $('#badgeTipoDocPreCredito').hide();
+  }
+
+  // ========================================
+  // ⭐ INICIALIZAR EVENTOS DEL MODAL DE CLIENTE
+  // ========================================
+  $(document).ready(function () {
+
+    // Detectar tipo de documento al escribir
+    $('#numdocClientePreCredito').on('input', function () {
+      const valor = this.value.replace(/[^0-9]/g, '');
+      this.value = valor; // Solo números
+
+      const badge = $('#badgeTipoDocPreCredito');
+      if (valor.length === 8) {
+        badge.text('DNI').removeClass('bg-info').addClass('bg-secondary').show();
+        $('#tipoEntidadClientePreCredito').val(1);
+      } else if (valor.length === 11) {
+        badge.text('RUC').removeClass('bg-secondary').addClass('bg-info').show();
+        $('#tipoEntidadClientePreCredito').val(6);
+      } else {
+        badge.hide();
+      }
+    });
+
+    // Consultar al presionar Enter
+    $('#numdocClientePreCredito').on('keypress', function (e) {
+      if (e.which === 13) { // Enter
+        e.preventDefault();
+        const numero = $(this).val().trim();
+        if (numero.length === 8 || numero.length === 11) {
+          consultarDocumentoTokenPeruPreCredito(numero);
+        }
+      }
+    });
+
+    // Consultar al hacer clic en el botón
+    $('#btnConsultarDocPreCredito').on('click', function () {
+      const numero = $('#numdocClientePreCredito').val().trim();
+      if (numero.length === 8 || numero.length === 11) {
+        consultarDocumentoTokenPeruPreCredito(numero);
+      } else {
+        Swal.fire({
+          title: 'Documento inválido',
+          text: 'Ingrese un DNI (8 dígitos) o RUC (11 dígitos)',
+          icon: 'warning',
+          confirmButtonText: 'OK'
+        });
+      }
+    });
+
+    // ⭐ GUARDAR NUEVO CLIENTE
+    $('#btnGuardarClientePreCredito').on('click', function () {
+      const form = $('#formAgregarClientePreCredito')[0];
+
+      // Validar formulario
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      // Mostrar loading
+      Swal.fire({
+        title: 'Guardando cliente...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        willOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const formData = new FormData(form);
+
+      $.ajax({
+        type: "POST",
+        url: "{% url 'agregar_cliente' %}",
+        data: formData,
+        processData: false,
+        contentType: false,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function (response) {
+          Swal.close();
+
+          if (response.ok) {
+            Swal.fire({
+              title: '¡Cliente guardado!',
+              text: 'El cliente se ha registrado correctamente',
+              icon: 'success',
+              timer: 2000,
+              showConfirmButton: false
+            }).then(() => {
+              // ⭐ AGREGAR CLIENTE AL ARRAY Y SELECCIONAR
+              clientesData.push({
+                id: response.idcliente,
+                text: `${response.razonsocial} - ${response.numdoc}`
+              });
+
+              // Seleccionar automáticamente el nuevo cliente
+              $('#cliente_search').val(`${response.razonsocial} - ${response.numdoc}`);
+              $('#idcliente').val(response.idcliente);
+
+              // Cerrar modal de cliente
+              cerrarModalClientePreCredito();
+            });
+          } else {
+            Swal.fire({
+              title: 'Error al guardar',
+              text: response.error || 'Ocurrió un error al guardar el cliente',
+              icon: 'error',
+              confirmButtonText: 'OK'
+            });
+          }
+        },
+        error: function (xhr) {
+          Swal.fire({
+            title: 'Error al guardar',
+            text: xhr.responseText || 'Ocurrió un error al guardar el cliente',
+            icon: 'error',
+            confirmButtonText: 'OK'
+          });
+        }
+      });
+    });
+  });
+
+  // ==================== LÓGICA DE UBICACIÓN (DEPARTAMENTO, PROVINCIA, DISTRITO) ====================
+  $(document).on('change', '.select-region-venta', function() {
+    const idRegion = $(this).val();
+    const targetProvinciaSelect = $('#idProvinciaPreCredito');
+    const targetDistritoSelect = $('#idDistritoPreCredito');
+    
+    targetProvinciaSelect.html('<option value="">Cargando...</option>');
+    targetDistritoSelect.html('<option value="">Seleccione...</option>');
+    
+    if (!idRegion) {
+      targetProvinciaSelect.html('<option value="">Seleccione...</option>');
+      return;
+    }
+    
+    $.get('/sucursales/obtener-provincias/', { id_region: idRegion }, function(data) {
+      let options = '<option value="">Seleccione...</option>';
+      data.forEach(function(item) {
+        options += `<option value="${item.id_provincia}">${item.nombre_provincia}</option>`;
+      });
+      targetProvinciaSelect.html(options);
+    });
+  });
+
+  $(document).on('change', '.select-provincia-venta', function() {
+    const idProvincia = $(this).val();
+    const targetDistritoSelect = $('#idDistritoPreCredito');
+    
+    targetDistritoSelect.html('<option value="">Cargando...</option>');
+    
+    if (!idProvincia) {
+      targetDistritoSelect.html('<option value="">Seleccione...</option>');
+      return;
+    }
+    
+    $.get('/sucursales/obtener-distritos/', { id_provincia: idProvincia }, function(data) {
+      let options = '<option value="">Seleccione...</option>';
+      data.forEach(function(item) {
+        options += `<option value="${item.id_distrito}">${item.nombre_distrito}</option>`;
+      });
+      targetDistritoSelect.html(options);
+    });
+  });
+
+  // ==================== LÓGICA CÓNYUGE (TOKEN PERU) ====================
+  async function consultarConyugePreCreditoTokenPeru(numero) {
+    if (numero.length !== 8) return;
+
+    const inputNombre = $('#conyugeNombrePreCredito');
+    inputNombre.val('Buscando...');
+    
+    try {
+      const response = await fetch(`/api/autocompletar-cliente/?numero=${numero}`);
+      const data = await response.json();
+      
+      if (data.success && data.razonsocial) {
+        inputNombre.val(data.razonsocial).addClass('campo-autocompletado');
+      } else {
+        inputNombre.val('');
+        Swal.fire('No encontrado', 'No se encontró información del cónyuge con ese DNI.', 'warning');
+      }
+    } catch (error) {
+      inputNombre.val('');
+      Swal.fire('Error', 'Hubo un error al consultar el DNI del cónyuge.', 'error');
+    }
+  }
+
+  $(document).on('click', '.btn-consultar-conyuge-venta', function() {
+    const numero = $('#conyugeDniPreCredito').val().trim();
+    if (numero.length === 8) {
+      consultarConyugePreCreditoTokenPeru(numero);
+    }
+  });
+
+  $(document).on('keypress', '#conyugeDniPreCredito', function(e) {
+    if (e.which == 13) {
+      e.preventDefault();
+      const numero = $(this).val().trim();
+      if (numero.length === 8) {
+        consultarConyugePreCreditoTokenPeru(numero);
+      }
+    }
+  });
+  // ========================================
+  
 
 // ── Datos de Clientes para Autocomplete ──────────────────────────────────────
 const clientesData = [
@@ -335,7 +853,6 @@ function renderVehiculos(query = '') {
     const container = document.getElementById('vehiculos-container');
     if (!container) return;
     
-    const idSeleccionado = document.getElementById('id_vehiculo_hidden').value;
     container.innerHTML = '';
     
     if (!VEHICULOS_JSON || VEHICULOS_JSON.length === 0) {
@@ -356,7 +873,7 @@ function renderVehiculos(query = '') {
     }
 
     filtered.forEach(v => {
-        const isSelected = v.id_vehiculo.toString() === idSeleccionado;
+        const isSelected = vehiculosSeleccionados.some(veh => veh.id_vehiculo === v.id_vehiculo);
         const col = document.createElement('div');
         col.className = 'col-md-6 col-lg-4';
         col.innerHTML = `
@@ -397,9 +914,70 @@ function toggleOperacion(select) {
 }
 
 function seleccionarVehiculo(card, id) {
-    document.querySelectorAll('.vehiculo-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
-    document.getElementById('id_vehiculo_hidden').value = id;
+    const index = vehiculosSeleccionados.findIndex(v => v.id_vehiculo === id);
+    
+    if (index === -1) {
+        // Añadir
+        const vFull = VEHICULOS_JSON.find(v => v.id_vehiculo === id);
+        if (vFull) {
+            vehiculosSeleccionados.push(vFull);
+            card.classList.add('selected');
+            const icon = card.querySelector('.check-icon');
+            if (icon) icon.style.display = 'block';
+        }
+    } else {
+        // Quitar
+        vehiculosSeleccionados.splice(index, 1);
+        card.classList.remove('selected');
+        const icon = card.querySelector('.check-icon');
+        if (icon) icon.style.display = 'none';
+    }
+    renderTablaVehiculos();
+}
+
+function quitarVehiculo(id) {
+    vehiculosSeleccionados = vehiculosSeleccionados.filter(v => v.id_vehiculo !== id);
+    const card = document.querySelector(`.vehiculo-card[data-id="${id}"]`);
+    if (card) {
+        card.classList.remove('selected');
+        const icon = card.querySelector('.check-icon');
+        if (icon) icon.style.display = 'none';
+    }
+    renderTablaVehiculos();
+}
+
+function renderTablaVehiculos() {
+    const tbody = document.querySelector('#tablaVehiculosSeleccionados tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (vehiculosSeleccionados.length === 0) {
+        tbody.innerHTML = `
+            <tr id="rowVacio">
+              <td colspan="4" class="text-center text-muted py-4">Ningún vehículo seleccionado</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    vehiculosSeleccionados.forEach(v => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold text-success">${v.nombre}</td>
+            <td>
+                <div class="small"><strong>Motor:</strong> ${v.serie_motor || '—'}</div>
+                <div class="small"><strong>Chasis:</strong> ${v.serie_chasis || '—'}</div>
+            </td>
+            <td class="text-end fw-semibold">S/ ${v.precio_venta.toFixed(2)}</td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" onclick="quitarVehiculo(${v.id_vehiculo})" title="Quitar">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 // ── Pagos Mixtos ─────────────────────────────────────────────────────────────
@@ -459,49 +1037,53 @@ function calcularTotal() {
 // ── Guardar Solicitud ────────────────────────────────────────────────────────
 function guardarSolicitud() {
     const idcliente = document.getElementById('idcliente').value;
-    const id_vehiculo = document.getElementById('id_vehiculo_hidden')?.value || '';
     const btn = document.getElementById('btn-guardar');
 
     if (!idcliente) {
         Swal.fire('Campo requerido', 'Debe seleccionar un cliente.', 'warning');
         return;
     }
-    if (!id_vehiculo) {
-        Swal.fire('Campo requerido', 'Debe seleccionar un vehículo.', 'warning');
+    if (vehiculosSeleccionados.length === 0) {
+        Swal.fire('Campo requerido', 'Debe seleccionar al menos un vehículo.', 'warning');
         return;
     }
 
     // Validar que se haya seleccionado un método de pago en cada fila
-    let metodoFaltante = false;
-    document.querySelectorAll('[name="tipo_pago_id[]"]').forEach(select => {
-        if (!select.value) metodoFaltante = true;
-    });
-    if (metodoFaltante) {
-        Swal.fire('Campo requerido', 'Debe seleccionar un método de pago para cada registro.', 'warning');
-        return;
-    }
+    // Solo si el contenedor existe (vendedores no lo tienen)
+    if (document.getElementById('pagos-container')) {
+        let metodoFaltante = false;
+        document.querySelectorAll('[name="tipo_pago_id[]"]').forEach(select => {
+            if (!select.value) metodoFaltante = true;
+        });
+        if (metodoFaltante) {
+            Swal.fire('Campo requerido', 'Debe seleccionar un método de pago para cada registro.', 'warning');
+            return;
+        }
 
-    // Verificar que hay al menos un pago con monto > 0
-    const montos = [...document.querySelectorAll('.monto-input')].map(i => parseFloat(i.value) || 0);
-    if (montos.every(m => m <= 0)) {
-        Swal.fire('Campo requerido', 'Debe ingresar al menos un monto de pago.', 'warning');
-        return;
-    }
+        // Verificar que hay al menos un pago con monto > 0
+        const montos = [...document.querySelectorAll('.monto-input')].map(i => parseFloat(i.value) || 0);
+        if (montos.every(m => m <= 0)) {
+            Swal.fire('Campo requerido', 'Debe ingresar al menos un monto de pago.', 'warning');
+            return;
+        }
 
-    // Validar N° de operación para los campos visibles
-    let opFaltante = false;
-    document.querySelectorAll('.nro-operacion-container:not(.d-none) input').forEach(inp => {
-        if (!inp.value.trim()) opFaltante = true;
-    });
-    if (opFaltante) {
-        Swal.fire('Campo requerido', 'Debe ingresar el número de operación para los métodos de pago seleccionados.', 'warning');
-        return;
+        // Validar N° de operación para los campos visibles
+        let opFaltante = false;
+        document.querySelectorAll('.nro-operacion-container:not(.d-none) input').forEach(inp => {
+            if (!inp.value.trim()) opFaltante = true;
+        });
+        if (opFaltante) {
+            Swal.fire('Campo requerido', 'Debe ingresar el número de operación para los métodos de pago seleccionados.', 'warning');
+            return;
+        }
     }
 
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', CSRF_TOKEN);
     formData.append('idcliente', idcliente);
-    formData.append('id_vehiculo', id_vehiculo);
+    vehiculosSeleccionados.forEach(v => {
+        formData.append('id_vehiculo[]', v.id_vehiculo);
+    });
     formData.append('observaciones', document.getElementById('observaciones').value);
 
     document.querySelectorAll('[name="tipo_pago_id[]"]').forEach(s => formData.append('tipo_pago_id[]', s.value));

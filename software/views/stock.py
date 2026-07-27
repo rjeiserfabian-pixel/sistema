@@ -53,7 +53,7 @@ def stock(request):
 
         vehiculos_reservados_pdf = set(PreCredito.objects.filter(
             estado__in=['pendiente', 'aprobado']
-        ).values_list('id_vehiculo_id', flat=True))
+        ).values_list('detalles_vehiculos__id_vehiculo_id', flat=True))
 
         # Vehículos
         filtro_v_pdf = filtro_base_pdf.copy()
@@ -729,7 +729,7 @@ def api_listar_vehiculos_stock(request):
     from software.models.PreCreditoModel import PreCredito
     vehiculos_reservados = set(PreCredito.objects.filter(
         estado__in=['pendiente', 'aprobado']
-    ).values_list('id_vehiculo_id', flat=True))
+    ).values_list('detalles_vehiculos__id_vehiculo_id', flat=True))
 
     filtro_v = filtro_base.copy()
     filtro_v.update({
@@ -1045,7 +1045,7 @@ def exportar_excel_stock(request):
     from software.models.PreCreditoModel import PreCredito
     vehiculos_reservados = set(PreCredito.objects.filter(
         estado__in=['pendiente', 'aprobado']
-    ).values_list('id_vehiculo_id', flat=True))
+    ).values_list('detalles_vehiculos__id_vehiculo_id', flat=True))
 
     filas_v = []
     for s in stocks_v:

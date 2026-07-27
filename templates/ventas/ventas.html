@@ -7096,7 +7096,15 @@
     }
 
     // ─── 3c. Agregar el Vehículo al detalle (si existe) ───
-    if (pc.vehiculo && pc.vehiculo.id_vehiculo) {
+    if (pc.vehiculos && pc.vehiculos.length > 0) {
+      setTimeout(() => {
+        pc.vehiculos.forEach((v, index) => {
+            setTimeout(() => {
+                _agregarVehiculoDesdePreCredito(v);
+            }, index * 200); // Darle un pequeño delay entre cada uno si son varios
+        });
+      }, 400);
+    } else if (pc.vehiculo && pc.vehiculo.id_vehiculo) {
       setTimeout(() => {
         _agregarVehiculoDesdePreCredito(pc.vehiculo);
       }, 400);
@@ -7125,12 +7133,13 @@
     if (typeof agregarItem !== 'function') return;
     agregarItem('vehiculo');
 
+    // Capturar el índice inmediatamente, ya que agregarItem lo incrementa de forma sincrónica.
+    // Esto evita la condición de carrera cuando se añaden múltiples vehículos en bucle.
+    const idx = parseInt(document.getElementById('items_count')?.value || '0');
+    if (idx < 1) return;
+
     // Obtener el último índice agregado
     setTimeout(() => {
-      const itemsCount = parseInt(document.getElementById('items_count')?.value || '0');
-      if (itemsCount < 1) return;
-      const idx = itemsCount; // El ítem recién agregado
-
       // 1. Llenar el nombre genérico del producto (Búsqueda resiliente)
       let finalName = v.nombre;
       if (typeof productosStockAgrupado !== 'undefined') {

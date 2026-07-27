@@ -27,15 +27,6 @@ class PreCredito(models.Model):
         related_name='pre_creditos',
         verbose_name='Cliente'
     )
-    id_vehiculo = models.ForeignKey(
-        Vehiculo,
-        on_delete=models.SET_NULL,
-        db_column='id_vehiculo',
-        related_name='pre_creditos',
-        null=True,
-        blank=True,
-        verbose_name='Vehículo'
-    )
     monto_inicial = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -97,10 +88,32 @@ class PreCredito(models.Model):
 
     @property
     def nombre_vehiculo(self):
-        """Retorna el nombre del producto del vehículo asociado."""
-        if self.id_vehiculo and self.id_vehiculo.idproducto:
-            return self.id_vehiculo.idproducto.nomproducto
+        """Retorna el nombre del producto del vehículo asociado o de los vehículos si son múltiples."""
+        nombres = []
+        
+        # Nuevos datos de la tabla de detalle
+        if hasattr(self, 'detalles_vehiculos'):
+            for detalle in self.detalles_vehiculos.all():
+                if detalle.id_vehiculo and detalle.id_vehiculo.idproducto:
+                    nombres.append(detalle.id_vehiculo.idproducto.nomproducto)
+        
+        # Filtrar duplicados en caso de que un registro tenga múltiples del mismo (poco probable)
+        nombres = list(dict.fromkeys(nombres))
+        
+        if nombres:
+            return ', '.join(nombres)
         return 'Sin vehículo'
+
+    @property
+    def vehiculos_asociados(self):
+        """Retorna una lista con todos los objetos de Vehiculo asociados."""
+        vehiculos = []
+        
+        if hasattr(self, 'detalles_vehiculos'):
+            for detalle in self.detalles_vehiculos.all():
+                if detalle.id_vehiculo not in vehiculos:
+                    vehiculos.append(detalle.id_vehiculo)
+        return vehiculos
 
     @property
     def tiene_pagos_mixtos(self):

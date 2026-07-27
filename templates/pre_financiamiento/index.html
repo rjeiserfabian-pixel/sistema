@@ -256,18 +256,24 @@ function cargarPreFinanciamientos(page=1) {
 function renderFilaPreFinanciamiento(s) {
     // Vehiculo HTML
     let vehiculoHtml = '<span class="text-muted">—</span>';
-    if (s.vehiculo_nombre) {
+    if (s.vehiculos_list && s.vehiculos_list.length > 0) {
+        const v = s.vehiculos_list[0]; // Tomar el primero
+        const badgeMore = s.vehiculos_list.length > 1 ? `<span class="badge bg-primary ms-1" style="font-size: 0.6rem;">+${s.vehiculos_list.length - 1} vehíc.</span>` : '';
+        
         vehiculoHtml = `
             <div class="d-flex flex-column gap-1">
-                <span class="badge bg-light text-dark border text-start">
-                    <i class="fa-solid fa-motorcycle me-1"></i>${s.vehiculo_nombre}
-                </span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-dark border text-start d-inline-block text-truncate" style="max-width: 250px;">
+                        <i class="fa-solid fa-motorcycle me-1"></i>${v.nombre}
+                    </span>
+                    ${badgeMore}
+                </div>
                 <div class="d-flex flex-wrap gap-1">
                     <small class="badge bg-white text-muted border px-2 py-1" style="font-size: 0.65rem; border-color: #e9ecef !important;">
-                        <strong class="text-primary">CH:</strong> ${s.vehiculo_chasis}
+                        <strong class="text-primary">CH:</strong> ${v.chasis || '—'}
                     </small>
                     <small class="badge bg-white text-muted border px-2 py-1" style="font-size: 0.65rem; border-color: #e9ecef !important;">
-                        <strong class="text-primary">MOT:</strong> ${s.vehiculo_motor}
+                        <strong class="text-primary">MOT:</strong> ${v.motor || '—'}
                     </small>
                 </div>
             </div>`;
@@ -491,10 +497,6 @@ document.getElementById('tbodyPreFinanciamiento').addEventListener('click', func
                         <div>${s.cliente_razonsocial} <br><small class="text-muted">Doc: ${s.cliente_numdoc}</small></div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="fw-bold text-muted small">Vehículo:</label>
-                        <div>${s.vehiculo_nombre} <br><small class="text-muted">Chasis: ${s.vehiculo_chasis} | Motor: ${s.vehiculo_motor}</small></div>
-                    </div>
-                    <div class="col-md-6 mb-3">
                         <label class="fw-bold text-muted small">Monto Inicial:</label>
                         <div class="text-success fw-bold fs-5">S/ ${parseFloat(s.monto_inicial).toFixed(2)}</div>
                     </div>
@@ -522,6 +524,31 @@ document.getElementById('tbodyPreFinanciamiento').addEventListener('click', func
                         <div class="p-2 bg-warning bg-opacity-10 border border-warning rounded">${s.observacion_evaluacion}</div>
                     </div>
                     ` : ''}
+                    
+                    <div class="col-md-12 mt-3">
+                        <label class="fw-bold text-muted small mb-2"><i class="fa-solid fa-list-check me-1"></i>Vehículos Seleccionados:</label>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>VEHÍCULO</th>
+                                        <th>CHASIS / MOTOR</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${(s.vehiculos_list || []).map(v => `
+                                        <tr>
+                                            <td class="fw-semibold"><i class="fa-solid fa-motorcycle me-1 text-primary"></i>${v.nombre}</td>
+                                            <td>
+                                                <small class="d-block text-muted"><strong class="text-primary">CH:</strong> ${v.chasis || '—'}</small>
+                                                <small class="d-block text-muted"><strong class="text-primary">MOT:</strong> ${v.motor || '—'}</small>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             `;
             new bootstrap.Modal(document.getElementById('modalDetalles')).show();
@@ -531,36 +558,231 @@ document.getElementById('tbodyPreFinanciamiento').addEventListener('click', func
     const btnCobrar = e.target.closest('.btn-cobrar');
     if (btnCobrar) {
         const id = btnCobrar.dataset.id;
-        Swal.fire({
-            title: '¿Confirmar cobro?',
-            text: 'Esto registrará el ingreso en caja y generará el recibo en formato ticket.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, cobrar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#198754'
-        }).then(result => {
-            if (result.isConfirmed) {
-                fetch(`/pre-financiamiento/cobrar/${id}/`, {
-                    method: 'POST',
-                    headers: {'X-CSRFToken': CSRF_TOKEN}
-                }).then(r => r.json()).then(data => {
-                    if (data.ok) {
-                        Swal.fire('¡Cobrado!', data.message, 'success');
-                        window.open(data.url_recibo, '_blank');
-                        cargarPreFinanciamientos(currentPage);
-                    } else {
-                        Swal.fire('Error', data.error, 'error');
-                    }
-                });
+        const s = window.preCreditosData[id];
+        
+        if (parseFloat(s.monto_inicial) === 0) {
+            document.getElementById('cobro_id_pre_credito').value = id;
+            
+            // Limpiar filas adicionales si las hay
+            const container = document.getElementById('pagos-cobro-container');
+            const rows = container.querySelectorAll('.pago-cobro-row');
+            for(let i = 1; i < rows.length; i++) {
+                rows[i].remove();
             }
-        });
+            
+            // Limpiar la primera fila
+            const firstRow = container.querySelector('.pago-cobro-row');
+            firstRow.querySelector('select').value = '';
+            firstRow.querySelector('input[name="monto_pago[]"]').value = '';
+            firstRow.querySelector('input[name="nro_operacion[]"]').value = '';
+            firstRow.querySelector('.nro-operacion-cobro-container').classList.add('d-none');
+            firstRow.querySelector('input[name="nro_operacion[]"]').required = false;
+            
+            calcularTotalCobro();
+            new bootstrap.Modal(document.getElementById('modalCobrarPreCredito')).show();
+        } else {
+            Swal.fire({
+                title: '¿Confirmar cobro?',
+                text: `Esto registrará el ingreso en caja por S/ ${parseFloat(s.monto_inicial).toFixed(2)} y generará el recibo en formato ticket.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, cobrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#198754'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    fetch(`/pre-financiamiento/cobrar/${id}/`, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': CSRF_TOKEN}
+                    }).then(r => r.json()).then(data => {
+                        if (data.ok) {
+                            Swal.fire('¡Cobrado!', data.message, 'success');
+                            window.open(data.url_recibo, '_blank');
+                            cargarPreFinanciamientos(currentPage);
+                        } else {
+                            Swal.fire('Error', data.error, 'error');
+                        }
+                    });
+                }
+            });
+        }
     }
 });
+
+let pagoCobroIndex = 1;
+
+function toggleOperacionCobro(selectElement) {
+    const container = selectElement.closest('.pago-cobro-row').querySelector('.nro-operacion-cobro-container');
+    const input = container.querySelector('input');
+    const txt = selectElement.options[selectElement.selectedIndex].text.toLowerCase();
+    
+    if (txt.includes('transferencia') || txt.includes('yape') || txt.includes('plin') || txt.includes('tarjeta') || txt.includes('deposito')) {
+        container.classList.remove('d-none');
+        input.required = true;
+    } else {
+        container.classList.add('d-none');
+        input.required = false;
+        input.value = '';
+    }
+}
+
+function agregarFilaPagoCobro() {
+    pagoCobroIndex++;
+    const firstRow = document.getElementById('pago-cobro-row-1');
+    const newRow = document.createElement('div');
+    newRow.className = 'pago-cobro-row d-flex gap-2 align-items-end mb-3';
+    newRow.innerHTML = firstRow.innerHTML;
+    
+    // Limpiar valores
+    newRow.querySelector('select').value = '';
+    newRow.querySelector('input[name="monto_pago[]"]').value = '';
+    newRow.querySelector('input[name="nro_operacion[]"]').value = '';
+    newRow.querySelector('.nro-operacion-cobro-container').classList.add('d-none');
+    newRow.querySelector('input[name="nro_operacion[]"]').required = false;
+    
+    document.getElementById('pagos-cobro-container').appendChild(newRow);
+    actualizarBotonesEliminarCobro();
+}
+
+function eliminarFilaPagoCobro(btn) {
+    btn.closest('.pago-cobro-row').remove();
+    calcularTotalCobro();
+    actualizarBotonesEliminarCobro();
+}
+
+function actualizarBotonesEliminarCobro() {
+    const btns = document.querySelectorAll('.btn-remove-pago-cobro');
+    btns.forEach(b => b.disabled = (btns.length === 1));
+}
+
+function calcularTotalCobro() {
+    let total = 0;
+    document.querySelectorAll('.monto-cobro-input').forEach(inp => {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('resumen-total-cobro').textContent = `S/ ${total.toFixed(2)}`;
+}
+
+function procesarCobro() {
+    const id = document.getElementById('cobro_id_pre_credito').value;
+    
+    // Validar método
+    let metodoFaltante = false;
+    document.querySelectorAll('#modalCobrarPreCredito [name="tipo_pago_id[]"]').forEach(select => {
+        if (!select.value) metodoFaltante = true;
+    });
+    if (metodoFaltante) {
+        Swal.fire('Campo requerido', 'Seleccione un método de pago.', 'warning'); return;
+    }
+    
+    // Validar montos
+    const montos = [...document.querySelectorAll('#modalCobrarPreCredito .monto-cobro-input')].map(i => parseFloat(i.value) || 0);
+    if (montos.every(m => m <= 0)) {
+        Swal.fire('Campo requerido', 'Ingrese al menos un monto válido.', 'warning'); return;
+    }
+    
+    // Validar operaciones
+    let opFaltante = false;
+    document.querySelectorAll('#modalCobrarPreCredito .nro-operacion-cobro-container:not(.d-none) input').forEach(inp => {
+        if (!inp.value.trim()) opFaltante = true;
+    });
+    if (opFaltante) {
+        Swal.fire('Campo requerido', 'Ingrese el N° de operación.', 'warning'); return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    document.querySelectorAll('#modalCobrarPreCredito [name="tipo_pago_id[]"]').forEach(s => formData.append('tipo_pago_id[]', s.value));
+    document.querySelectorAll('#modalCobrarPreCredito [name="nro_operacion[]"]').forEach(i => formData.append('nro_operacion[]', i.value));
+    document.querySelectorAll('#modalCobrarPreCredito [name="monto_pago[]"]').forEach(i => formData.append('monto_pago[]', i.value));
+
+    const btn = document.getElementById('btn-procesar-cobro');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+
+    fetch(`/pre-financiamiento/cobrar/${id}/`, {
+        method: 'POST',
+        body: formData
+    }).then(r => r.json()).then(data => {
+        btn.disabled = false;
+        btn.innerHTML = 'Procesar Cobro';
+        
+        if (data.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCobrarPreCredito')).hide();
+            Swal.fire('¡Cobrado!', data.message, 'success');
+            window.open(data.url_recibo, '_blank');
+            cargarPreFinanciamientos(currentPage);
+        } else {
+            Swal.fire('Error', data.error, 'error');
+        }
+    });
+}
 
 // Cargar inicialmente al entrar a la página
 document.addEventListener('DOMContentLoaded', () => {
     cargarPreFinanciamientos(1);
 });
 </script>
+
+<!-- Modal para Cobrar Pre-Financiamiento (Cajero) -->
+<div class="modal fade" id="modalCobrarPreCredito" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success bg-opacity-10 text-success border-0">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-cash-register me-2"></i>Registrar Cobro de Pre-Financiamiento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formCobrarPreCredito">
+                    <input type="hidden" id="cobro_id_pre_credito">
+                    
+                    <div class="alert alert-info py-2 mb-4">
+                        <i class="fa-solid fa-circle-info me-2"></i>Por favor, ingrese los métodos de pago para procesar este cobro.
+                    </div>
+
+                    <div id="pagos-cobro-container">
+                        <div class="pago-cobro-row d-flex flex-wrap gap-2 align-items-end mb-3" id="pago-cobro-row-1">
+                            <div class="flex-grow-1" style="min-width: 150px;">
+                                <label class="form-label fw-semibold small mb-1">Método de Pago <span class="text-danger">*</span></label>
+                                <select name="tipo_pago_id[]" class="form-select form-select-sm" required onchange="toggleOperacionCobro(this)">
+                                    <option value="">Seleccione...</option>
+                                    {% for tp in tipos_pago %}
+                                        <option value="{{ tp.id_tipo_pago }}">{{ tp.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="nro-operacion-cobro-container d-none flex-grow-1" style="min-width: 150px;">
+                                <label class="form-label fw-semibold small mb-1">N° Operación <span class="text-danger">*</span></label>
+                                <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="N° Op.">
+                            </div>
+                            <div class="flex-grow-1" style="min-width: 120px;">
+                                <label class="form-label fw-semibold small mb-1">Monto (S/) <span class="text-danger">*</span></label>
+                                <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-cobro-input" step="0.01" min="0.01" placeholder="0.00" required oninput="calcularTotalCobro()">
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-cobro" title="Quitar" disabled onclick="eliminarFilaPagoCobro(this)"><i class="fa-solid fa-minus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary btn-sm mb-4" onclick="agregarFilaPagoCobro()">
+                        <i class="fa-solid fa-plus me-1"></i>Agregar Método de Pago (Mixto)
+                    </button>
+
+                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3">
+                        <i class="fa-solid fa-coins text-success fa-xl"></i>
+                        <div>
+                            <div class="text-muted small fw-semibold">TOTAL A COBRAR</div>
+                            <div id="resumen-total-cobro" class="fw-bold fs-5 text-dark">S/ 0.00</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btn-procesar-cobro" onclick="procesarCobro()">Procesar Cobro</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
