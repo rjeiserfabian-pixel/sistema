@@ -24,10 +24,11 @@ def requiere_caja_aperturada(view_func):
         
         if not apertura:
             # No tiene caja abierta
+            tipo_usuario = request.session.get('idtipousuario')
             
             # Si es una petición AJAX (POST para guardar venta/compra)
             if request.method == 'POST':
-                if request.POST.get('afecta_caja') == '0':
+                if request.POST.get('afecta_caja') == '0' or tipo_usuario == 2:
                     pass
                 else:
                     return JsonResponse({

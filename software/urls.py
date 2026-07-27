@@ -127,6 +127,7 @@ urlpatterns = [
     # ventas
     path('ventas/', ventas.ventas, name="ventas"),
     path('ventas/api/listar/', ventas.api_listar_ventas, name='api_listar_ventas'),
+    path('ventas/cobrar-pendiente/', ventas.cobrar_venta_pendiente, name='cobrar_venta_pendiente'),
     path('ventas/nueva/', ventas.nueva_venta, name="nuevaVenta"),
     path('ventas/obtener-series/', ventas.obtener_series, name="obtenerSeries"),
     path('ventas/imprimir/<int:idventa>/', ventas.imprimir_comprobante, name="imprimir_comprobante"),

@@ -15,6 +15,7 @@ class Ventas(models.Model):
     idtipocomprobante = models.ForeignKey(Tipocomprobante, on_delete=models.CASCADE, db_column='idtipocomprobante')
     idcliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, db_column='idcliente')
     estado = models.IntegerField(default=1, db_index=True)
+    estado_cobro = models.CharField(max_length=20, default='Pagado', db_index=True)
     id_tipo_igv = models.ForeignKey(TipoIgv, on_delete=models.CASCADE, db_column='id_tipo_igv', blank=True, null=True)
     idempresa = models.IntegerField(blank=True, null=True)
     idusuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='idusuario')

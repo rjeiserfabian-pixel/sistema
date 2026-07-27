@@ -604,14 +604,23 @@ def _validar_cabecera_venta(request):
 
     id_tipo_pago_id = None
     if id_forma_pago == 1:
-        if not tipo_pago_raw:
-            return JsonResponse({'ok': False, 'error': 'Debe seleccionar un tipo de pago para ventas al contado.'}, status=400), None
+        tipo_usuario_id = None
         try:
-            id_tipo_pago_id = int(tipo_pago_raw)
-        except ValueError:
-            return JsonResponse({'ok': False, 'error': 'El tipo de pago no es válido.'}, status=400), None
-        if not TipoPago.objects.filter(id_tipo_pago=id_tipo_pago_id, estado=1).exists():
-            return JsonResponse({'ok': False, 'error': 'El tipo de pago seleccionado no existe o está inactivo.'}, status=400), None
+            usu_obj = Usuario.objects.get(idusuario=idusuario)
+            tipo_usuario_id = usu_obj.idtipousuario_id
+        except:
+            pass
+
+        if tipo_usuario_id != 2 and not tipo_pago_raw:
+            return JsonResponse({'ok': False, 'error': 'Debe seleccionar un tipo de pago para ventas al contado.'}, status=400), None
+            
+        if tipo_pago_raw:
+            try:
+                id_tipo_pago_id = int(tipo_pago_raw)
+            except ValueError:
+                return JsonResponse({'ok': False, 'error': 'El tipo de pago no es válido.'}, status=400), None
+            if not TipoPago.objects.filter(id_tipo_pago=id_tipo_pago_id, estado=1).exists():
+                return JsonResponse({'ok': False, 'error': 'El tipo de pago seleccionado no existe o está inactivo.'}, status=400), None
     elif tipo_pago_raw:
         try:
             id_tipo_pago_id = int(tipo_pago_raw)
@@ -1021,8 +1030,10 @@ def nueva_venta(request):
                 except Exception:
                     pass
             
-            # Validar que tenga caja seleccionada
-            if not id_caja_session:
+            tipo_usuario_session = request.session.get('idtipousuario')
+            
+            # Validar que tenga caja seleccionada (excepto si es vendedor)
+            if not id_caja_session and tipo_usuario_session != 2:
                 return JsonResponse({
                     'ok': False,
                     'error': 'Debe seleccionar una caja en el modal de configuración antes de vender.'
@@ -1049,7 +1060,9 @@ def nueva_venta(request):
                 estado__in=['abierta', 'reabierta']
             ).first()
             
-            if not apertura:
+            tipo_usuario_session = request.session.get('idtipousuario')
+            
+            if not apertura and tipo_usuario_session != 2:
                 return JsonResponse({
                     'ok': False,
                     'error': 'La caja seleccionada no está aperturada. Por favor, aperture la caja antes de realizar ventas.',
@@ -1075,14 +1088,25 @@ def nueva_venta(request):
                 }, status=400)
             
             # ⭐ VALIDACIÓN 5: Obtener caja desde la SESIÓN
-            try:
-                from software.models.cajaModel import Caja
-                caja = Caja.objects.get(id_caja=id_caja_session, estado=1)
-            except Caja.DoesNotExist:
-                return JsonResponse({
-                    'ok': False,
-                    'error': 'La caja seleccionada no existe o está inactiva.'
-                }, status=400)
+            caja = None
+            if tipo_usuario_session != 2:
+                try:
+                    from software.models.cajaModel import Caja
+                    caja = Caja.objects.get(id_caja=id_caja_session, estado=1)
+                except Caja.DoesNotExist:
+                    return JsonResponse({
+                        'ok': False,
+                        'error': 'La caja seleccionada no existe o está inactiva.'
+                    }, status=400)
+            
+            # ⭐ VALIDACIÓN 5.5: Validar forma de pago por rol
+            tipo_usuario_id = usuario.idtipousuario_id
+            id_forma_pago_raw = request.POST.get("forma_pago")
+            
+            if tipo_usuario_id == 2 and id_forma_pago_raw != "1":
+                return JsonResponse({'ok': False, 'error': 'Los vendedores solo pueden realizar ventas al contado.'}, status=400)
+            if tipo_usuario_id == 6 and id_forma_pago_raw != "2":
+                return JsonResponse({'ok': False, 'error': 'Los analistas solo pueden realizar ventas a crédito.'}, status=400)
             
             # ⭐ VALIDACIÓN 6: Validar cabecera de venta
             err_cabecera, cabecera = _validar_cabecera_venta(request)
@@ -1117,12 +1141,17 @@ def nueva_venta(request):
                 
                 # Validación para Contado
                 if id_forma_pago == 1:  # Contado
-                    if not importe_recibido or not vuelto:
-                        raise ValueError("Para ventas al contado, debe ingresar el importe recibido y el vuelto.")
-                    importe_recibido = Decimal(importe_recibido)
-                    vuelto = Decimal(vuelto)
-                    if importe_recibido < 0 or vuelto < 0:
-                        raise ValueError("El importe recibido y el vuelto no pueden ser negativos.")
+                    if tipo_usuario_id == 2:
+                        # Vendedor hace ventas "Pendientes" sin importe recibido al inicio
+                        importe_recibido = Decimal('0')
+                        vuelto = Decimal('0')
+                    else:
+                        if not importe_recibido or not vuelto:
+                            raise ValueError("Para ventas al contado, debe ingresar el importe recibido y el vuelto.")
+                        importe_recibido = Decimal(importe_recibido)
+                        vuelto = Decimal(vuelto)
+                        if importe_recibido < 0 or vuelto < 0:
+                            raise ValueError("El importe recibido y el vuelto no pueden ser negativos.")
                 else:
                     importe_recibido = None
                     vuelto = None
@@ -1134,6 +1163,7 @@ def nueva_venta(request):
                 serie.save()
                 
                 id_tipo_igv = cabecera['id_tipo_igv']
+                estado_cobro_val = 'Pendiente' if tipo_usuario_id == 2 else 'Pagado'
 
                 # ✅ Crear venta CON ALMACÉN, CAJA Y SUCURSAL
                 venta = Ventas.objects.create(
@@ -1157,6 +1187,7 @@ def nueva_venta(request):
                     id_caja_id=id_caja_session,
                     id_sucursal_id=id_sucursal_session,
                     estado=1,
+                    estado_cobro=estado_cobro_val,
                 )
 
                 total = Decimal('0')
@@ -1328,7 +1359,7 @@ def nueva_venta(request):
                 venta.total_venta = total_venta_final
                 venta.total_ganancia = total_ganancia
 
-                if id_forma_pago == 1 and importe_recibido < total_venta_final:
+                if id_forma_pago == 1 and tipo_usuario_id != 2 and importe_recibido < total_venta_final:
                     raise ValueError("El importe recibido debe ser mayor o igual al total de la venta.")
 
                 venta.save()
@@ -1618,28 +1649,31 @@ def nueva_venta(request):
                 # ========================================
                 # SI ES VENTA AL CONTADO
                 # ========================================
-                print(f"✅ VENTA AL CONTADO REGISTRADA - ID: {venta.idventa}")
-                print(f"   Sucursal: {venta.id_sucursal.nombre_sucursal if venta.id_sucursal else 'N/A'}")
-                print(f"   Almacén: {almacen.nombre_almacen}")
-                print(f"   Caja: {caja.nombre_caja}")
-                print(f"   Total: S/ {venta.total_venta}")
-                
-                descripcion_movimiento = f"Venta {numero_comprobante} - Cliente: {venta.idcliente.razonsocial}"
-                
-                movimiento_caja = MovimientoCaja.objects.create(
-                    id_caja=caja,
-                    id_movimiento=apertura,  # ✅ Asociar a la apertura actual
-                    idusuario=usuario,
-                    tipo_movimiento='ingreso',
-                    monto=total,
-                    descripcion=descripcion_movimiento,
-                    idventa=venta,
-                    estado=1
-                )
-                
-                print(f"✅ MOVIMIENTO DE CAJA CREADO - ID: {movimiento_caja.id_movimiento_caja}")
-                print(f"   Asociado a apertura: {apertura.id_movimiento}")
-                print(f"   Monto ingreso: S/ {total}")
+                if estado_cobro_val == 'Pagado':
+                    print(f"✅ VENTA AL CONTADO REGISTRADA - ID: {venta.idventa}")
+                    print(f"   Sucursal: {venta.id_sucursal.nombre_sucursal if venta.id_sucursal else 'N/A'}")
+                    print(f"   Almacén: {almacen.nombre_almacen}")
+                    print(f"   Caja: {caja.nombre_caja}")
+                    print(f"   Total: S/ {venta.total_venta}")
+                    
+                    descripcion_movimiento = f"Venta {numero_comprobante} - Cliente: {venta.idcliente.razonsocial}"
+                    
+                    movimiento_caja = MovimientoCaja.objects.create(
+                        id_caja=caja,
+                        id_movimiento=apertura,  # ✅ Asociar a la apertura actual
+                        idusuario=usuario,
+                        tipo_movimiento='ingreso',
+                        monto=total,
+                        descripcion=descripcion_movimiento,
+                        idventa=venta,
+                        estado=1
+                    )
+                    
+                    print(f"✅ MOVIMIENTO DE CAJA CREADO - ID: {movimiento_caja.id_movimiento_caja}")
+                    print(f"   Asociado a apertura: {apertura.id_movimiento}")
+                    print(f"   Monto ingreso: S/ {total}")
+                else:
+                    print(f"✅ VENTA AL CONTADO REGISTRADA (PENDIENTE DE COBRO) - ID: {venta.idventa}")
 
                 # ========================================
                 # ✅ ACTUALIZAR PROFORMA A CONVERTIDA
@@ -1678,6 +1712,86 @@ def nueva_venta(request):
             })
 
     return redirect("ventas")
+
+
+# ==================== COBRAR VENTA PENDIENTE ====================
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def cobrar_venta_pendiente(request):
+    if request.method == "POST":
+        try:
+            idusuario_session = request.session.get('idusuario')
+            if not idusuario_session:
+                return JsonResponse({'ok': False, 'error': 'Sesión expirada.'}, status=401)
+                
+            usuario = Usuario.objects.get(idusuario=idusuario_session)
+            if usuario.idtipousuario_id not in [1, 3, 5, 6]:
+                return JsonResponse({'ok': False, 'error': 'No tiene permisos para cobrar ventas.'}, status=403)
+
+            id_caja_session = request.session.get('id_caja')
+            if not id_caja_session:
+                return JsonResponse({'ok': False, 'error': 'Debe seleccionar una caja en configuración.'}, status=400)
+                
+            from software.models.AperturaCierreCajaModel import AperturaCierreCaja
+            apertura = AperturaCierreCaja.objects.filter(
+                idusuario_id=idusuario_session,
+                id_caja_id=id_caja_session,
+                estado__in=['abierta', 'reabierta']
+            ).first()
+            if not apertura:
+                return JsonResponse({'ok': False, 'error': 'La caja no está aperturada.'}, status=400)
+
+            idventa = request.POST.get("idventa")
+            tipo_pago_id = request.POST.get("tipo_pago")
+            importe_recibido = Decimal(request.POST.get("importe_recibido", 0))
+            nro_operacion = request.POST.get("nro_operacion", "")
+
+            with transaction.atomic():
+                venta = Ventas.objects.select_for_update().get(idventa=idventa, estado=1)
+                
+                if getattr(venta, 'estado_cobro', '') == 'Pagado':
+                    return JsonResponse({'ok': False, 'error': 'Esta venta ya ha sido cobrada.'}, status=400)
+                
+                if importe_recibido < venta.total_venta:
+                    return JsonResponse({'ok': False, 'error': 'El importe recibido es menor al total.'}, status=400)
+
+                # Actualizar datos de pago
+                venta.id_tipo_pago_id = int(tipo_pago_id)
+                venta.importe_recibido = importe_recibido
+                venta.vuelto = importe_recibido - venta.total_venta
+                venta.estado_cobro = 'Pagado'
+                
+                if nro_operacion:
+                    obs = venta.observaciones or ""
+                    venta.observaciones = f"{obs} [Cobro Op: {nro_operacion}]".strip()
+                    
+                venta.save()
+                
+                from software.models.cajaModel import Caja
+                caja = Caja.objects.get(id_caja=id_caja_session)
+                descripcion = f"Cobro de Venta Pendiente {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial if venta.idcliente else ''}"
+                
+                MovimientoCaja.objects.create(
+                    id_caja=caja,
+                    id_movimiento=apertura,
+                    idusuario=usuario,
+                    tipo_movimiento='ingreso',
+                    monto=venta.total_venta,
+                    descripcion=descripcion,
+                    idventa=venta,
+                    estado=1
+                )
+                
+            return JsonResponse({'ok': True, 'message': 'Cobro registrado correctamente.'})
+            
+        except Ventas.DoesNotExist:
+            return JsonResponse({'ok': False, 'error': 'Venta no encontrada o anulada.'}, status=404)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+    return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
 
 
 # ==================== OBTENER VENTA PARA EDICIÓN ====================
@@ -2005,8 +2119,8 @@ def obtener_detalle_venta(request, id):
             "fecha_venta": venta.fecha_venta.strftime("%Y-%m-%d") if venta.fecha_venta else None,
             "id_forma_pago": int(venta.id_forma_pago.id_forma_pago),
             "forma_pago_nombre": venta.id_forma_pago.nombre,
-            "id_tipo_pago": venta.id_tipo_pago.id_tipo_pago if venta.id_tipo_pago else None,
-            "tipo_pago_nombre": venta.id_tipo_pago.nombre if venta.id_tipo_pago else "—",
+            "id_tipo_pago": venta.id_tipo_pago.id_tipo_pago if venta.id_tipo_pago and venta.estado_cobro != 'Pendiente' else None,
+            "tipo_pago_nombre": venta.id_tipo_pago.nombre if venta.id_tipo_pago and venta.estado_cobro != 'Pendiente' else "—",
             "estado": int(venta.estado or 0),
             "estado_nombre": "Activo" if venta.estado == 1 else "Anulado",
             "total_venta": float(venta.total_venta or 0),
@@ -2023,7 +2137,7 @@ def obtener_detalle_venta(request, id):
             "detalles": detalles_list,
             "cuotas": cuotas_list,
             "credito": credito_data,
-            "bloqueo_parcial": bloqueo_parcial,
+            "bloqueo_parcial": False,
         })
 
     except Ventas.DoesNotExist:
@@ -2104,7 +2218,8 @@ def actualizar_venta(request, id):
             id_almacen_session = request.session.get('id_almacen')
             id_sucursal_session = request.session.get('id_sucursal')
 
-            if not id_caja_session:
+            tipo_usuario_session = request.session.get('idtipousuario')
+            if not id_caja_session and tipo_usuario_session != 2:
                 return JsonResponse({'ok': False, 'error': 'Debe seleccionar una caja en el modal de configuración antes de actualizar la venta.'}, status=400)
             if not id_almacen_session:
                 return JsonResponse({'ok': False, 'error': 'Debe seleccionar un almacén en el modal de configuración antes de actualizar la venta.'}, status=400)
@@ -2116,7 +2231,10 @@ def actualizar_venta(request, id):
                 id_caja_id=id_caja_session,
                 estado__in=['abierta', 'reabierta']
             ).first()
-            if not apertura:
+            
+            tipo_usuario_session = request.session.get('idtipousuario')
+            
+            if not apertura and tipo_usuario_session != 2:
                 return JsonResponse({
                     'ok': False,
                     'error': 'La caja seleccionada no está aperturada. Por favor, aperture la caja antes de actualizar ventas.',
@@ -3345,6 +3463,7 @@ def api_listar_ventas(request):
             'total_ganancia': float(venta.total_ganancia) if venta.total_ganancia else 0.0,
             'vendedor_nombre': venta.idusuario.nombrecompleto if venta.idusuario else '',
             'estado': venta.estado,
+            'estado_cobro': getattr(venta, 'estado_cobro', 'Pagado'),
             'editable': editable,
             'es_admin_front': es_admin,
             'current_user_id': idusuario

@@ -136,13 +136,14 @@
                 <th scope="col" class="text-end">Ganancia</th>
                 <th scope="col">Vendedor</th>
                 <th scope="col" class="text-center">Estado</th>
+                <th scope="col" class="text-center">Cobro</th>
                 <th scope="col" class="text-center">Acciones</th>
               </tr>
             </thead>
             <tbody id="tbodyVentas">
               <!-- Se llena con AJAX -->
               <tr>
-                <td colspan="10" class="text-center py-5">
+                <td colspan="11" class="text-center py-5">
                   <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Cargando...</span>
                   </div>
@@ -900,6 +901,61 @@
     </div>
   </div>
 
+  <!-- Modal para Cobrar Venta Pendiente -->
+  <div class="modal fade" id="modalCobrarVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Cobrar Venta</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light">
+          <form id="formCobrarVenta">
+            <input type="hidden" id="cobro_idventa">
+            <div class="text-center mb-4">
+              <h4 class="fw-bold text-dark mb-1">Total a Cobrar</h4>
+              <h2 class="text-success fw-bold">S/ <span id="cobro_total_venta">0.00</span></h2>
+              <p class="text-muted small">Comprobante: <strong id="cobro_comprobante"></strong></p>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold">Método de Pago</label>
+              <select class="form-select" id="cobro_tipo_pago" required>
+                <!-- Se llenará dinámicamente con los tipos de pago -->
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold">Importe Recibido (S/)</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-money-bill"></i></span>
+                <input type="number" class="form-control form-control-lg fw-bold" id="cobro_importe_recibido" step="0.01" min="0" required>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nro. Operación (Opcional)</label>
+              <input type="text" class="form-control" id="cobro_nro_operacion" placeholder="Ej. 12345678">
+            </div>
+
+            <div class="card bg-white shadow-sm border-0 mt-4">
+              <div class="card-body text-center">
+                <h6 class="text-muted mb-1">Vuelto a entregar</h6>
+                <h3 class="fw-bold text-primary mb-0" id="cobro_vuelto">S/ 0.00</h3>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer bg-light border-top-0">
+          <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success rounded-pill px-4" id="btnProcesarCobro">
+            <i class="fa-solid fa-check me-2"></i> Confirmar Cobro
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal para configurar las cuotas de VENTAS -->
   <div class="modal fade" id="modalCuotasVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1595,7 +1651,13 @@
       } else if (valor === "1") { // CONTADO
         console.log("💵 CONTADO seleccionado");
 
-        if (seccionPagoContadoContainer) seccionPagoContadoContainer.classList.remove("d-none");
+        if (seccionPagoContadoContainer) {
+          if (TIPO_USUARIO_ACTUAL === 2) {
+            seccionPagoContadoContainer.classList.add("d-none");
+          } else {
+            seccionPagoContadoContainer.classList.remove("d-none");
+          }
+        }
         btnCuotasContainer.classList.add("d-none");
         document.getElementById("zona_credito_container").classList.add("d-none");
         document.getElementById("cantidad_cuotas_main_container").classList.add("d-none");
@@ -1618,7 +1680,13 @@
       } else {
         console.log("⚪ Sin selección");
 
-        if (seccionPagoContadoContainer) seccionPagoContadoContainer.classList.remove("d-none");
+        if (seccionPagoContadoContainer) {
+          if (TIPO_USUARIO_ACTUAL === 2) {
+            seccionPagoContadoContainer.classList.add("d-none");
+          } else {
+            seccionPagoContadoContainer.classList.remove("d-none");
+          }
+        }
         btnCuotasContainer.classList.add("d-none");
         document.getElementById("zona_credito_container").classList.add("d-none");
         document.getElementById("cantidad_cuotas_main_container").classList.add("d-none");
@@ -3154,7 +3222,7 @@
     // ⭐ VERIFICAR CAJA
     const tieneCajaAbierta = {{ tiene_caja_abierta|yesno:"true,false" }};
 
-  if (!tieneCajaAbierta) {
+  if (!tieneCajaAbierta && TIPO_USUARIO_ACTUAL !== 2) {
     Swal.fire({
       icon: 'warning',
       title: 'Caja Requerida',
@@ -3385,7 +3453,7 @@
   }
 
   // ⭐ VALIDAR TIPO DE PAGO Y MONTOS PARA CONTADO
-  if (formaPagoVal === '1') {
+  if (formaPagoVal === '1' && TIPO_USUARIO_ACTUAL !== 2) {
     // Rellenar tipo_pago hidden input con el primer ID o el ID de Múltiple
     const selectRows = document.querySelectorAll('.select-tipo-pago-contado');
     if (selectRows.length === 0) {
@@ -3530,7 +3598,7 @@
               html: `<p>${res.message || 'Venta guardada correctamente'}</p>
                    <p><strong>Comprobante:</strong> ${res.numero_comprobante}</p>
                    <p><strong>Código Crédito:</strong> ${res.codigo_credito}</p>
-                   ${!esEdicion ? '<p class="mt-2"><small>Se abrirá el comprobante para imprimir...</small></p>' : ''}
+                   ${(!esEdicion && TIPO_USUARIO_ACTUAL !== 2) ? '<p class="mt-2"><small>Se abrirá el comprobante para imprimir...</small></p>' : ''}
                    <div class="alert alert-info mt-2 mb-0 py-2">
                      <i class="fa-solid fa-info-circle me-1"></i>
                      <small>El cronograma de pagos estará disponible en el módulo de Créditos o Listado de Ventas.</small>
@@ -3541,8 +3609,8 @@
               allowOutsideClick: false
             }).then((result) => {
               if (result.isConfirmed) {
-                // Abrir comprobante en nueva ventana si NO es edición
-                if (res.idventa && !esEdicion) {
+                // Abrir comprobante en nueva ventana si NO es edición y no es vendedor
+                if (res.idventa && !esEdicion && TIPO_USUARIO_ACTUAL !== 2) {
                   const urlComprobante = `/ventas/imprimir/${res.idventa}/`;
                   const ventanaComprobante = window.open(urlComprobante, '_blank');
 
@@ -3578,16 +3646,15 @@
               title: tituloExitoContado,
               html: `<p>${res.message || 'Venta guardada correctamente'}</p>
                    <p><strong>Comprobante:</strong> ${res.numero_comprobante}</p>
-                   <p class="mt-2"><small>Se abrirá el comprobante para imprimir...</small></p>`,
+                   ${(!esEdicion && TIPO_USUARIO_ACTUAL !== 2) ? '<p class="mt-2"><small>Se abrirá el comprobante para imprimir...</small></p>' : ''}`,
               icon: "success",
               confirmButtonColor: "#198754",
               confirmButtonText: "Aceptar",
               allowOutsideClick: false
             }).then((result) => {
               if (result.isConfirmed) {
-                // Abrir comprobante en nueva ventana
-                // Abrir comprobante en nueva ventana si NO es edición
-                if (res.idventa && !esEdicion) {
+                // Abrir comprobante en nueva ventana si NO es edición y no es vendedor
+                if (res.idventa && !esEdicion && TIPO_USUARIO_ACTUAL !== 2) {
                   const urlComprobante = `/ventas/imprimir/${res.idventa}/`;
                   const ventanaComprobante = window.open(urlComprobante, '_blank');
 
@@ -4770,7 +4837,13 @@
 
     // Devolver el estado visual al predeterminado (como si fuera Contado)
     const seccionPagoContadoContainer = document.getElementById("seccion_pago_contado_container");
-    if (seccionPagoContadoContainer) seccionPagoContadoContainer.classList.remove("d-none");
+    if (seccionPagoContadoContainer) {
+      if (TIPO_USUARIO_ACTUAL === 2) {
+        seccionPagoContadoContainer.classList.add("d-none");
+      } else {
+        seccionPagoContadoContainer.classList.remove("d-none");
+      }
+    }
     $('#btn_cuotas_container').addClass('d-none');
     $('#zona_credito_container').addClass('d-none');
     $('#cantidad_cuotas_main_container').addClass('d-none');
@@ -7305,13 +7378,13 @@
       .then(res => res.json())
       .then(data => {
         if (!data.ok) {
-          tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger">${data.error || 'Error al cargar ventas'}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger">${data.error || 'Error al cargar ventas'}</td></tr>`;
           return;
         }
 
         tbody.innerHTML = '';
         if (data.ventas.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No se encontraron ventas.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No se encontraron ventas.</td></tr>`;
         } else {
           let contador = (data.current_page - 1) * 10 + 1;
           data.ventas.forEach(venta => {
@@ -7323,7 +7396,7 @@
       })
       .catch(err => {
         console.error('Error cargando ventas:', err);
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger">Error de conexión al cargar ventas.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger">Error de conexión al cargar ventas.</td></tr>`;
       });
   }
 
@@ -7342,6 +7415,14 @@
     let estadoBadge = venta.estado === 1 
       ? '<span class="badge bg-success">Activo</span>' 
       : '<span class="badge bg-danger">Anulado</span>';
+
+    // Estado Cobro Badge
+    let estadoCobroBadge = '';
+    if (venta.estado_cobro === 'Pendiente') {
+      estadoCobroBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock"></i> Pendiente</span>';
+    } else {
+      estadoCobroBadge = '<span class="badge bg-success"><i class="fa-solid fa-check"></i> Pagado</span>';
+    }
 
     // Botones de Acción
     let btnEditar = '';
@@ -7392,6 +7473,27 @@
       `;
     }
 
+    let btnCobrar = '';
+    if (venta.estado_cobro === 'Pendiente' && venta.forma_pago_id === 1 && venta.estado === 1) {
+      if ([1, 3, 5, 6].includes(TIPO_USUARIO_ACTUAL)) {
+        btnCobrar = `
+          <button type="button" class="btn btn-sm btn-success" title="Cobrar venta" onclick="abrirModalCobroVenta(${venta.idventa}, '${venta.numero_comprobante}', ${venta.total_venta})">
+            <i class="fa-solid fa-hand-holding-dollar"></i> Cobrar
+          </button>
+        `;
+      }
+    }
+
+    let btnImprimir = '';
+    // El vendedor no puede imprimir el ticket si la venta sigue pendiente
+    if (!(venta.estado_cobro === 'Pendiente' && TIPO_USUARIO_ACTUAL === 2)) {
+      btnImprimir = `
+        <a href="/ventas/imprimir/${venta.idventa}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir Ticket">
+          <i class="fas fa-print"></i>
+        </a>
+      `;
+    }
+
     const acciones = `
       <div class="btn-group" role="group">
         <button type="button" class="btn btn-sm btn-info" title="Ver detalles" data-bs-toggle="modal" data-bs-target="#modalVerDetalleVenta" onclick="verDetalleVenta(${venta.idventa})">
@@ -7399,10 +7501,9 @@
         </button>
         ${btnEditar}
         ${btnEliminar}
-        <a href="/ventas/imprimir/${venta.idventa}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir Ticket">
-          <i class="fas fa-print"></i>
-        </a>
+        ${btnImprimir}
         ${btnCronograma}
+        ${btnCobrar}
       </div>
     `;
 
@@ -7416,6 +7517,7 @@
       <td class="text-end fw-bold text-info">S/ ${venta.total_ganancia.toFixed(2)}</td>
       <td>${venta.vendedor_nombre}</td>
       <td class="text-center">${estadoBadge}</td>
+      <td class="text-center">${estadoCobroBadge}</td>
       <td class="text-center">${acciones}</td>
     `;
     return tr;
@@ -7477,6 +7579,106 @@
 
   document.getElementById('fecha_inicio')?.addEventListener('change', () => cargarVentas(1));
   document.getElementById('fecha_fin')?.addEventListener('change', () => cargarVentas(1));
+
+  // ========================================
+  // LÓGICA DE COBRO VENTA PENDIENTE
+  // ========================================
+  window.abrirModalCobroVenta = function(idventa, comprobante, total) {
+    document.getElementById('cobro_idventa').value = idventa;
+    document.getElementById('cobro_comprobante').textContent = comprobante;
+    document.getElementById('cobro_total_venta').textContent = parseFloat(total).toFixed(2);
+    document.getElementById('cobro_importe_recibido').value = '';
+    document.getElementById('cobro_vuelto').textContent = 'S/ 0.00';
+    document.getElementById('cobro_nro_operacion').value = '';
+    
+    // Poblar tipos de pago usando TIPOS_PAGO_TEMPLATE
+    const selectTipoPago = document.getElementById('cobro_tipo_pago');
+    if (selectTipoPago && typeof TIPOS_PAGO_TEMPLATE !== 'undefined') {
+      selectTipoPago.innerHTML = '<option value="">Seleccione...</option>' + TIPOS_PAGO_TEMPLATE;
+    }
+    
+    new bootstrap.Modal(document.getElementById('modalCobrarVenta')).show();
+  };
+
+  const inputImporteCobro = document.getElementById('cobro_importe_recibido');
+  if (inputImporteCobro) {
+    inputImporteCobro.addEventListener('input', function() {
+      const total = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
+      const recibido = parseFloat(this.value) || 0;
+      const vuelto = recibido - total;
+      const vueltoEl = document.getElementById('cobro_vuelto');
+      
+      if (vuelto < 0) {
+        vueltoEl.textContent = 'Monto insuficiente';
+        vueltoEl.classList.add('text-danger');
+        vueltoEl.classList.remove('text-primary');
+      } else {
+        vueltoEl.textContent = 'S/ ' + vuelto.toFixed(2);
+        vueltoEl.classList.remove('text-danger');
+        vueltoEl.classList.add('text-primary');
+      }
+    });
+  }
+
+  const btnProcesarCobro = document.getElementById('btnProcesarCobro');
+  if (btnProcesarCobro) {
+    btnProcesarCobro.addEventListener('click', function() {
+      const idventa = document.getElementById('cobro_idventa').value;
+      const tipo_pago = document.getElementById('cobro_tipo_pago').value;
+      const importe_recibido = parseFloat(document.getElementById('cobro_importe_recibido').value) || 0;
+      const nro_operacion = document.getElementById('cobro_nro_operacion').value;
+      const total = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
+
+      if (!tipo_pago) {
+        Swal.fire('Atención', 'Seleccione un método de pago', 'warning');
+        return;
+      }
+      if (importe_recibido < total) {
+        Swal.fire('Atención', 'El importe recibido debe ser mayor o igual al total a cobrar', 'warning');
+        return;
+      }
+
+      Swal.fire({
+        title: '¿Confirmar cobro?',
+        text: 'Se registrará el ingreso en caja y la venta pasará a estado Pagado.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cobrar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const formData = new FormData();
+          formData.append('idventa', idventa);
+          formData.append('tipo_pago', tipo_pago);
+          formData.append('importe_recibido', importe_recibido);
+          formData.append('nro_operacion', nro_operacion);
+          // Necesitamos enviar CSRF token. Lo buscaremos en el form principal
+          const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+          formData.append('csrfmiddlewaretoken', csrf);
+
+          fetch('/ventas/cobrar-pendiente/', {
+            method: 'POST',
+            body: formData
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.ok) {
+              Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('modalCobrarVenta')).hide();
+                cargarVentas(1); // recargar tabla
+              });
+            } else {
+              Swal.fire('Error', data.error, 'error');
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            Swal.fire('Error', 'Error de conexión', 'error');
+          });
+        }
+      });
+    });
+  }
 
   window.cargarVentas = cargarVentas;
   window.renderFilaVenta = renderFilaVenta;
