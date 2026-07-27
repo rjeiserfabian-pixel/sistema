@@ -430,11 +430,15 @@ def evaluar_pre_financiamiento(request, id_pre_credito):
                 estado=1
             )
 
-        return JsonResponse({
+        response_data = {
             'ok': True,
             'message': '❌ Solicitud rechazada' + (' y monto inicial devuelto desde caja.' if pre_credito.cobrado else '.'),
             'nuevo_estado': 'rechazado',
-        })
+        }
+        if pre_credito.cobrado:
+            response_data['recibo_devolucion_url'] = f'/pre-financiamiento/recibo-devolucion/{pre_credito.id_pre_credito}/'
+            
+        return JsonResponse(response_data)
 
     else:
         return JsonResponse({'ok': False, 'error': 'Acción no válida. Use "aprobar" o "rechazar".'}, status=400)
@@ -880,3 +884,185 @@ def _get_vehiculos_disponibles(id_almacen):
         })
 
     return vehiculos
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPRIMIR RECIBO DE DEVOLUCIÓN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def imprimir_recibo_devolucion_pre_financiamiento(request, id_pre_credito):
+    """Genera el ticket térmico de devolución para el cliente en formato PDF."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from io import BytesIO
+        from django.http import HttpResponse
+        
+        from software.models.empresaModel import Empresa
+        from software.utils.logo_utils import get_logo_image_for_pdf
+        from software.models.movimientoCajaModel import MovimientoCaja
+        
+        pre_credito = get_object_or_404(PreCredito, pk=id_pre_credito)
+        
+        # Buscar empresa (la primera activa)
+        empresa = Empresa.objects.filter(activo=True).first()
+        if not empresa:
+            return HttpResponse("No se encontró información de la empresa.", status=400)
+            
+        buffer = BytesIO()
+        ticket_width = 80 * mm
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        style_company = ParagraphStyle('CompanyName', parent=styles['Normal'], fontSize=10, textColor=colors.black, alignment=TA_CENTER, fontName='Helvetica-Bold', spaceAfter=1, leading=11)
+        style_header = ParagraphStyle('TicketHeader', parent=styles['Normal'], fontSize=9, textColor=colors.black, alignment=TA_CENTER, fontName='Helvetica-Bold', spaceAfter=2, leading=10)
+        style_normal_center = ParagraphStyle('NormalCenter', parent=styles['Normal'], fontSize=7, alignment=TA_CENTER, spaceAfter=1, leading=8)
+        style_bold = ParagraphStyle('TicketBold', parent=styles['Normal'], fontSize=7, fontName='Helvetica-Bold', spaceAfter=1, alignment=TA_CENTER, leading=8)
+        style_small = ParagraphStyle('SmallText', parent=styles['Normal'], fontSize=6, alignment=TA_CENTER, spaceAfter=0.5, leading=7)
+        
+        # LOGO
+        logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
+        if logo_rl:
+            elements.append(logo_rl)
+            elements.append(Spacer(1, 3*mm))
+            
+        # ENCABEZADO
+        nombre_empresa = empresa.razonsocial if empresa.razonsocial else empresa.nombrecomercial
+        elements.append(Paragraph(nombre_empresa.upper(), style_company))
+        elements.append(Paragraph(f"RUC: {empresa.ruc}", style_normal_center))
+        elements.append(Paragraph(empresa.direccion.upper(), style_normal_center))
+        if empresa.ubigueo:
+            elements.append(Paragraph(f"UBIGEO: {empresa.ubigueo}", style_normal_center))
+        elements.append(Paragraph(f"Telf: {empresa.telefono}", style_normal_center))
+        if empresa.pagina:
+            elements.append(Paragraph(f"Pagina: {empresa.pagina}", style_small))
+        
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph("=" * 48, style_normal_center))
+        elements.append(Spacer(1, 2*mm))
+        
+        # TITULO
+        elements.append(Paragraph("<b>RECIBO DE DEVOLUCIÓN</b>", style_header))
+        elements.append(Paragraph(f"<b>PRE-FINANCIAMIENTO #{pre_credito.id_pre_credito}</b>", style_header))
+        elements.append(Spacer(1, 2*mm))
+        
+        # CLIENTE
+        cliente_nombre = pre_credito.idcliente.razonsocial
+        if len(cliente_nombre) > 35:
+            cliente_nombre = cliente_nombre[:32] + '...'
+            
+        elements.append(Paragraph("<b>CLIENTE:</b>", style_bold))
+        elements.append(Paragraph(f"{cliente_nombre}", style_normal_center))
+        elements.append(Paragraph(f"<b>RUC/DNI:</b> {pre_credito.idcliente.numdoc or '---'}", style_normal_center))
+        if pre_credito.idcliente.direccion:
+            elements.append(Paragraph(f"<b>DIR:</b> {pre_credito.idcliente.direccion[:40]}", style_small))
+        if pre_credito.idcliente.telefono:
+            elements.append(Paragraph(f"<b>Tel:</b> {pre_credito.idcliente.telefono}", style_small))
+            
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph("-" * 50, style_normal_center))
+        
+        # FECHA DE CREACION DEL RECIBO (AHORA)
+        from datetime import datetime
+        ahora = datetime.now()
+        fecha_str = ahora.strftime('%d/%m/%Y')
+        hora_str = ahora.strftime('%I:%M %p')
+        elements.append(Paragraph(f"<b>FECHA DEVOLUCIÓN:</b> {fecha_str} <b>HORA:</b> {hora_str}", style_normal_center))
+        elements.append(Spacer(1, 2*mm))
+        
+        # VEHICULOS
+        elements.append(Paragraph("<b>VEHÍCULOS RESERVADOS:</b>", style_bold))
+        vehiculos_asociados = pre_credito.vehiculos_asociados
+        if vehiculos_asociados:
+            for vehiculo in vehiculos_asociados:
+                v_nombre = vehiculo.idproducto.nomproducto if vehiculo.idproducto else 'Desconocido'
+                elements.append(Paragraph(f"- {v_nombre}", style_normal_center))
+                if vehiculo.serie_chasis:
+                    elements.append(Paragraph(f"  <b>CHASIS:</b> {vehiculo.serie_chasis}", style_normal_center))
+                if vehiculo.serie_motor:
+                    elements.append(Paragraph(f"  <b>MOTOR:</b> {vehiculo.serie_motor}", style_normal_center))
+        else:
+            elements.append(Paragraph("Sin vehículos", style_normal_center))
+                
+        elements.append(Spacer(1, 2*mm))
+        
+        # MONTO DEVUELTO Y ESTADO
+        elements.append(Paragraph(f"<b>MONTO DEVUELTO:</b> S/ {pre_credito.monto_inicial}", style_bold))
+        elements.append(Paragraph(f"<b>MOTIVO DE RECHAZO:</b> {pre_credito.observacion_evaluacion or 'Sin especificar'}", style_normal_center))
+        
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph("-" * 50, style_normal_center))
+        
+        # DATOS ADICIONALES (COBRO)
+        vendedor_nombre = pre_credito.idusuario.nombrecompleto if pre_credito.idusuario else "Admin"
+        
+        cajero_nombre = "---"
+        caja_nombre = "---"
+        if pre_credito.cobrado:
+            mov = MovimientoCaja.objects.filter(
+                descripcion__contains=f"Cobro Inicial Pre-Crédito #{pre_credito.id_pre_credito}"
+            ).first()
+            if mov:
+                if mov.id_caja:
+                    caja_nombre = mov.id_caja.nombre_caja
+                if mov.idusuario:
+                    cajero_nombre = mov.idusuario.nombrecompleto
+                    
+        if vendedor_nombre == cajero_nombre:
+            elements.append(Paragraph(f"<b>VENDEDOR/CAJERO:</b> {vendedor_nombre}", style_normal_center))
+        else:
+            elements.append(Paragraph(f"<b>VENDEDOR:</b> {vendedor_nombre}", style_normal_center))
+            elements.append(Paragraph(f"<b>CAJERO:</b> {cajero_nombre}", style_normal_center))
+        elements.append(Paragraph(f"<b>CAJA:</b> {caja_nombre}", style_normal_center))
+        
+        elements.append(Spacer(1, 15*mm))
+        
+        # FIRMA DEL CLIENTE
+        elements.append(Paragraph("-----------------------------------", style_normal_center))
+        elements.append(Paragraph("<b>FIRMA DEL CLIENTE</b>", style_normal_center))
+        elements.append(Paragraph(f"<b>DNI/RUC:</b> {pre_credito.idcliente.numdoc or '---'}", style_normal_center))
+
+        elements.append(Spacer(1, 4*mm))
+        
+        # PIE DE PÁGINA
+        # Calcular altura total de todos los elementos
+        total_height = 0
+        ancho_util = ticket_width - (6 * mm)
+        for element in elements:
+            if hasattr(element, 'wrap'):
+                try:
+                    w, h = element.wrap(ancho_util, 2000 * mm)
+                    total_height += h
+                except:
+                    total_height += 15 * mm # Valor por defecto seguro
+                    
+        doc_height = total_height + (35 * mm) # Amplio margen para evitar saltos de página a otra hoja
+        if doc_height < 100 * mm:  # Minimo
+            doc_height = 100 * mm
+
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=(ticket_width, doc_height),
+            rightMargin=3 * mm,
+            leftMargin=3 * mm,
+            topMargin=5 * mm,
+            bottomMargin=5 * mm
+        )
+        
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+        
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="recibo_devolucion_pre_credito_{pre_credito.id_pre_credito}.pdf"'
+        response.write(pdf)
+        
+        return response
+        
+    except Exception as e:
+        import traceback
+        print(f"Error generando recibo devolucion pre-credito: {e}")
+        traceback.print_exc()
+        return HttpResponse(f"Error al generar el recibo PDF: {e}", status=500)
