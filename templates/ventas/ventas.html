@@ -942,7 +942,7 @@
 
             <div class="card bg-white shadow-sm border-0 mt-4">
               <div class="card-body text-center">
-                <h6 class="text-muted mb-1">Vuelto a entregar</h6>
+                <h6 class="text-muted mb-1" id="cobro_vuelto_label">Vuelto a entregar</h6>
                 <h3 class="fw-bold text-primary mb-0" id="cobro_vuelto">S/ 0.00</h3>
               </div>
             </div>
@@ -7656,12 +7656,15 @@
     
     const vuelto = sumaRecibido - totalVenta;
     const vueltoEl = document.getElementById('cobro_vuelto');
+    const vueltoLabel = document.getElementById('cobro_vuelto_label');
     
     if (vuelto < 0) {
-      vueltoEl.textContent = 'Monto insuficiente';
+      if (vueltoLabel) vueltoLabel.textContent = 'Falta';
+      vueltoEl.textContent = 'S/ ' + Math.abs(vuelto).toFixed(2);
       vueltoEl.classList.add('text-danger');
       vueltoEl.classList.remove('text-primary');
     } else {
+      if (vueltoLabel) vueltoLabel.textContent = 'Vuelto a entregar';
       vueltoEl.textContent = 'S/ ' + vuelto.toFixed(2);
       vueltoEl.classList.remove('text-danger');
       vueltoEl.classList.add('text-primary');

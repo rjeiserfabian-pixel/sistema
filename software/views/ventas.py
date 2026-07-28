@@ -3054,8 +3054,23 @@ def imprimir_comprobante(request, idventa):
             vendedor = vendedor[:27] + '...'
         elements.append(Paragraph(f"<b>VENDEDOR:</b> {vendedor}", style_small))
         
-        # Mostrar la caja de la venta
-        caja_nombre = venta.id_caja.nombre_caja if venta.id_caja else 'Caja Principal'
+        # Buscar cajero en MovimientoCaja
+        from software.models.movimientoCajaModel import MovimientoCaja
+        movimiento = MovimientoCaja.objects.filter(idventa=venta, tipo_movimiento='ingreso', estado=1).first()
+        
+        if movimiento and movimiento.idusuario:
+            cajero = movimiento.idusuario.nombrecompleto
+            if len(cajero) > 30:
+                cajero = cajero[:27] + '...'
+            elements.append(Paragraph(f"<b>CAJERO:</b> {cajero}", style_small))
+        
+        # Mostrar la caja (priorizando la del cobro)
+        caja_nombre = 'Caja Principal'
+        if movimiento and movimiento.id_caja:
+            caja_nombre = movimiento.id_caja.nombre_caja
+        elif venta.id_caja:
+            caja_nombre = venta.id_caja.nombre_caja
+            
         elements.append(Paragraph(f"<b>CAJA:</b> {caja_nombre}", style_small))
         
         elements.append(Spacer(1, 2*mm))
