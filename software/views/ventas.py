@@ -1743,9 +1743,15 @@ def cobrar_venta_pendiente(request):
                 return JsonResponse({'ok': False, 'error': 'La caja no está aperturada.'}, status=400)
 
             idventa = request.POST.get("idventa")
-            tipo_pago_id = request.POST.get("tipo_pago")
-            importe_recibido = Decimal(request.POST.get("importe_recibido", 0))
-            nro_operacion = request.POST.get("nro_operacion", "")
+            
+            tipos_pago_ids = request.POST.getlist('tipo_pago_id[]')
+            montos_pago = request.POST.getlist('monto_pago[]')
+            nros_operacion = request.POST.getlist('nro_operacion[]')
+
+            if not tipos_pago_ids:
+                return JsonResponse({'ok': False, 'error': 'No se especificaron métodos de pago.'}, status=400)
+
+            total_recibido = sum(Decimal(m) for m in montos_pago if m)
 
             with transaction.atomic():
                 venta = Ventas.objects.select_for_update().get(idventa=idventa, estado=1)
@@ -1753,19 +1759,45 @@ def cobrar_venta_pendiente(request):
                 if getattr(venta, 'estado_cobro', '') == 'Pagado':
                     return JsonResponse({'ok': False, 'error': 'Esta venta ya ha sido cobrada.'}, status=400)
                 
-                if importe_recibido < venta.total_venta:
+                if total_recibido < venta.total_venta:
                     return JsonResponse({'ok': False, 'error': 'El importe recibido es menor al total.'}, status=400)
 
-                # Actualizar datos de pago
-                venta.id_tipo_pago_id = int(tipo_pago_id)
-                venta.importe_recibido = importe_recibido
-                venta.vuelto = importe_recibido - venta.total_venta
-                venta.estado_cobro = 'Pagado'
-                
-                if nro_operacion:
-                    obs = venta.observaciones or ""
-                    venta.observaciones = f"{obs} [Cobro Op: {nro_operacion}]".strip()
+                # Si hay múltiples pagos
+                if len(tipos_pago_ids) > 1:
+                    tp_multiple = TipoPago.objects.filter(nombre__iexact='Múltiple').first()
+                    if not tp_multiple:
+                        tp_multiple = TipoPago.objects.filter(nombre__icontains='Multip').first()
                     
+                    venta.id_tipo_pago_id = tp_multiple.id_tipo_pago if tp_multiple else int(tipos_pago_ids[0])
+                    
+                    # Generar string de consolidación
+                    partes = []
+                    for i in range(len(tipos_pago_ids)):
+                        tp_id = tipos_pago_ids[i]
+                        monto = montos_pago[i]
+                        nro = nros_operacion[i] if i < len(nros_operacion) else ''
+                        tp_obj = TipoPago.objects.filter(pk=int(tp_id)).first()
+                        tp_nombre = tp_obj.nombre if tp_obj else f"Pago {tp_id}"
+                        nro_str = f" (Op: {nro})" if nro else ""
+                        partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
+                    
+                    consolidacion = " | ".join(partes)
+                    observaciones_pago = f"[FRACCIONADO: {consolidacion}]"
+                    
+                    obs = venta.observaciones or ""
+                    venta.observaciones = f"{obs} {observaciones_pago}".strip()
+                else:
+                    # Si solo hay un único pago
+                    venta.id_tipo_pago_id = int(tipos_pago_ids[0])
+                    nro = nros_operacion[0] if nros_operacion else ''
+                    if nro:
+                        obs = venta.observaciones or ""
+                        venta.observaciones = f"{obs} [Cobro Op: {nro}]".strip()
+
+                # Actualizar datos de pago
+                venta.importe_recibido = total_recibido
+                venta.vuelto = total_recibido - venta.total_venta
+                venta.estado_cobro = 'Pagado'
                 venta.save()
                 
                 from software.models.cajaModel import Caja
@@ -1783,7 +1815,7 @@ def cobrar_venta_pendiente(request):
                     estado=1
                 )
                 
-            return JsonResponse({'ok': True, 'message': 'Cobro registrado correctamente.'})
+            return JsonResponse({'ok': True, 'message': 'Cobro registrado correctamente.', 'idventa': venta.idventa})
             
         except Ventas.DoesNotExist:
             return JsonResponse({'ok': False, 'error': 'Venta no encontrada o anulada.'}, status=404)

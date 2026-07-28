@@ -903,7 +903,7 @@
 
   <!-- Modal para Cobrar Venta Pendiente -->
   <div class="modal fade" id="modalCobrarVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content rounded-3 shadow-lg">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Cobrar Venta</h5>
@@ -918,24 +918,26 @@
               <p class="text-muted small">Comprobante: <strong id="cobro_comprobante"></strong></p>
             </div>
             
-            <div class="mb-3">
-              <label class="form-label fw-bold">Método de Pago</label>
-              <select class="form-select" id="cobro_tipo_pago" required>
-                <!-- Se llenará dinámicamente con los tipos de pago -->
-              </select>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label fw-bold">Importe Recibido (S/)</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-money-bill"></i></span>
-                <input type="number" class="form-control form-control-lg fw-bold" id="cobro_importe_recibido" step="0.01" min="0" required>
+            <div class="card border-0 bg-light p-3 mb-3" style="border-radius: 12px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <label class="form-label fw-bold mb-0 text-primary">
+                  <i class="fa-solid fa-money-bill-wave me-2"></i>Métodos de Pago <span class="text-danger">*</span>
+                </label>
+                <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1" onclick="agregarMetodoPagoCobro()" style="font-size: 0.75rem;">
+                  <i class="fa-solid fa-plus me-1"></i>Agregar Método
+                </button>
               </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label fw-bold">Nro. Operación (Opcional)</label>
-              <input type="text" class="form-control" id="cobro_nro_operacion" placeholder="Ej. 12345678">
+              
+              <div id="cobro_metodos_pago_container">
+                <!-- Se llenará dinámicamente -->
+              </div>
+              
+              <div class="d-flex flex-wrap justify-content-end align-items-center mt-3 pt-3 border-top w-100 gap-4">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Total Recibido</span>
+                  <span class="fs-5 fw-bold text-success">S/ <span id="cobro_total_recibido">0.00</span></span>
+                </div>
+              </div>
             </div>
 
             <div class="card bg-white shadow-sm border-0 mt-4">
@@ -7485,8 +7487,8 @@
     }
 
     let btnImprimir = '';
-    // El vendedor no puede imprimir el ticket si la venta sigue pendiente
-    if (!(venta.estado_cobro === 'Pendiente' && TIPO_USUARIO_ACTUAL === 2)) {
+    // Ningún usuario puede imprimir el ticket si la venta sigue pendiente
+    if (venta.estado_cobro !== 'Pendiente') {
       btnImprimir = `
         <a href="/ventas/imprimir/${venta.idventa}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir Ticket">
           <i class="fas fa-print"></i>
@@ -7583,58 +7585,135 @@
   // ========================================
   // LÓGICA DE COBRO VENTA PENDIENTE
   // ========================================
+  let pagoCobroCount = 0;
+
+  window.agregarMetodoPagoCobro = function(tpId = '', monto = '', operacion = '') {
+    pagoCobroCount++;
+    const container = document.getElementById('cobro_metodos_pago_container');
+    const div = document.createElement('div');
+    div.className = 'row g-3 mb-3 align-items-center pago-row-cobro';
+    div.id = `pago-row-cobro-${pagoCobroCount}`;
+
+    div.innerHTML = `
+      <div class="col-md-5">
+        <select name="cobro_tipo_pago_id[]" class="form-select select-tipo-pago-cobro" required onchange="toggleOperacionCobro(this)">
+          <option value="">Método de Pago...</option>
+          ${typeof TIPOS_PAGO_TEMPLATE !== 'undefined' ? TIPOS_PAGO_TEMPLATE : ''}
+        </select>
+      </div>
+      <div class="col-md-4 nro-operacion-cobro-container d-none">
+        <input type="text" name="cobro_nro_operacion[]" class="form-control" placeholder="N° Operación" value="${operacion}">
+      </div>
+      <div class="col-md-3 d-flex align-items-center gap-2 monto-cobro-container">
+        <div class="input-group w-100">
+          <span class="input-group-text bg-light border-end-0 text-muted px-2">S/</span>
+          <input type="number" name="cobro_monto_pago[]" class="form-control border-start-0 ps-1 fw-bold input-monto-cobro" placeholder="Monto" step="0.01" min="0" required value="${monto}" oninput="calcularTotalCobro()">
+        </div>
+        ${pagoCobroCount > 1 ? `<button type="button" class="btn btn-outline-danger px-3" onclick="eliminarFilaPagoCobro(this)"><i class="fa-solid fa-minus"></i></button>` : ''}
+      </div>
+    `;
+    
+    container.appendChild(div);
+
+    if (tpId) {
+      const select = div.querySelector('select');
+      select.value = tpId;
+      toggleOperacionCobro(select);
+    }
+  };
+
+  window.toggleOperacionCobro = function(selectEl) {
+    const row = selectEl.closest('.pago-row-cobro');
+    const textLower = selectEl.options[selectEl.selectedIndex]?.text.toLowerCase() || '';
+    const nroContainer = row.querySelector('.nro-operacion-cobro-container');
+    const montoContainer = row.querySelector('.monto-cobro-container');
+
+    if (textLower.includes('efectivo')) {
+      nroContainer.classList.add('d-none');
+      montoContainer.classList.remove('col-md-3');
+      montoContainer.classList.add('col-md-7');
+    } else {
+      nroContainer.classList.remove('d-none');
+      montoContainer.classList.remove('col-md-7');
+      montoContainer.classList.add('col-md-3');
+    }
+  };
+
+  window.eliminarFilaPagoCobro = function(btn) {
+    btn.closest('.pago-row-cobro').remove();
+    calcularTotalCobro();
+  };
+
+  window.calcularTotalCobro = function() {
+    const totalVenta = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
+    let sumaRecibido = 0;
+    
+    document.querySelectorAll('.input-monto-cobro').forEach(input => {
+      sumaRecibido += parseFloat(input.value) || 0;
+    });
+
+    document.getElementById('cobro_total_recibido').textContent = sumaRecibido.toFixed(2);
+    
+    const vuelto = sumaRecibido - totalVenta;
+    const vueltoEl = document.getElementById('cobro_vuelto');
+    
+    if (vuelto < 0) {
+      vueltoEl.textContent = 'Monto insuficiente';
+      vueltoEl.classList.add('text-danger');
+      vueltoEl.classList.remove('text-primary');
+    } else {
+      vueltoEl.textContent = 'S/ ' + vuelto.toFixed(2);
+      vueltoEl.classList.remove('text-danger');
+      vueltoEl.classList.add('text-primary');
+    }
+  };
+
   window.abrirModalCobroVenta = function(idventa, comprobante, total) {
     document.getElementById('cobro_idventa').value = idventa;
     document.getElementById('cobro_comprobante').textContent = comprobante;
     document.getElementById('cobro_total_venta').textContent = parseFloat(total).toFixed(2);
-    document.getElementById('cobro_importe_recibido').value = '';
-    document.getElementById('cobro_vuelto').textContent = 'S/ 0.00';
-    document.getElementById('cobro_nro_operacion').value = '';
     
-    // Poblar tipos de pago usando TIPOS_PAGO_TEMPLATE
-    const selectTipoPago = document.getElementById('cobro_tipo_pago');
-    if (selectTipoPago && typeof TIPOS_PAGO_TEMPLATE !== 'undefined') {
-      selectTipoPago.innerHTML = '<option value="">Seleccione...</option>' + TIPOS_PAGO_TEMPLATE;
-    }
-    
+    // Resetear contenedor de pagos
+    pagoCobroCount = 0;
+    document.getElementById('cobro_metodos_pago_container').innerHTML = '';
+    agregarMetodoPagoCobro();
+    calcularTotalCobro();
+
     new bootstrap.Modal(document.getElementById('modalCobrarVenta')).show();
   };
-
-  const inputImporteCobro = document.getElementById('cobro_importe_recibido');
-  if (inputImporteCobro) {
-    inputImporteCobro.addEventListener('input', function() {
-      const total = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
-      const recibido = parseFloat(this.value) || 0;
-      const vuelto = recibido - total;
-      const vueltoEl = document.getElementById('cobro_vuelto');
-      
-      if (vuelto < 0) {
-        vueltoEl.textContent = 'Monto insuficiente';
-        vueltoEl.classList.add('text-danger');
-        vueltoEl.classList.remove('text-primary');
-      } else {
-        vueltoEl.textContent = 'S/ ' + vuelto.toFixed(2);
-        vueltoEl.classList.remove('text-danger');
-        vueltoEl.classList.add('text-primary');
-      }
-    });
-  }
 
   const btnProcesarCobro = document.getElementById('btnProcesarCobro');
   if (btnProcesarCobro) {
     btnProcesarCobro.addEventListener('click', function() {
       const idventa = document.getElementById('cobro_idventa').value;
-      const tipo_pago = document.getElementById('cobro_tipo_pago').value;
-      const importe_recibido = parseFloat(document.getElementById('cobro_importe_recibido').value) || 0;
-      const nro_operacion = document.getElementById('cobro_nro_operacion').value;
       const total = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
+      const sumaRecibido = parseFloat(document.getElementById('cobro_total_recibido').textContent) || 0;
 
-      if (!tipo_pago) {
-        Swal.fire('Atención', 'Seleccione un método de pago', 'warning');
+      // Validar si todos los métodos tienen tipo y monto
+      let formValido = true;
+      const tipos = [];
+      const montos = [];
+      const nros = [];
+
+      document.querySelectorAll('.pago-row-cobro').forEach(row => {
+        const tp = row.querySelector('.select-tipo-pago-cobro').value;
+        const mt = row.querySelector('.input-monto-cobro').value;
+        const nr = row.querySelector('.nro-operacion-cobro-container input').value;
+        if (!tp || !mt || parseFloat(mt) <= 0) {
+          formValido = false;
+        }
+        tipos.push(tp);
+        montos.push(mt);
+        nros.push(nr);
+      });
+
+      if (!formValido) {
+        Swal.fire('Atención', 'Todos los métodos de pago deben tener un tipo seleccionado y un monto mayor a 0.', 'warning');
         return;
       }
-      if (importe_recibido < total) {
-        Swal.fire('Atención', 'El importe recibido debe ser mayor o igual al total a cobrar', 'warning');
+
+      if (sumaRecibido < total) {
+        Swal.fire('Atención', 'El importe recibido total debe ser mayor o igual al total a cobrar.', 'warning');
         return;
       }
 
@@ -7649,10 +7728,11 @@
         if (result.isConfirmed) {
           const formData = new FormData();
           formData.append('idventa', idventa);
-          formData.append('tipo_pago', tipo_pago);
-          formData.append('importe_recibido', importe_recibido);
-          formData.append('nro_operacion', nro_operacion);
-          // Necesitamos enviar CSRF token. Lo buscaremos en el form principal
+          tipos.forEach(t => formData.append('tipo_pago_id[]', t));
+          montos.forEach(m => formData.append('monto_pago[]', m));
+          nros.forEach(n => formData.append('nro_operacion[]', n));
+          
+          // Necesitamos enviar CSRF token
           const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
           formData.append('csrfmiddlewaretoken', csrf);
 
@@ -7666,6 +7746,9 @@
               Swal.fire('¡Éxito!', data.message, 'success').then(() => {
                 bootstrap.Modal.getInstance(document.getElementById('modalCobrarVenta')).hide();
                 cargarVentas(1); // recargar tabla
+                if (data.idventa) {
+                  window.open(`/ventas/imprimir/${data.idventa}/`, '_blank');
+                }
               });
             } else {
               Swal.fire('Error', data.error, 'error');
