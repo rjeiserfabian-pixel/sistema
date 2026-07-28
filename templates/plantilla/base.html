@@ -1351,7 +1351,7 @@
   ====================================================== -->
   <script>
     async function cargarTipoCambio() {
-        const cacheKey = 'tipo_cambio_bcrp_venta';
+        const cacheKey = 'tipo_cambio_bcrp_venta_4d';
         const fechaActual = new Date();
         const dia = String(fechaActual.getDate()).padStart(2, '0');
         const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
@@ -1371,7 +1371,7 @@
             const data = await response.json();
             
             if (data && data.venta) {
-                const valor = parseFloat(data.venta).toFixed(2);
+                const valor = parseFloat(data.venta).toFixed(4);
                 
                 localStorage.setItem(cacheKey, JSON.stringify({ fecha: hoyCadena, valor: valor }));
                 mostrarTipoCambio(valor, hoyCadena);

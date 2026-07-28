@@ -14,6 +14,7 @@ class Compras(models.Model):
     numcorrelativo = models.CharField(max_length=25, null=True, blank=True)
     fechacompra = models.DateField(null=True, blank=True)
     total_compra = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tipo_cambio = models.DecimalField(max_digits=10, decimal_places=4, default=1.00, null=True, blank=True)
     observaciones = models.TextField(null=True, blank=True)
     estado = models.IntegerField(db_column='estado', default=1)
     id_sucursal = models.ForeignKey(Sucursales,on_delete=models.RESTRICT,db_column='id_sucursal',related_name='compras',null=True,blank=True)

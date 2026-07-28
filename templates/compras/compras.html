@@ -186,16 +186,22 @@
               </div>
             </div>
 
-            <!-- SEGUNDA FILA: 3 Columnas -->
+            <!-- SEGUNDA FILA: 4 Columnas -->
             <div class="row mb-3">
               <!-- Fecha -->
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label">Fecha</label>
                 <input type="date" name="fechacompra" class="form-control" required>
               </div>
               
+              <!-- Tipo de Cambio -->
+              <div class="col-md-3">
+                <label class="form-label">T. Cambio</label>
+                <input type="number" id="tipo_cambio" name="tipo_cambio" class="form-control" step="0.001" placeholder="Ej: 3.80" oninput="calcularPreciosVenta()">
+              </div>
+              
               <!-- Afecta Caja -->
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label">Afecta Caja</label>
                 <select name="afecta_caja" id="afecta_caja" class="form-select">
                   <option value="1" selected>Sí</option>
@@ -204,7 +210,7 @@
               </div>
 
               <!-- Forma de Pago -->
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label">Forma de Pago</label>
                 <select name="forma_pago" id="forma_pago" class="form-select" required>
                   <option value="">-- Seleccione --</option>
@@ -367,11 +373,21 @@
             <!-- Configuración de Precios -->
             <hr>
             <div class="row mt-3">
-              <div class="col-md-12">
-                <h6 class="text-primary fw-bold mb-3">Precio de Compra Base</h6>
-                <div class="input-group mb-3" style="max-width: 300px;">
-                  <span class="input-group-text">S/</span>
-                  <input type="number" id="precio_compra" class="form-control" step="0.01" oninput="calcularPreciosVenta()">
+              <div class="col-md-6">
+                <h6 class="text-primary fw-bold mb-3">Moneda</h6>
+                <select id="moneda_producto" class="form-select" style="max-width: 300px;" onchange="cambiarMonedaProducto()">
+                  <option value="PEN">Soles (PEN)</option>
+                  <option value="USD">Dólares (USD)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <h6 class="text-primary fw-bold mb-3" id="lbl_precio_base">Precio de Compra Base</h6>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="input-group" style="max-width: 300px;">
+                    <span class="input-group-text" id="simbolo_moneda">S/</span>
+                    <input type="number" id="precio_compra" class="form-control" step="0.01" oninput="calcularPreciosVenta()">
+                  </div>
+                  <small id="helper_precio_dolares" class="text-muted fw-bold" style="display:none; white-space: nowrap;">Precio en Soles: S/ <span id="span_precio_convertido">0.00</span></small>
                 </div>
               </div>
             </div>
@@ -441,6 +457,9 @@
                     <th>Tipo</th>
                     <th>Nombre</th>
                     <th>Cantidad</th>
+                    <th>Moneda</th>
+                    <th>Precio $</th>
+                    <th>T.C.</th>
                     <th>Precio Compra</th>
                     <th>Precio Mínimo</th>
                     <th>Precio Máximo</th>
@@ -1774,13 +1793,41 @@
     }
   });
 
+  function getPrecioBaseSoles() {
+    let precio = parseFloat(document.getElementById("precio_compra").value) || 0;
+    const moneda = document.getElementById("moneda_producto") ? document.getElementById("moneda_producto").value : 'PEN';
+    if (moneda === 'USD') {
+        const tipoCambio = parseFloat(document.getElementById("tipo_cambio").value) || 1;
+        precio = precio * tipoCambio;
+    }
+    return precio;
+  }
+
+  function cambiarMonedaProducto() {
+    const moneda = document.getElementById("moneda_producto").value;
+    if (moneda === 'USD') {
+        document.getElementById("simbolo_moneda").innerText = "$";
+        document.getElementById("lbl_precio_base").innerText = "Precio en Dólares";
+        document.getElementById("helper_precio_dolares").style.display = "block";
+    } else {
+        document.getElementById("simbolo_moneda").innerText = "S/";
+        document.getElementById("lbl_precio_base").innerText = "Precio de Compra Base";
+        document.getElementById("helper_precio_dolares").style.display = "none";
+    }
+    calcularPreciosVenta();
+  }
+
   function calcularPreciosVenta() {
+    const moneda = document.getElementById("moneda_producto") ? document.getElementById("moneda_producto").value : 'PEN';
+    if (moneda === 'USD') {
+        document.getElementById("span_precio_convertido").innerText = getPrecioBaseSoles().toFixed(2);
+    }
     calcularPrecioDesdeMargen('minimo');
     calcularPrecioDesdeMargen('maximo');
   }
 
   function calcularPrecioDesdeMargen(tipo) {
-    const precioCompra = parseFloat(document.getElementById("precio_compra").value) || 0;
+    const precioCompra = getPrecioBaseSoles();
     const margen = parseFloat(document.getElementById(`margen_${tipo}`).value) || 0;
     if (precioCompra > 0) {
       const precioFinal = precioCompra * (1 + (margen / 100));
@@ -1791,7 +1838,7 @@
   }
 
   function calcularMargenDesdePrecio(tipo) {
-    const precioCompra = parseFloat(document.getElementById("precio_compra").value) || 0;
+    const precioCompra = getPrecioBaseSoles();
     const precioFinal = parseFloat(document.getElementById(`precio_${tipo}`).value) || 0;
     if (precioCompra > 0 && precioFinal > 0) {
       const margen = ((precioFinal / precioCompra) - 1) * 100;
@@ -1804,11 +1851,24 @@
   async function agregarDetalle() {
     const tipo = document.getElementById("tipo_item").value;
     const cantidad = parseInt(document.getElementById("cantidad").value) || 0;
-    const precioCompra = parseFloat(document.getElementById("precio_compra").value) || 0;
+    let precioCompra = parseFloat(document.getElementById("precio_compra").value) || 0;
     const precioMinimo = parseFloat(document.getElementById("precio_minimo").value) || 0;
     const precioMaximo = parseFloat(document.getElementById("precio_maximo").value) || 0;
     const margenMinimo = parseFloat(document.getElementById("margen_minimo").value) || 0;
     const margenMaximo = parseFloat(document.getElementById("margen_maximo").value) || 0;
+
+    const moneda = document.getElementById("moneda_producto") ? document.getElementById("moneda_producto").value : 'PEN';
+    const tipoCambio = parseFloat(document.getElementById("tipo_cambio").value) || 1.00;
+    let precioDolares = 0;
+    
+    if (moneda === 'USD') {
+        if (!tipoCambio || tipoCambio <= 0) {
+            Swal.fire("Error", "Debe ingresar un Tipo de Cambio válido en la cabecera.", "warning");
+            return;
+        }
+        precioDolares = precioCompra;
+        precioCompra = precioCompra * tipoCambio;
+    }
 
     if (!tipo || cantidad <= 0 || precioCompra <= 0 || precioMinimo <= 0 || precioMaximo <= 0) {
       Swal.fire("Campos incompletos", "Debes llenar todos los campos del detalle.", "warning");
@@ -1972,6 +2032,9 @@
       <td style="width: 100px;">
         <input type="number" name="cantidad_${itemIndex}" id="fila_cantidad_${itemIndex}" class="form-control form-control-sm text-end" value="${cantidad}" min="1" onchange="recalcularFilaCompra(${itemIndex})" ${tipo === 'vehiculo' ? 'readonly' : ''}>
       </td>
+      <td>${moneda}</td>
+      <td class="text-end">${moneda === 'USD' ? precioDolares.toFixed(2) : '-'}</td>
+      <td class="text-end">${moneda === 'USD' ? tipoCambio.toFixed(4) : '-'}</td>
       <td style="width: 130px;">
         <input type="number" name="precio_compra_${itemIndex}" id="fila_precio_compra_${itemIndex}" class="form-control form-control-sm text-end" value="${precioCompra.toFixed(2)}" step="0.01" min="0" onchange="recalcularFilaCompra(${itemIndex})">
       </td>
@@ -1988,6 +2051,8 @@
       <td style="display:none">
         <input type="hidden" name="idcompradetalle_${itemIndex}" value="">
         <input type="hidden" name="tipo_item_${itemIndex}" value="${tipo}">
+        <input type="hidden" name="moneda_${itemIndex}" value="${moneda}">
+        <input type="hidden" name="precio_dolares_${itemIndex}" value="${precioDolares.toFixed(2)}">
         <input type="hidden" name="margen_minimo_${itemIndex}" value="${margenMinimo.toFixed(2)}">
         <input type="hidden" name="margen_maximo_${itemIndex}" value="${margenMaximo.toFixed(2)}">
         ${extraInputs}
@@ -2491,6 +2556,20 @@
     document.getElementById('tablaCuotas').innerHTML = '';
     const resumen = document.getElementById('resumenCuotasCompra');
     if (resumen) resumen.innerHTML = '';
+
+    // Autocompletar Tipo de Cambio
+    const cacheKey = 'tipo_cambio_bcrp_venta_4d';
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            const data = JSON.parse(cached);
+            if (data && data.valor) {
+                setTimeout(() => {
+                    document.getElementById('tipo_cambio').value = data.valor;
+                }, 50); // Pequeño retraso después del reset
+            }
+        } catch(e) {}
+    }
   }
 
 
@@ -4631,5 +4710,29 @@ function abrirModalDetallesCompra(id) {
             body.innerHTML = `<div class="alert alert-danger">Error de conexión al servidor.</div>`;
         });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    function autoFillTipoCambio(attempts = 0) {
+        const cacheKey = 'tipo_cambio_bcrp_venta_4d';
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const data = JSON.parse(cached);
+                if (data && data.valor) {
+                    const tcInput = document.getElementById('tipo_cambio');
+                    if (tcInput && (!tcInput.value || tcInput.value == "1.00" || tcInput.value == "1" || tcInput.value == "")) {
+                        tcInput.value = data.valor;
+                        if(typeof calcularPreciosVenta === 'function') {
+                            calcularPreciosVenta();
+                        }
+                    }
+                }
+            } catch(e) {}
+        } else if (attempts < 20) {
+            setTimeout(() => autoFillTipoCambio(attempts + 1), 500);
+        }
+    }
+    setTimeout(autoFillTipoCambio, 500);
+});
 </script>
 {% endblock %}

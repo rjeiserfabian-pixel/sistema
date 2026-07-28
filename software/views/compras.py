@@ -581,6 +581,8 @@ def nueva_compra(request):
             if err_cuotas:
                 return err_cuotas
 
+            tipo_cambio_val = float(request.POST.get("tipo_cambio") or 1.00)
+            
             with transaction.atomic():
                 compra = Compras.objects.create(
                     idproveedor_id=cabecera['idproveedor'],
@@ -590,6 +592,7 @@ def nueva_compra(request):
                     numcorrelativo=cabecera['numcorrelativo'],
                     fechacompra=cabecera['fechacompra'],
                     observaciones=cabecera.get('observaciones'),
+                    tipo_cambio=tipo_cambio_val,
                     id_sucursal_id=id_sucursal_session,
                     id_almacen_id=id_almacen_session,
                     estado=1,
@@ -639,6 +642,8 @@ def nueva_compra(request):
                     precio_maximo = float(request.POST.get(f"precio_maximo_{i}") or 0)
                     margen_minimo = float(request.POST.get(f"margen_minimo_{i}") or 0)
                     margen_maximo = float(request.POST.get(f"margen_maximo_{i}") or 0)
+                    moneda_i = request.POST.get(f"moneda_{i}", "PEN").strip()
+                    precio_dolares_i = float(request.POST.get(f"precio_dolares_{i}") or 0.00)
 
 
                     if tipo_item == "vehiculo":
@@ -668,6 +673,8 @@ def nueva_compra(request):
                             id_vehiculo=vehiculo,
                             id_repuesto_comprado=None,
                             cantidad=cantidad,
+                            moneda=moneda_i,
+                            precio_dolares=precio_dolares_i,
                             precio_compra=precio_compra,
                             precio_minimo=precio_minimo,
                             precio_maximo=precio_maximo,
@@ -709,6 +716,8 @@ def nueva_compra(request):
                             id_repuesto_comprado=repuesto,
                             id_vehiculo=None,
                             cantidad=cantidad,
+                            moneda=moneda_i,
+                            precio_dolares=precio_dolares_i,
                             precio_compra=precio_compra,
                             precio_minimo=precio_minimo,
                             precio_maximo=precio_maximo,

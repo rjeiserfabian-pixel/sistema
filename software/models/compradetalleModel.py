@@ -10,6 +10,8 @@ class CompraDetalle(models.Model):
     id_vehiculo= models.ForeignKey(Vehiculo, on_delete=models.DO_NOTHING, db_column='id_vehiculo', related_name='compradetalle',null=True, blank=True)
     idcompra = models.ForeignKey(Compras, on_delete=models.DO_NOTHING, db_column='idcompra', related_name='compradetalle',null=True, blank=True)
     cantidad = models.IntegerField(default=1)
+    moneda = models.CharField(max_length=5, default='PEN', null=True, blank=True)
+    precio_dolares = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, null=True, blank=True)
     precio_compra = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     precio_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     precio_maximo = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
