@@ -1,100 +1,115 @@
 {% extends 'plantilla/base.html' %}
 {% block main %}
-<main id="main" class="main">
-
-  <!-- Encabezado -->
-  <div class="pagetitle d-flex justify-content-between align-items-center">
-    <h1 class="fw-bold text-primary">
-      <i class="fas fa-cart-plus me-2"></i>Compras
-    </h1>
-    <!-- VALIDACIÓN: Solo mostrar botón si es sucursal principal -->
-    {% if es_sucursal_principal %}
-    <button type="button" class="btn btn-success rounded-pill shadow-sm" onclick="abrirNuevaCompra()">
-      <i class="fa-solid fa-circle-plus me-2"></i>Registrar Compra
-    </button>
-    {% else %}
-    <button type="button" class="btn btn-secondary rounded-pill shadow-sm" disabled
-      title="Solo la sucursal principal puede realizar compras">
-      <i class="fa-solid fa-ban me-2"></i>Compras (Solo Sucursal Principal)
-    </button>
-    {% endif %}
-  </div>
-
-  <nav aria-label="breadcrumb" class="mt-2">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
-      <li class="breadcrumb-item active">Compras</li>
-    </ol>
-  </nav>
-
-  <!-- Contenido -->
-  <section class="section dashboard mt-4">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="card-title m-0">Listado de compras</h5>
-          
-          <div class="d-flex align-items-center gap-3 flex-wrap">
-            <!-- Filtros de Fecha -->
-            <form id="formFiltroFechas" class="d-flex gap-2 align-items-center m-0">
-              <div class="input-group input-group-sm" style="width: 140px;">
-                <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-regular fa-calendar"></i></span>
-                <input type="date" class="form-control border-start-0 date-picker-premium bg-white" id="fecha_inicio" name="fecha_inicio" value="{{ fecha_inicio }}" placeholder="Inicio" title="Fecha de inicio">
+  <main id="main" class="main">
+    <!-- Encabezado -->
+    <div class="pagetitle d-flex justify-content-between align-items-center">
+      <h1 class="fw-bold text-primary">
+        <i class="fas fa-cart-plus me-2"></i>Compras
+      </h1>
+      <!-- VALIDACIÓN: Solo mostrar botón si es sucursal principal -->
+      {% if es_sucursal_principal %}
+        <button type="button"
+                class="btn btn-success rounded-pill shadow-sm"
+                onclick="abrirNuevaCompra()">
+          <i class="fa-solid fa-circle-plus me-2"></i>Registrar Compra
+        </button>
+      {% else %}
+        <button type="button"
+                class="btn btn-secondary rounded-pill shadow-sm"
+                disabled
+                title="Solo la sucursal principal puede realizar compras">
+          <i class="fa-solid fa-ban me-2"></i>Compras (Solo Sucursal Principal)
+        </button>
+      {% endif %}
+    </div>
+    <nav aria-label="breadcrumb" class="mt-2">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'cpanel' %}">Home</a>
+        </li>
+        <li class="breadcrumb-item active">Compras</li>
+      </ol>
+    </nav>
+    <!-- Contenido -->
+    <section class="section dashboard mt-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title m-0">Listado de compras</h5>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <!-- Filtros de Fecha -->
+              <form id="formFiltroFechas" class="d-flex gap-2 align-items-center m-0">
+                <div class="input-group input-group-sm" style="width: 140px;">
+                  <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-regular fa-calendar"></i></span>
+                  <input type="date"
+                         class="form-control border-start-0 date-picker-premium bg-white"
+                         id="fecha_inicio"
+                         name="fecha_inicio"
+                         value="{{ fecha_inicio }}"
+                         placeholder="Inicio"
+                         title="Fecha de inicio">
+                </div>
+                <span class="text-muted small">a</span>
+                <div class="input-group input-group-sm" style="width: 140px;">
+                  <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-regular fa-calendar"></i></span>
+                  <input type="date"
+                         class="form-control border-start-0 date-picker-premium bg-white"
+                         id="fecha_fin"
+                         name="fecha_fin"
+                         value="{{ fecha_fin }}"
+                         placeholder="Fin"
+                         title="Fecha de fin">
+                </div>
+                <button type="button"
+                        class="btn btn-sm btn-light text-secondary border"
+                        title="Restaurar a semana actual"
+                        onclick="window.location.href=window.location.pathname">
+                  <i class="fa-solid fa-rotate-left"></i>
+                </button>
+              </form>
+              <!-- Buscador -->
+              <div class="input-group" style="width: 300px;">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                  <i class="fa-solid fa-search"></i>
+                </span>
+                <input type="text"
+                       id="buscarCompra"
+                       class="form-control border-start-0 ps-0"
+                       placeholder="Buscar compras, proveedor, comprobante...">
               </div>
-              <span class="text-muted small">a</span>
-              <div class="input-group input-group-sm" style="width: 140px;">
-                <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-regular fa-calendar"></i></span>
-                <input type="date" class="form-control border-start-0 date-picker-premium bg-white" id="fecha_fin" name="fecha_fin" value="{{ fecha_fin }}" placeholder="Fin" title="Fecha de fin">
-              </div>
-              <button type="button" class="btn btn-sm btn-light text-secondary border" title="Restaurar a semana actual" onclick="window.location.href=window.location.pathname">
-                <i class="fa-solid fa-rotate-left"></i>
-              </button>
-            </form>
-
-            <!-- Buscador -->
-            <div class="input-group" style="width: 300px;">
-              <span class="input-group-text bg-white border-end-0 text-muted">
-                <i class="fa-solid fa-search"></i>
-              </span>
-              <input type="text" id="buscarCompra" class="form-control border-start-0 ps-0" placeholder="Buscar compras, proveedor, comprobante...">
             </div>
           </div>
-        </div>
-
-        <div class="table-responsive">
-          <table class="table table-hover align-middle" id="tablaCompras">
-            <thead class="table-dark">
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">Correlativo</th>
-                <th scope="col">Proveedor</th>
-                <th scope="col">Fecha</th>
-                <th scope="col">Forma de Pago</th>
-                <th scope="col">Total</th>
-                <th scope="col" class="text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyCompras">
-              <tr>
-                <td colspan="7" class="text-center py-5">
-                  <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                  </div>
-                  <div class="mt-2 text-muted">Cargando compras...</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        
-        <!-- Paginación Server-Side -->
-        <div id="paginacionCompras" class="mt-3 d-flex justify-content-end"></div>
-
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" id="tablaCompras">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Correlativo</th>
+                  <th scope="col">Proveedor</th>
+                  <th scope="col">Fecha</th>
+                  <th scope="col">Forma de Pago</th>
+                  <th scope="col">Total</th>
+                  <th scope="col" class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyCompras">
+                <tr>
+                  <td colspan="7" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <div class="mt-2 text-muted">Cargando compras...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Paginación Server-Side -->
+          <div id="paginacionCompras" class="mt-3 d-flex justify-content-end"></div>
         </div>
       </div>
     </div>
   </section>
-
   <!-- ========================================
        MODAL VER DETALLE COMPRA (AJAX)
        ======================================== -->
@@ -108,84 +123,96 @@
             </h5>
             <small class="opacity-75">ID Compra: <span id="verDetalleCompraID">?</span></small>
           </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"></button>
         </div>
-
         <div class="modal-body p-4" id="verDetalleCompraBody">
           <div class="text-center py-5">
-              <div class="spinner-border text-info" role="status"></div>
-              <div class="mt-2 text-muted">Cargando detalles...</div>
+            <div class="spinner-border text-info" role="status"></div>
+            <div class="mt-2 text-muted">Cargando detalles...</div>
           </div>
         </div>
-
         <div class="modal-footer bg-light">
-          <a href="#" target="_blank" id="btnImprimirDetalleCompra" class="btn btn-danger rounded-pill">
+          <a href="#"
+             target="_blank"
+             id="btnImprimirDetalleCompra"
+             class="btn btn-danger rounded-pill">
             <i class="fa-solid fa-file-pdf me-2"></i>Generar PDF
           </a>
-          <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">
+          <button type="button"
+                  class="btn btn-secondary rounded-pill"
+                  data-bs-dismiss="modal">
             <i class="fa-solid fa-xmark me-2"></i>Cerrar
           </button>
         </div>
       </div>
     </div>
   </div>
-
   <!-- Modal Agregar Compra -->
   <div class="modal fade" id="modalAgregarCompra" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content rounded-3 shadow-lg">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title">Nueva Compra</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-
           <!-- FORMULARIO -->
           <form id="formCompra" method="POST" action="{% url 'agregarCompras' %}">
             {% csrf_token %}
-
             <!-- PRIMERA FILA: 3 Columnas -->
             <div class="row mb-3">
               <!--CAMPO CON BÚSQUEDA: PROVEEDOR -->
               <div class="col-md-4">
-                <label class="form-label">Proveedor <span class="text-danger">*</span></label>
+                <label class="form-label">
+                  Proveedor <span class="text-danger">*</span>
+                </label>
                 <div class="input-group input-group-proveedor">
                   <div class="autocomplete-wrapper flex-grow-1">
-                    <input type="text" id="proveedor_search"
-                      class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Buscar proveedor..."
-                      autocomplete="off" required>
-                    <button type="button" class="autocomplete-arrow"
-                      onclick="toggleAutocomplete('proveedor_search', 'proveedor_results')">
+                    <input type="text"
+                           id="proveedor_search"
+                           class="form-control autocomplete-input autocomplete-with-arrow"
+                           placeholder="Buscar proveedor..."
+                           autocomplete="off"
+                           required>
+                    <button type="button"
+                            class="autocomplete-arrow"
+                            onclick="toggleAutocomplete('proveedor_search', 'proveedor_results')">
                       <i class="bi bi-chevron-down"></i>
                     </button>
                     <input type="hidden" name="proveedor" id="proveedor_id">
                     <div class="autocomplete-results" id="proveedor_results"></div>
                   </div>
-                  <button type="button" class="btn btn-success btn-add-proveedor" data-bs-toggle="modal"
-                    data-bs-target="#modalAgregarProveedorCompra" title="Agregar nuevo proveedor">
+                  <button type="button"
+                          class="btn btn-success btn-add-proveedor"
+                          data-bs-toggle="modal"
+                          data-bs-target="#modalAgregarProveedorCompra"
+                          title="Agregar nuevo proveedor">
                     <i class="fa-regular fa-user"></i>
                   </button>
                 </div>
               </div>
-
               <!-- Tipo comprobante -->
               <div class="col-md-4">
                 <label class="form-label">Tipo comprobante</label>
                 <select name="tipo_cliente" class="form-select" required>
                   <option value="">-- Seleccione --</option>
-                  {% for tipo in tipo_cliente %}
-                  <option value="{{ tipo.idtipocliente }}">{{ tipo.nomtipocliente }}</option>
-                  {% endfor %}
+                  {% for tipo in tipo_cliente %}<option value="{{ tipo.idtipocliente }}">{{ tipo.nomtipocliente }}</option>{% endfor %}
                 </select>
               </div>
-
               <!-- N° Correlativo -->
               <div class="col-md-4">
                 <label class="form-label">N° Correlativo</label>
-                <input type="text" name="numcorrelativo" class="form-control" maxlength="25" required>
+                <input type="text"
+                       name="numcorrelativo"
+                       class="form-control"
+                       maxlength="25"
+                       required>
               </div>
             </div>
-
             <!-- SEGUNDA FILA: 4 Columnas -->
             <div class="row mb-3">
               <!-- Fecha -->
@@ -193,13 +220,17 @@
                 <label class="form-label">Fecha</label>
                 <input type="date" name="fechacompra" class="form-control" required>
               </div>
-              
               <!-- Tipo de Cambio -->
               <div class="col-md-3">
                 <label class="form-label">T. Cambio</label>
-                <input type="number" id="tipo_cambio" name="tipo_cambio" class="form-control" step="0.001" placeholder="Ej: 3.80" oninput="calcularPreciosVenta()">
+                <input type="number"
+                       id="tipo_cambio"
+                       name="tipo_cambio"
+                       class="form-control"
+                       step="0.001"
+                       placeholder="Ej: 3.80"
+                       oninput="calcularPreciosVenta()">
               </div>
-              
               <!-- Afecta Caja -->
               <div class="col-md-3">
                 <label class="form-label">Afecta Caja</label>
@@ -208,19 +239,15 @@
                   <option value="0">No</option>
                 </select>
               </div>
-
               <!-- Forma de Pago -->
               <div class="col-md-3">
                 <label class="form-label">Forma de Pago</label>
                 <select name="forma_pago" id="forma_pago" class="form-select" required>
                   <option value="">-- Seleccione --</option>
-                  {% for forma in forma_pago %}
-                  <option value="{{ forma.id_forma_pago }}">{{ forma.nombre }}</option>
-                  {% endfor %}
+                  {% for forma in forma_pago %}<option value="{{ forma.id_forma_pago }}">{{ forma.nombre }}</option>{% endfor %}
                 </select>
               </div>
             </div>
-
             <!-- TERCERA FILA: Métodos de Pago al final -->
             <div class="row mb-3">
               <!-- MÉTODOS DE PAGO (visible cuando Contado, oculto cuando Crédito) -->
@@ -231,8 +258,10 @@
                       <i class="fa-solid fa-money-bill-wave me-2"></i>
                       Métodos de Pago <span class="text-danger">*</span>
                     </label>
-                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1"
-                            onclick="agregarFilaPagoCompra()" style="font-size:0.75rem;">
+                    <button type="button"
+                            class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1"
+                            onclick="agregarFilaPagoCompra()"
+                            style="font-size:0.75rem">
                       <i class="fa-solid fa-plus me-1"></i>Agregar
                     </button>
                   </div>
@@ -241,30 +270,30 @@
                   </div>
                   <div class="d-flex justify-content-end mt-3 pt-3 border-top">
                     <span class="fw-bold text-muted text-uppercase" style="font-size:0.75rem;">Total Pagado:</span>
-                    <span class="fw-bold text-success ms-2" id="total_pagado_compra_lbl" style="font-size:1.1rem;">S/ 0.00</span>
+                    <span class="fw-bold text-success ms-2"
+                          id="total_pagado_compra_lbl"
+                          style="font-size:1.1rem">S/ 0.00</span>
                   </div>
                 </div>
               </div>
-
               <!-- Input oculto para compatibilidad con backend -->
               <input type="hidden" name="tipo_pago" id="tipo_pago_hidden_compra" value="">
-
               <!-- Botón Configurar Cuotas (aparece cuando es Crédito) -->
               <div class="col-md-4 d-none" id="btn_cuotas_container">
-                <label class="form-label">Plan de Pago a Crédito</label><br>
-                <button type="button" class="btn btn-warning w-100" data-bs-toggle="modal"
-                  data-bs-target="#modalCuotas">
+                <label class="form-label">Plan de Pago a Crédito</label>
+                <br>
+                <button type="button"
+                        class="btn btn-warning w-100"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalCuotas">
                   <i class="fa-solid fa-calendar-days me-2"></i>Configurar Cuotas
                 </button>
               </div>
             </div>
-
             <!-- Campo oculto para indicar si tiene cuotas configuradas -->
             <input type="hidden" id="tiene_cuotas" name="tiene_cuotas" value="0">
-
             <hr>
             <h5 class="fw-bold">Detalle de Compra</h5>
-
             <!-- Tipo de ítem -->
             <div class="row mb-3">
               <div class="col-md-4">
@@ -276,29 +305,35 @@
                 </select>
               </div>
             </div>
-
             <!-- Vehículo -->
             <div id="formVehiculo" class="mt-3" style="display:none;">
               <div class="row mb-2 align-items-end">
                 <!--CAMPO CON BÚSQUEDA: VEHÍCULO/PRODUCTO -->
-              <div class="col-md-3">
-                  <label class="form-label">Nombre del Vehículo <span class="text-danger">*</span></label>
+                <div class="col-md-3">
+                  <label class="form-label">
+                    Nombre del Vehículo <span class="text-danger">*</span>
+                  </label>
                   <div class="d-flex gap-2 align-items-start">
                     <div class="autocomplete-wrapper flex-grow-1">
-                      <input type="text" id="vehiculo_search"
-                        class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Buscar vehículo..."
-                        autocomplete="off">
-                      <button type="button" class="autocomplete-arrow"
-                        onclick="toggleAutocomplete('vehiculo_search', 'vehiculo_results')">
+                      <input type="text"
+                             id="vehiculo_search"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="Buscar vehículo..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('vehiculo_search', 'vehiculo_results')">
                         <i class="bi bi-chevron-down"></i>
                       </button>
                       <input type="hidden" id="veh_nombre" name="veh_nombre">
                       <div class="autocomplete-results" id="vehiculo_results"></div>
                     </div>
-                    <button type="button" class="btn btn-success btn-sm mt-1" style="white-space:nowrap;"
-                      id="btnNuevoProducto"
-                      onclick="abrirModalNuevoProducto()"
-                      title="Registrar nuevo vehículo en el catálogo">
+                    <button type="button"
+                            class="btn btn-success btn-sm mt-1"
+                            style="white-space:nowrap"
+                            id="btnNuevoProducto"
+                            onclick="abrirModalNuevoProducto()"
+                            title="Registrar nuevo vehículo en el catálogo">
                       <i class="fa-solid fa-plus"></i>
                     </button>
                   </div>
@@ -313,16 +348,23 @@
                 </div>
                 <div class="col-md-3">
                   <label>Año</label>
-                  <input type="number" id="veh_anio" class="form-control" placeholder="Ej: 2024" min="1900" max="2100">
+                  <input type="number"
+                         id="veh_anio"
+                         class="form-control"
+                         placeholder="Ej: 2024"
+                         min="1900"
+                         max="2100">
                 </div>
               </div>
               <div class="row mb-2 mt-2 align-items-end">
                 <div class="col-md-4">
-                  <label class="form-label">Estado <span class="text-danger">*</span></label>
+                  <label class="form-label">
+                    Estado <span class="text-danger">*</span>
+                  </label>
                   <select id="veh_estado" class="form-select">
                     <option value="">-- Seleccione --</option>
                     {% for estad in estado_producto %}
-                    <option value="{{ estad.idestadoproducto }}">{{ estad.nombreestadoproducto }}</option>
+                      <option value="{{ estad.idestadoproducto }}">{{ estad.nombreestadoproducto }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -330,52 +372,65 @@
                   <label>Placas</label>
                   <input type="text" id="veh_placas" class="form-control">
                 </div>
-                <div class="col-md-4" id="veh_imperfecciones_container" style="display:none;">
+                <div class="col-md-4"
+                     id="veh_imperfecciones_container"
+                     style="display:none">
                   <label>Imperfecciones</label>
                   <textarea id="veh_imperfecciones" class="form-control"></textarea>
                 </div>
               </div>
             </div>
-
             <!-- Repuesto -->
             <div id="formRepuesto" class="mt-3" style="display:none;">
               <div class="row mb-2">
                 <!--CAMPO CON BÚSQUEDA: REPUESTO -->
                 <div class="col-md-4">
-                  <label class="form-label">Nombre del Repuesto <span class="text-danger">*</span></label>
+                  <label class="form-label">
+                    Nombre del Repuesto <span class="text-danger">*</span>
+                  </label>
                   <div class="d-flex gap-2 align-items-start">
                     <div class="autocomplete-wrapper flex-grow-1">
-                      <input type="text" id="repuesto_search"
-                        class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Buscar repuesto..."
-                        autocomplete="off">
-                      <button type="button" class="autocomplete-arrow"
-                        onclick="toggleAutocomplete('repuesto_search', 'repuesto_results')">
+                      <input type="text"
+                             id="repuesto_search"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="Buscar repuesto..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocomplete('repuesto_search', 'repuesto_results')">
                         <i class="bi bi-chevron-down"></i>
                       </button>
                       <input type="hidden" id="rep_nombre" name="rep_nombre">
                       <div class="autocomplete-results" id="repuesto_results"></div>
                     </div>
-                    <button type="button" class="btn btn-success btn-sm mt-1" style="white-space:nowrap;"
-                      id="btnNuevoRepuesto"
-                      onclick="abrirModalNuevoRepuesto()"
-                      title="Registrar nuevo repuesto en el catálogo">
+                    <button type="button"
+                            class="btn btn-success btn-sm mt-1"
+                            style="white-space:nowrap"
+                            id="btnNuevoRepuesto"
+                            onclick="abrirModalNuevoRepuesto()"
+                            title="Registrar nuevo repuesto en el catálogo">
                       <i class="fa-solid fa-plus"></i>
                     </button>
                   </div>
                 </div>
                 <div class="col-md-8">
                   <label class="form-label text-success fw-bold">Ubicación (opcional)</label>
-                  <input type="text" id="rep_ubicacion" class="form-control" placeholder="Ej: Estante 3, Fila 2...">
+                  <input type="text"
+                         id="rep_ubicacion"
+                         class="form-control"
+                         placeholder="Ej: Estante 3, Fila 2...">
                 </div>
               </div>
             </div>
-
             <!-- Configuración de Precios -->
             <hr>
             <div class="row mt-3">
               <div class="col-md-6">
                 <h6 class="text-primary fw-bold mb-3">Moneda</h6>
-                <select id="moneda_producto" class="form-select" style="max-width: 300px;" onchange="cambiarMonedaProducto()">
+                <select id="moneda_producto"
+                        class="form-select"
+                        style="max-width: 300px"
+                        onchange="cambiarMonedaProducto()">
                   <option value="PEN">Soles (PEN)</option>
                   <option value="USD">Dólares (USD)</option>
                 </select>
@@ -385,21 +440,35 @@
                 <div class="d-flex align-items-center gap-3 mb-3">
                   <div class="input-group" style="max-width: 300px;">
                     <span class="input-group-text" id="simbolo_moneda">S/</span>
-                    <input type="number" id="precio_compra" class="form-control" step="0.01" oninput="calcularPreciosVenta()">
+                    <input type="number"
+                           id="precio_compra"
+                           class="form-control"
+                           step="0.01"
+                           oninput="calcularPreciosVenta()">
                   </div>
-                  <small id="helper_precio_dolares" class="text-muted fw-bold" style="display:none; white-space: nowrap;">Precio en Soles: S/ <span id="span_precio_convertido">0.00</span></small>
+                  <small id="helper_precio_dolares"
+                         class="text-muted fw-bold"
+                         style="display:none;
+                                white-space: nowrap">Precio en Soles: S/ <span id="span_precio_convertido">0.00</span></small>
                 </div>
               </div>
             </div>
-
             <div class="row">
               <div class="col-md-6 mb-3">
-                <h6 class="text-success fw-bold mb-2"><i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; vertical-align: middle;"></i> CONFIGURACIÓN PRECIO MÍNIMO</h6>
+                <h6 class="text-success fw-bold mb-2">
+                  <i class="fa-solid fa-circle text-success"
+                     style="font-size: 0.5rem;
+                            vertical-align: middle"></i> CONFIGURACIÓN PRECIO MÍNIMO
+                </h6>
                 <div class="row">
                   <div class="col-md-6">
                     <label class="form-label text-muted">Margen de Ganancia</label>
                     <div class="input-group">
-                      <input type="number" id="margen_minimo" class="form-control" step="0.01" oninput="calcularPrecioDesdeMargen('minimo')">
+                      <input type="number"
+                             id="margen_minimo"
+                             class="form-control"
+                             step="0.01"
+                             oninput="calcularPrecioDesdeMargen('minimo')">
                       <span class="input-group-text">%</span>
                     </div>
                   </div>
@@ -407,48 +476,67 @@
                     <label class="form-label text-muted">Precio Mínimo Final</label>
                     <div class="input-group">
                       <span class="input-group-text bg-success text-white">S/</span>
-                      <input type="number" id="precio_minimo" class="form-control bg-light text-success fw-bold" step="0.01" oninput="calcularMargenDesdePrecio('minimo')">
+                      <input type="number"
+                             id="precio_minimo"
+                             class="form-control bg-light text-success fw-bold"
+                             step="0.01"
+                             oninput="calcularMargenDesdePrecio('minimo')">
                     </div>
                   </div>
                 </div>
               </div>
-
               <div class="col-md-6 mb-3">
-                <h6 class="text-purple fw-bold mb-2" style="color: #6f42c1;"><i class="fa-solid fa-circle" style="font-size: 0.5rem; vertical-align: middle; color: #6f42c1;"></i> CONFIGURACIÓN PRECIO MÁXIMO</h6>
+                <h6 class="text-purple fw-bold mb-2" style="color: #6f42c1;">
+                  <i class="fa-solid fa-circle"
+                     style="font-size: 0.5rem;
+                            vertical-align: middle;
+                            color: #6f42c1"></i> CONFIGURACIÓN PRECIO MÁXIMO
+                </h6>
                 <div class="row">
                   <div class="col-md-6">
                     <label class="form-label text-muted">Margen Máximo</label>
                     <div class="input-group">
-                      <input type="number" id="margen_maximo" class="form-control" step="0.01" oninput="calcularPrecioDesdeMargen('maximo')">
+                      <input type="number"
+                             id="margen_maximo"
+                             class="form-control"
+                             step="0.01"
+                             oninput="calcularPrecioDesdeMargen('maximo')">
                       <span class="input-group-text">%</span>
                     </div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label text-muted">Precio Máximo Final</label>
                     <div class="input-group">
-                      <span class="input-group-text text-white" style="background-color: #6f42c1;">S/</span>
-                      <input type="number" id="precio_maximo" class="form-control bg-light fw-bold" style="color: #6f42c1;" step="0.01" oninput="calcularMargenDesdePrecio('maximo')">
+                      <span class="input-group-text text-white"
+                            style="background-color: #6f42c1">S/</span>
+                      <input type="number"
+                             id="precio_maximo"
+                             class="form-control bg-light fw-bold"
+                             style="color: #6f42c1"
+                             step="0.01"
+                             oninput="calcularMargenDesdePrecio('maximo')">
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
             <div class="row mt-3">
               <div class="col-md-3">
                 <label>Cantidad</label>
                 <input type="number" id="cantidad" class="form-control" value="1" min="1">
               </div>
               <div class="col-md-9 d-flex align-items-end">
-                <button type="button" class="btn btn-success w-100" onclick="agregarDetalle()">+ Agregar al
-                  detalle</button>
+                <button type="button"
+                        class="btn btn-success w-100"
+                        onclick="agregarDetalle()">
+                  + Agregar al
+                  detalle
+                </button>
               </div>
             </div>
-
             <!-- TABLA DETALLES -->
             <div class="mt-4">
               <h5 class="fw-bold">Detalles Agregados</h5>
-
               <!-- Campo oculto para contar filas -->
               <input type="hidden" id="items_count" name="items_count" value="0">
               <table class="table table-bordered">
@@ -467,17 +555,18 @@
                     <th>Acciones</th>
                   </tr>
                 </thead>
-                <tbody id="tablaDetalles"></tbody>
+                <tbody id="tablaDetalles">
+                </tbody>
                 <tfoot>
                   <tr>
-                    <td colspan="6" class="text-end fw-bold align-middle">TOTAL COMPRA S/</td>
-                    <td id="totalGeneral" class="text-end fw-bold align-middle fs-5 text-success">0.00</td>
+                    <td colspan="9" class="text-end fw-bold align-middle">TOTAL COMPRA S/</td>
+                    <td id="totalGeneral"
+                        class="text-end fw-bold align-middle fs-5 text-success">0.00</td>
                     <td></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-
             <div class="mt-3 text-end">
               <button type="button" id="guardarCompra" class="btn btn-primary">Guardar Compra</button>
             </div>
@@ -486,13 +575,18 @@
       </div>
     </div>
   </div>
-
   <!-- Modal para configurar las cuotas -->
-  <div class="modal fade" id="modalCuotas" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal fade"
+       id="modalCuotas"
+       tabindex="-1"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content rounded-3 shadow-lg">
         <div class="modal-header bg-warning text-dark">
-          <h5 class="modal-title"><i class="fa-solid fa-calendar-days me-2"></i>Configurar Cuotas</h5>
+          <h5 class="modal-title">
+            <i class="fa-solid fa-calendar-days me-2"></i>Configurar Cuotas
+          </h5>
           <button type="button" class="btn-close" onclick="cerrarModalCuotas()"></button>
         </div>
         <div class="modal-body">
@@ -500,18 +594,36 @@
           <div class="row mb-3">
             <div class="col-md-3">
               <label class="form-label">Cantidad de Cuotas</label>
-              <input type="number" id="credito_cuotas" name="credito_cuotas" class="form-control" value="4" min="1"
-                max="36" required>
+              <input type="number"
+                     id="credito_cuotas"
+                     name="credito_cuotas"
+                     class="form-control"
+                     value="4"
+                     min="1"
+                     max="36"
+                     required>
             </div>
             <div class="col-md-3">
               <label class="form-label">Tasa de Interés (%)</label>
-              <input type="number" id="credito_tasa" name="credito_tasa" class="form-control" value="0" step="0.1"
-                min="0" required>
+              <input type="number"
+                     id="credito_tasa"
+                     name="credito_tasa"
+                     class="form-control"
+                     value="0"
+                     step="0.1"
+                     min="0"
+                     required>
             </div>
             <div class="col-md-3">
               <label class="form-label">Monto Adelanto (S/)</label>
-              <input type="number" id="monto_adelanto" name="monto_adelanto" class="form-control" value="0" step="0.01"
-                min="0" placeholder="0.00">
+              <input type="number"
+                     id="monto_adelanto"
+                     name="monto_adelanto"
+                     class="form-control"
+                     value="0"
+                     step="0.01"
+                     min="0"
+                     placeholder="0.00">
               <small class="text-muted">Se resta del total antes de dividir</small>
             </div>
             <div class="col-md-3">
@@ -529,94 +641,110 @@
             </div>
             <div class="col-md-4" id="container_dias">
               <label class="form-label">Días entre cuotas</label>
-              <input type="number" id="credito_dias" name="credito_dias" class="form-control" value="30" min="1" max="40" oninput="if(this.value>40)this.value=40; if(this.value<1&&this.value!=='')this.value=1;" required>
+              <input type="number"
+                     id="credito_dias"
+                     name="credito_dias"
+                     class="form-control"
+                     value="30"
+                     min="1"
+                     max="40"
+                     oninput="if(this.value>40)this.value=40; if(this.value<1&&this.value!=='')this.value=1;"
+                     required>
+              </div>
+            </div>
+            <div class="text-end mb-3">
+              <button type="button" class="btn btn-success" onclick="generarCuotas()">
+                <i class="fa-solid fa-calculator me-2"></i>Generar Cuotas
+              </button>
+            </div>
+            <!-- Tabla para mostrar las cuotas generadas -->
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm">
+                <thead class="table-light">
+                  <tr>
+                    <th>Cuota</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Monto</th>
+                    <th>Interés</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaCuotas">
+                </tbody>
+              </table>
             </div>
           </div>
-
-          <div class="text-end mb-3">
-            <button type="button" class="btn btn-success" onclick="generarCuotas()">
-              <i class="fa-solid fa-calculator me-2"></i>Generar Cuotas
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModalCuotas()">
+              <i class="fa-solid fa-xmark me-2"></i>Cancelar
+            </button>
+            <button type="button"
+                    class="btn btn-success"
+                    onclick="guardarYCerrarCuotas()">
+              <i class="fa-solid fa-check me-2"></i>Guardar Configuración
             </button>
           </div>
-
-          <!-- Tabla para mostrar las cuotas generadas -->
-          <div class="table-responsive">
-            <table class="table table-bordered table-sm">
-              <thead class="table-light">
-                <tr>
-                  <th>Cuota</th>
-                  <th>Fecha Vencimiento</th>
-                  <th>Monto</th>
-                  <th>Interés</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody id="tablaCuotas"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModalCuotas()">
-            <i class="fa-solid fa-xmark me-2"></i>Cancelar
-          </button>
-          <button type="button" class="btn btn-success" onclick="guardarYCerrarCuotas()">
-            <i class="fa-solid fa-check me-2"></i>Guardar Configuración
-          </button>
         </div>
       </div>
     </div>
-  </div>
-
-  <!--MODAL AGREGAR PROVEEDOR DESDE COMPRAS-->
-  <div class="modal fade" id="modalAgregarProveedorCompra" tabindex="-1" data-bs-backdrop="static"
-    data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content rounded-3 shadow-lg">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title"><i class="fa-solid fa-user-plus me-2"></i>Agregar Nuevo Proveedor</h5>
-          <button type="button" class="btn-close btn-close-white" onclick="cerrarModalProveedor()"></button>
-        </div>
-        <div class="modal-body">
-          <!-- Alerta de información TokenPeru -->
-          <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="fa-solid fa-circle-info me-2"></i>
-            <strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) o RUC (11 dígitos) y los datos se completarán
-            automáticamente.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!--MODAL AGREGAR PROVEEDOR DESDE COMPRAS-->
+    <div class="modal fade"
+         id="modalAgregarProveedorCompra"
+         tabindex="-1"
+         data-bs-backdrop="static"
+         data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-3 shadow-lg">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">
+              <i class="fa-solid fa-user-plus me-2"></i>Agregar Nuevo Proveedor
+            </h5>
+            <button type="button"
+                    class="btn-close btn-close-white"
+                    onclick="cerrarModalProveedor()"></button>
           </div>
-
-          <!-- Alerta de carga -->
-          <div class="alert alert-primary d-none" id="alertCargandoCompra" role="alert">
-            <div class="d-flex align-items-center">
-              <div class="spinner-border spinner-border-sm me-2" role="status">
-                <span class="visually-hidden">Cargando...</span>
-              </div>
-              <div>Consultando documento en RENIEC/SUNAT...</div>
+          <div class="modal-body">
+            <!-- Alerta de información TokenPeru -->
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+              <i class="fa-solid fa-circle-info me-2"></i>
+              <strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) o RUC (11 dígitos) y los datos se completarán
+              automáticamente.
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-          </div>
-
-          <!-- Alerta de error -->
-          <div class="alert alert-danger d-none" id="alertErrorCompra" role="alert">
-            <i class="fa-solid fa-circle-exclamation me-2"></i>
-            <span id="mensajeErrorCompra"></span>
-          </div>
-
-          <!-- Alerta de éxito -->
-          <div class="alert alert-success d-none" id="alertExitoCompra" role="alert">
-            <i class="fa-solid fa-circle-check me-2"></i>
-            <span id="mensajeExitoCompra"></span>
-          </div>
-
-          <form id="formAgregarProveedorCompra">
-            {% csrf_token %}
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label fw-semibold">Tipo de Entidad <span class="text-danger">*</span></label>
-                <select name="tipoEntidadProveedor" id="tipoEntidadProveedorCompra" class="form-select rounded-pill"
-                  required>
-                  <option value="">Seleccione...</option>
-                  {% comment %}
+            <!-- Alerta de carga -->
+            <div class="alert alert-primary d-none"
+                 id="alertCargandoCompra"
+                 role="alert">
+              <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Cargando...</span>
+                </div>
+                <div>Consultando documento en RENIEC/SUNAT...</div>
+              </div>
+            </div>
+            <!-- Alerta de error -->
+            <div class="alert alert-danger d-none" id="alertErrorCompra" role="alert">
+              <i class="fa-solid fa-circle-exclamation me-2"></i>
+              <span id="mensajeErrorCompra"></span>
+            </div>
+            <!-- Alerta de éxito -->
+            <div class="alert alert-success d-none" id="alertExitoCompra" role="alert">
+              <i class="fa-solid fa-circle-check me-2"></i>
+              <span id="mensajeExitoCompra"></span>
+            </div>
+            <form id="formAgregarProveedorCompra">
+              {% csrf_token %}
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-semibold">
+                    Tipo de Entidad <span class="text-danger">*</span>
+                  </label>
+                  <select name="tipoEntidadProveedor"
+                          id="tipoEntidadProveedorCompra"
+                          class="form-select rounded-pill"
+                          required>
+                    <option value="">Seleccione...</option>
+                    {% comment %}
                   NOTA: Necesitas agregar 'tipos_entidad' al contexto de la vista de compras
                   En comprasView.py, en la función compras(), agrega:
 
@@ -625,760 +753,1149 @@
 
                   Y en el contexto (data):
                   'tipos_entidad': tipos_entidad,
-                  {% endcomment %}
-
-                  {% for tipo in tipos_entidad %}
-                  <option value="{{ tipo.id_tipo_entidad }}">{{ tipo.tipo_entidad }}</option>
-                  {% empty %}
-                  <option value="1">Persona Natural</option>
-                  <option value="6">Persona Jurídica</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="col-md-6 mb-3">
-                <label class="form-label fw-semibold">
-                  Número de Documento <span class="text-danger">*</span>
-                  <span id="badgeTipoDocCompra" class="badge bg-secondary ms-2" style="display: none;"></span>
-                </label>
-                <div class="input-group">
-                  <input type="text" name="numdocProveedor" id="numdocProveedorCompra"
-                    class="form-control rounded-start" maxlength="11" placeholder="DNI (8) o RUC (11)" required>
-                  <button class="btn btn-primary rounded-end" type="button" id="btnConsultarDocCompra"
-                    title="Consultar documento">
-                    <i class="fa-solid fa-search"></i>
-                  </button>
+                    {% endcomment %}
+                    {% for tipo in tipos_entidad %}
+                      <option value="{{ tipo.id_tipo_entidad }}">{{ tipo.tipo_entidad }}</option>
+                    {% empty %}
+                      <option value="1">Persona Natural</option>
+                      <option value="6">Persona Jurídica</option>
+                    {% endfor %}
+                  </select>
                 </div>
-                <small class="text-muted">Presione Enter o el botón de búsqueda</small>
-              </div>
-            </div>
-
-            <!-- Info adicional RUC (oculto inicialmente) -->
-            <div class="row d-none" id="infoRucCompra">
-              <div class="col-md-12 mb-3">
-                <div class="alert alert-light border" role="alert">
-                  <strong>Estado SUNAT:</strong> <span id="estadoSunatCompra" class="badge"></span>
-                  <strong class="ms-3">Condición:</strong> <span id="condicionSunatCompra"></span>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-semibold">
+                    Número de Documento <span class="text-danger">*</span>
+                    <span id="badgeTipoDocCompra"
+                          class="badge bg-secondary ms-2"
+                          style="display: none"></span>
+                  </label>
+                  <div class="input-group">
+                    <input type="text"
+                           name="numdocProveedor"
+                           id="numdocProveedorCompra"
+                           class="form-control rounded-start"
+                           maxlength="11"
+                           placeholder="DNI (8) o RUC (11)"
+                           required>
+                    <button class="btn btn-primary rounded-end"
+                            type="button"
+                            id="btnConsultarDocCompra"
+                            title="Consultar documento">
+                      <i class="fa-solid fa-search"></i>
+                    </button>
+                  </div>
+                  <small class="text-muted">Presione Enter o el botón de búsqueda</small>
                 </div>
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label class="form-label fw-semibold">Razón Social / Nombre Completo <span
-                    class="text-danger">*</span></label>
-                <input type="text" name="razonsocialProveedor" id="razonsocialProveedorCompra"
-                  class="form-control rounded-pill" maxlength="255" required>
+              <!-- Info adicional RUC (oculto inicialmente) -->
+              <div class="row d-none" id="infoRucCompra">
+                <div class="col-md-12 mb-3">
+                  <div class="alert alert-light border" role="alert">
+                    <strong>Estado SUNAT:</strong> <span id="estadoSunatCompra" class="badge"></span>
+                    <strong class="ms-3">Condición:</strong> <span id="condicionSunatCompra"></span>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label class="form-label fw-semibold">Nombre Comercial</label>
-                <input type="text" name="nombreComercialProveedor" id="nombreComercialProveedorCompra"
-                  class="form-control rounded-pill" maxlength="255">
+              <div class="row">
+                <div class="col-md-12 mb-3">
+                  <label class="form-label fw-semibold">
+                    Razón Social / Nombre Completo <span class="text-danger">*</span>
+                  </label>
+                  <input type="text"
+                         name="razonsocialProveedor"
+                         id="razonsocialProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="255"
+                         required>
+                </div>
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label fw-semibold">
-                  Departamento
-                  <i class="fa-solid fa-info-circle text-muted" title="Se completa automáticamente con RUC"></i>
-                </label>
-                <input type="text" name="departamentoProveedor" id="departamentoProveedorCompra"
-                  class="form-control rounded-pill" maxlength="100">
+              <div class="row">
+                <div class="col-md-12 mb-3">
+                  <label class="form-label fw-semibold">Nombre Comercial</label>
+                  <input type="text"
+                         name="nombreComercialProveedor"
+                         id="nombreComercialProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="255">
+                </div>
               </div>
-
-              <div class="col-md-4 mb-3">
-                <label class="form-label fw-semibold">
-                  Provincia
-                  <i class="fa-solid fa-info-circle text-muted" title="Se completa automáticamente con RUC"></i>
-                </label>
-                <input type="text" name="provinciaProveedor" id="provinciaProveedorCompra"
-                  class="form-control rounded-pill" maxlength="100">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label fw-semibold">
+                    Departamento
+                    <i class="fa-solid fa-info-circle text-muted"
+                       title="Se completa automáticamente con RUC"></i>
+                  </label>
+                  <input type="text"
+                         name="departamentoProveedor"
+                         id="departamentoProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="100">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label fw-semibold">
+                    Provincia
+                    <i class="fa-solid fa-info-circle text-muted"
+                       title="Se completa automáticamente con RUC"></i>
+                  </label>
+                  <input type="text"
+                         name="provinciaProveedor"
+                         id="provinciaProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="100">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label fw-semibold">
+                    Distrito
+                    <i class="fa-solid fa-info-circle text-muted"
+                       title="Se completa automáticamente con RUC"></i>
+                  </label>
+                  <input type="text"
+                         name="distritoProveedor"
+                         id="distritoProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="100">
+                </div>
               </div>
-
-              <div class="col-md-4 mb-3">
-                <label class="form-label fw-semibold">
-                  Distrito
-                  <i class="fa-solid fa-info-circle text-muted" title="Se completa automáticamente con RUC"></i>
-                </label>
-                <input type="text" name="distritoProveedor" id="distritoProveedorCompra"
-                  class="form-control rounded-pill" maxlength="100">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-semibold">Teléfono</label>
+                  <input type="text"
+                         name="telefonoProveedor"
+                         id="telefonoProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="30">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-semibold">Correo Electrónico</label>
+                  <input type="email"
+                         name="emailProveedor"
+                         id="emailProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="255"
+                         placeholder="ejemplo@correo.com">
+                </div>
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label fw-semibold">Teléfono</label>
-                <input type="text" name="telefonoProveedor" id="telefonoProveedorCompra"
-                  class="form-control rounded-pill" maxlength="30">
+              <div class="row">
+                <div class="col-md-12 mb-3">
+                  <label class="form-label fw-semibold">Dirección</label>
+                  <input type="text"
+                         name="direccionProveedor"
+                         id="direccionProveedorCompra"
+                         class="form-control rounded-pill"
+                         maxlength="255">
+                </div>
               </div>
-
-              <div class="col-md-6 mb-3">
-                <label class="form-label fw-semibold">Correo Electrónico</label>
-                <input type="email" name="emailProveedor" id="emailProveedorCompra" class="form-control rounded-pill"
-                  maxlength="255" placeholder="ejemplo@correo.com">
+              <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-success rounded-pill px-4"
+                        id="btnGuardarProveedorCompra">
+                  <i class="fa-solid fa-save me-2"></i>Guardar Proveedor
+                </button>
+                <button type="button"
+                        class="btn btn-outline-secondary rounded-pill"
+                        onclick="cerrarModalProveedor()">
+                  <i class="fa-solid fa-xmark me-2"></i>Cancelar
+                </button>
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label class="form-label fw-semibold">Dirección</label>
-                <input type="text" name="direccionProveedor" id="direccionProveedorCompra"
-                  class="form-control rounded-pill" maxlength="255">
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarProveedorCompra">
-                <i class="fa-solid fa-save me-2"></i>Guardar Proveedor
-              </button>
-              <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="cerrarModalProveedor()">
-                <i class="fa-solid fa-xmark me-2"></i>Cancelar
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-
-
-<!-- ======================================================== -->
-<!-- MODAL: NUEVO PRODUCTO (VEHÍCULO EN CATÁLOGO) DESDE COMPRA -->
-<!-- ======================================================== -->
-<div class="modal fade" id="modalNuevoProductoCompra" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" style="z-index:1090;">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content rounded-3 shadow-lg">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="fa-solid fa-motorcycle me-2"></i>Nuevo Vehículo en Catálogo</h5>
-        <button type="button" class="btn-close btn-close-white" onclick="cerrarModalNuevoProducto()"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-info py-2"><i class="fa-solid fa-circle-info me-2"></i>Complete los datos del vehículo. Al guardar, se seleccionará automáticamente en la compra.</div>
-        <div id="alertNuevoProducto"></div>
-        <form id="formNuevoProductoCompra">
-          {% csrf_token %}
-          <div class="row g-3">
-            <div class="col-md-12 mt-2">
-              <div class="p-3 bg-light rounded-3 border">
-                <label class="form-label fw-bold text-primary mb-1">
-                  <i class="fa-solid fa-tag me-1"></i>Nombre del Vehículo
-                </label>
-                <input type="text" id="np_nomproducto" name="nomproducto"
-                  class="form-control border-0 bg-transparent fw-bold fs-6 p-0"
-                  placeholder="Se autogenera, puedes editarlo...">
-              </div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Código Interno</label>
-              <input type="text" id="np_codigo_interno" name="codigo_interno" class="form-control" placeholder="Ej: VH-001">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Marca <span class="text-danger">*</span></label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text"
-                         id="np_marca_search_add"
-                         class="form-control autocomplete-input autocomplete-with-arrow"
-                         placeholder="Seleccione marca..."
-                         autocomplete="off" required>
-                  <button type="button"
-                          class="autocomplete-arrow"
-                          onclick="toggleAutocompleteNew('np_marca_search_add', 'np_marca_results_add', marcasData, 'np_idmarca')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idmarca" id="np_idmarca">
-                  <div class="autocomplete-results" id="np_marca_results_add"></div>
-                </div>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Marca" data-bs-toggle="modal" data-bs-target="#miniModalMarca">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Modelo</label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text"
-                         id="np_modelo_search_add"
-                         class="form-control autocomplete-input autocomplete-with-arrow"
-                         placeholder="Seleccione modelo..."
-                         autocomplete="off">
-                  <button type="button"
-                          class="autocomplete-arrow"
-                          onclick="toggleAutocompleteNew('np_modelo_search_add', 'np_modelo_results_add', modelosData, 'np_idmodelo')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idmodelo" id="np_idmodelo">
-                  <div class="autocomplete-results" id="np_modelo_results_add"></div>
-                </div>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nuevo Modelo" data-bs-toggle="modal" data-bs-target="#miniModalModelo">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Categoría <span class="text-danger">*</span></label>
-              <select id="np_idcategoria" name="idcategoria" class="form-select select-auto-veh" required>
-                <option value="">-- Seleccione --</option>
-                {% for cat in categorias %}
-                <option value="{{ cat.idcategoria }}">{{ cat.nomcategoria }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Cilindrada <span class="text-danger">*</span></label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text"
-                         id="np_cilindrada_search_add"
-                         class="form-control autocomplete-input autocomplete-with-arrow"
-                         placeholder="Seleccione cilindrada..."
-                         autocomplete="off" required>
-                  <button type="button"
-                          class="autocomplete-arrow"
-                          onclick="toggleAutocompleteNew('np_cilindrada_search_add', 'np_cilindrada_results_add', cilindradasData, 'np_idcilindrada')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idcilindrada" id="np_idcilindrada">
-                  <div class="autocomplete-results" id="np_cilindrada_results_add"></div>
-                </div>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Cilindrada" data-bs-toggle="modal" data-bs-target="#miniModalCilindrada">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Color <span class="text-danger">*</span></label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text"
-                         id="np_color_search_add"
-                         class="form-control autocomplete-input autocomplete-with-arrow"
-                         placeholder="Seleccione color..."
-                         autocomplete="off" required>
-                  <button type="button"
-                          class="autocomplete-arrow"
-                          onclick="toggleAutocompleteNew('np_color_search_add', 'np_color_results_add', coloresData, 'np_idcolor')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idcolor" id="np_idcolor">
-                  <div class="autocomplete-results" id="np_color_results_add"></div>
-                </div>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nuevo Color" data-bs-toggle="modal" data-bs-target="#miniModalColor">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <!-- Detalle de Color (OPCIONAL) -->
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Detalle de Color <span class="badge bg-secondary ms-1" style="font-size:0.7rem;">Opcional</span></label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text"
-                         id="np_detalle_color_search_add"
-                         class="form-control autocomplete-input autocomplete-with-arrow select-auto-veh"
-                         placeholder="Seleccione detalle..."
-                         autocomplete="off">
-                  <button type="button"
-                          class="autocomplete-arrow"
-                          onclick="toggleAutocompleteNew('np_detalle_color_search_add', 'np_detalle_color_results_add', detallesColorData, 'np_id_detalle_color')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="id_detalle_color" id="np_id_detalle_color">
-                  <div class="autocomplete-results" id="np_detalle_color_results_add"></div>
-                </div>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nuevo Detalle de Color" data-bs-toggle="modal" data-bs-target="#miniModalDetalleColor">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Unidad de Medida <span class="text-danger">*</span></label>
-              <div class="d-flex gap-2 align-items-start">
-                <select id="np_idunidad" name="idunidad" class="form-select flex-grow-1" required>
-                  <option value="">-- Seleccione --</option>
-                  {% for u in unidades_catalogo %}
-                  <option value="{{ u.idunidad }}">{{ u.abrunidad }}</option>
-                  {% endfor %}
-                </select>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Unidad" data-bs-toggle="modal" data-bs-target="#miniModalUnidad">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-12">
-              <label class="form-label fw-semibold">Configuración Vehicular</label>
-              <div class="d-flex gap-2 align-items-start">
-                <select id="np_id_configuracion" name="id_configuracion" class="form-select select-auto-veh flex-grow-1">
-                  <option value="">-- Ninguna --</option>
-                  {% for cfg in configuraciones_veh %}
-                  <option value="{{ cfg.id_configuracion }}">{{ cfg.nombre }}</option>
-                  {% endfor %}
-                </select>
-                <button type="button" class="btn btn-primary px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Configuración" data-bs-toggle="modal" data-bs-target="#miniModalConfig">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
+    <!-- ======================================================== -->
+    <!-- MODAL: NUEVO PRODUCTO (VEHÍCULO EN CATÁLOGO) DESDE COMPRA -->
+    <!-- ======================================================== -->
+    <div class="modal fade"
+         id="modalNuevoProductoCompra"
+         tabindex="-1"
+         data-bs-backdrop="static"
+         data-bs-keyboard="false"
+         style="z-index:1090">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-3 shadow-lg">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="fa-solid fa-motorcycle me-2"></i>Nuevo Vehículo en Catálogo
+            </h5>
+            <button type="button"
+                    class="btn-close btn-close-white"
+                    onclick="cerrarModalNuevoProducto()"></button>
           </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary rounded-pill" onclick="cerrarModalNuevoProducto()">
-          <i class="fa-solid fa-xmark me-2"></i>Cancelar
-        </button>
-        <button type="button" class="btn btn-primary rounded-pill" id="btnGuardarNuevoProducto" onclick="guardarNuevoProducto()">
-          <i class="fa-solid fa-save me-2"></i>Guardar Vehículo
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===================== MINI-MODALES REGISTRO RÁPIDO ===================== -->
-
-<!-- MINI-MODAL: NUEVA MARCA -->
-<div class="modal fade" id="miniModalMarca" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Marca</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre de la Marca</label>
-        <input type="text" id="input_nueva_marca" class="form-control rounded-pill" placeholder="Ej: Honda">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_marca_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVO MODELO -->
-<div class="modal fade" id="miniModalModelo" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nuevo Modelo</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre del Modelo</label>
-        <input type="text" id="input_nuevo_modelo" class="form-control rounded-pill" placeholder="Ej: CBF 150">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_modelo_rapido">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA CONFIGURACIÓN VEHICULAR -->
-<div class="modal fade" id="miniModalConfig" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Configuración</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre de la Configuración</label>
-        <input type="text" id="input_nueva_config" class="form-control rounded-pill" placeholder="Ej: TRIMOTO PASAJEROS">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_config_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA CILINDRADA -->
-<div class="modal fade" id="miniModalCilindrada" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Cilindrada</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Cilindrada (cc)</label>
-        <input type="text" id="input_nueva_cilindrada" class="form-control rounded-pill" placeholder="Ej: 150cc">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_cilindrada_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVO COLOR -->
-<div class="modal fade" id="miniModalColor" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nuevo Color</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre del Color</label>
-        <input type="text" id="input_nuevo_color" class="form-control rounded-pill" placeholder="Ej: Azul Marino">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_color_rapido">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVO DETALLE DE COLOR -->
-<div class="modal fade" id="miniModalDetalleColor" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nuevo Detalle Color</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre del Detalle</label>
-        <input type="text" id="input_nuevo_detalle_color" class="form-control rounded-pill" placeholder="Ej: AAAA">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_detalle_color_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA UNIDAD -->
-<div class="modal fade" id="miniModalUnidad" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Unidad</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Código SUNAT</label>
-        <input type="text" id="input_nueva_unidad_codigo" class="form-control rounded-pill mb-2" placeholder="Ej: NIU">
-        <label class="form-label fw-semibold">Abreviación</label>
-        <input type="text" id="input_nueva_unidad_nombre" class="form-control rounded-pill" placeholder="Ej: Unidad">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm rounded-pill" id="btn_guardar_unidad_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ======================================================== -->
-<!-- MODAL: NUEVO REPUESTO EN CATÁLOGO DESDE COMPRA           -->
-<!-- ======================================================== -->
-<div class="modal fade" id="modalNuevoRepuestoCompra" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" style="z-index:1090;">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content rounded-3 shadow-lg">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fa-solid fa-screwdriver-wrench me-2"></i>Nuevo Repuesto en Catálogo</h5>
-        <button type="button" class="btn-close btn-close-white" onclick="cerrarModalNuevoRepuesto()"></button>
-      </div>
-      <div class="modal-body p-4">
-        <div class="alert alert-info py-2"><i class="fa-solid fa-circle-info me-2"></i>Complete los datos del repuesto. Al guardar, se seleccionará automáticamente en la compra.</div>
-        <div id="alertNuevoRepuesto"></div>
-        <form id="formNuevoRepuestoCompra">
-          {% csrf_token %}
-          <!-- SECCION 1: Información del Repuesto -->
-          <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
-            <i class="fa-solid fa-circle-info me-1"></i> Información del Repuesto
-          </h6>
-          <div class="row g-3 mb-4">
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Código Interno</label>
-              <input type="text" name="codigo_interno" id="nr_codigo_interno" class="form-control" placeholder="Ej: REP-001">
+          <div class="modal-body">
+            <div class="alert alert-info py-2">
+              <i class="fa-solid fa-circle-info me-2"></i>Complete los datos del vehículo. Al guardar, se seleccionará automáticamente en la compra.
             </div>
-            <div class="col-md-8">
-              <label class="form-label fw-semibold">Nombre del Repuesto <span class="text-danger">*</span></label>
-              <input type="text" name="nombre" id="nr_nombre" class="form-control" required placeholder="Ej: FILTRO DE ACEITE">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Categoría</label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text" id="nr_categoria_rep_search_add" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="— Seleccionar —" autocomplete="off">
-                  <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteNew('nr_categoria_rep_search_add', 'nr_categoria_rep_results_add', categoriasRepData, 'nr_categoria_rep_id_add')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idcategoria_rep" id="nr_categoria_rep_id_add" class="select-add">
-                  <div class="autocomplete-results" id="nr_categoria_rep_results_add"></div>
+            <div id="alertNuevoProducto"></div>
+            <form id="formNuevoProductoCompra">
+              {% csrf_token %}
+              <div class="row g-3">
+                <div class="col-md-12 mt-2">
+                  <div class="p-3 bg-light rounded-3 border">
+                    <label class="form-label fw-bold text-primary mb-1">
+                      <i class="fa-solid fa-tag me-1"></i>Nombre del Vehículo
+                    </label>
+                    <input type="text"
+                           id="np_nomproducto"
+                           name="nomproducto"
+                           class="form-control border-0 bg-transparent fw-bold fs-6 p-0"
+                           placeholder="Se autogenera, puedes editarlo...">
+                  </div>
                 </div>
-                <button type="button" class="btn btn-success px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Categoría" onclick="setMainModal('modalNuevoRepuestoCompra')" data-bs-toggle="modal" data-bs-target="#miniModalCategoriaRep">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Marca</label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text" id="nr_marca_rep_search_add" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="— Seleccionar —" autocomplete="off">
-                  <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteNew('nr_marca_rep_search_add', 'nr_marca_rep_results_add', marcasRepData, 'nr_marca_rep_id_add')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idmarca_rep" id="nr_marca_rep_id_add" class="select-add">
-                  <div class="autocomplete-results" id="nr_marca_rep_results_add"></div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Código Interno</label>
+                  <input type="text"
+                         id="np_codigo_interno"
+                         name="codigo_interno"
+                         class="form-control"
+                         placeholder="Ej: VH-001">
                 </div>
-                <button type="button" class="btn btn-success px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Marca" onclick="setMainModal('modalNuevoRepuestoCompra')" data-bs-toggle="modal" data-bs-target="#miniModalMarcaRep">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Unidad de Medida <span class="text-danger">*</span></label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text" id="nr_unidad_rep_search_add" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="— Seleccionar —" autocomplete="off" required>
-                  <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteNew('nr_unidad_rep_search_add', 'nr_unidad_rep_results_add', unidadesData, 'nr_unidad_rep_id_add')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="idunidad_rep" id="nr_unidad_rep_id_add" class="select-add" required>
-                  <div class="autocomplete-results" id="nr_unidad_rep_results_add"></div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Marca <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="np_marca_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione marca..."
+                             autocomplete="off"
+                             required>
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('np_marca_search_add', 'np_marca_results_add', marcasData, 'np_idmarca')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="idmarca" id="np_idmarca">
+                      <div class="autocomplete-results" id="np_marca_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Marca"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalMarca">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
                 </div>
-                <button type="button" class="btn btn-success px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Unidad" onclick="setMainModal('modalNuevoRepuestoCompra')" data-bs-toggle="modal" data-bs-target="#miniModalUnidadRep">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Modelo</label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="np_modelo_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione modelo..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('np_modelo_search_add', 'np_modelo_results_add', modelosData, 'np_idmodelo')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="idmodelo" id="np_idmodelo">
+                      <div class="autocomplete-results" id="np_modelo_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nuevo Modelo"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalModelo">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Categoría <span class="text-danger">*</span>
+                  </label>
+                  <select id="np_idcategoria"
+                          name="idcategoria"
+                          class="form-select select-auto-veh"
+                          required>
+                    <option value="">-- Seleccione --</option>
+                    {% for cat in categorias %}<option value="{{ cat.idcategoria }}">{{ cat.nomcategoria }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Cilindrada <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="np_cilindrada_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione cilindrada..."
+                             autocomplete="off"
+                             required>
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('np_cilindrada_search_add', 'np_cilindrada_results_add', cilindradasData, 'np_idcilindrada')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="idcilindrada" id="np_idcilindrada">
+                      <div class="autocomplete-results" id="np_cilindrada_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Cilindrada"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalCilindrada">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Color <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="np_color_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="Seleccione color..."
+                             autocomplete="off"
+                             required>
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('np_color_search_add', 'np_color_results_add', coloresData, 'np_idcolor')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="idcolor" id="np_idcolor">
+                      <div class="autocomplete-results" id="np_color_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nuevo Color"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalColor">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <!-- Detalle de Color (OPCIONAL) -->
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Detalle de Color <span class="badge bg-secondary ms-1" style="font-size:0.7rem;">Opcional</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="np_detalle_color_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow select-auto-veh"
+                             placeholder="Seleccione detalle..."
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('np_detalle_color_search_add', 'np_detalle_color_results_add', detallesColorData, 'np_id_detalle_color')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden" name="id_detalle_color" id="np_id_detalle_color">
+                      <div class="autocomplete-results" id="np_detalle_color_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nuevo Detalle de Color"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalDetalleColor">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Unidad de Medida <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <select id="np_idunidad"
+                            name="idunidad"
+                            class="form-select flex-grow-1"
+                            required>
+                      <option value="">-- Seleccione --</option>
+                      {% for u in unidades_catalogo %}<option value="{{ u.idunidad }}">{{ u.abrunidad }}</option>{% endfor %}
+                    </select>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Unidad"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalUnidad">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label fw-semibold">Configuración Vehicular</label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <select id="np_id_configuracion"
+                            name="id_configuracion"
+                            class="form-select select-auto-veh flex-grow-1">
+                      <option value="">-- Ninguna --</option>
+                      {% for cfg in configuraciones_veh %}<option value="{{ cfg.id_configuracion }}">{{ cfg.nombre }}</option>{% endfor %}
+                    </select>
+                    <button type="button"
+                            class="btn btn-primary px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Configuración"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalConfig">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Modelo / Referencia</label>
-              <input type="text" name="modelo_referencia" id="nr_modelo_referencia" class="form-control" placeholder="Ej: W 712/52">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Código de Barras</label>
-              <input type="text" name="codigo_barras" id="nr_codigo_barras" class="form-control" placeholder="Ej: 7894561230012">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Compatibilidad</label>
-              <textarea name="compatibilidad" id="nr_compatibilidad" class="form-control" rows="2" placeholder="Vehículos o repuestos compatibles..."></textarea>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Descripción</label>
-              <textarea name="descripcion" id="nr_descripcion" class="form-control" rows="2" placeholder="Descripción breve del repuesto..."></textarea>
-            </div>
+            </form>
           </div>
-
-          <!-- SECCION 2: Información de Inventario -->
-          <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
-            <i class="fa-solid fa-boxes-stacked me-1"></i> Información de Inventario y Precios
-          </h6>
-          <div class="row g-3 mb-4">
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Stock Mínimo</label>
-              <input type="number" name="stock_minimo" id="nr_stock_minimo" class="form-control" value="0" min="0">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Stock Máximo</label>
-              <input type="number" name="stock_maximo" id="nr_stock_maximo" class="form-control" value="0" min="0">
-            </div>
-            <div class="col-md-4"></div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Costo Unitario (S/)</label>
-              <input type="number" name="costo_unitario" id="nr_costo_unitario" class="form-control" value="0.00" min="0" step="0.01">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Precio x Mayor (S/)</label>
-              <input type="number" name="precio_minimo" id="nr_precio_minimo" class="form-control" value="0.00" min="0" step="0.01">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Precio x Menor (S/)</label>
-              <input type="number" name="precio_sugerido" id="nr_precio_sugerido" class="form-control" value="0.00" min="0" step="0.01">
-            </div>
+          <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-secondary rounded-pill"
+                    onclick="cerrarModalNuevoProducto()">
+              <i class="fa-solid fa-xmark me-2"></i>Cancelar
+            </button>
+            <button type="button"
+                    class="btn btn-primary rounded-pill"
+                    id="btnGuardarNuevoProducto"
+                    onclick="guardarNuevoProducto()">
+              <i class="fa-solid fa-save me-2"></i>Guardar Vehículo
+            </button>
           </div>
-
-          <!-- SECCION 3: Información Adicional -->
-          <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
-            <i class="fa-solid fa-circle-dot me-1"></i> Información Adicional
-          </h6>
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Garantía</label>
-              <div class="d-flex gap-2 align-items-start">
-                <div class="autocomplete-wrapper flex-grow-1">
-                  <input type="text" id="nr_garantia_rep_search_add" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="— Sin garantía —" autocomplete="off">
-                  <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteNew('nr_garantia_rep_search_add', 'nr_garantia_rep_results_add', garantiasRepData, 'nr_garantia_rep_id_add')">
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <input type="hidden" name="id_garantia_repuesto" id="nr_garantia_rep_id_add" class="select-add">
-                  <div class="autocomplete-results" id="nr_garantia_rep_results_add"></div>
+        </div>
+      </div>
+    </div>
+    <!-- ===================== MINI-MODALES REGISTRO RÁPIDO ===================== -->
+    <!-- MINI-MODAL: NUEVA MARCA -->
+    <div class="modal fade"
+         id="miniModalMarca"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Marca
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre de la Marca</label>
+            <input type="text"
+                   id="input_nueva_marca"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: Honda">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_marca_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVO MODELO -->
+    <div class="modal fade"
+         id="miniModalModelo"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nuevo Modelo
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre del Modelo</label>
+            <input type="text"
+                   id="input_nuevo_modelo"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: CBF 150">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_modelo_rapido">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVA CONFIGURACIÓN VEHICULAR -->
+    <div class="modal fade"
+         id="miniModalConfig"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Configuración
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre de la Configuración</label>
+            <input type="text"
+                   id="input_nueva_config"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: TRIMOTO PASAJEROS">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_config_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVA CILINDRADA -->
+    <div class="modal fade"
+         id="miniModalCilindrada"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Cilindrada
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Cilindrada (cc)</label>
+            <input type="text"
+                   id="input_nueva_cilindrada"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: 150cc">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_cilindrada_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVO COLOR -->
+    <div class="modal fade"
+         id="miniModalColor"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nuevo Color
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre del Color</label>
+            <input type="text"
+                   id="input_nuevo_color"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: Azul Marino">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_color_rapido">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVO DETALLE DE COLOR -->
+    <div class="modal fade"
+         id="miniModalDetalleColor"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nuevo Detalle Color
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre del Detalle</label>
+            <input type="text"
+                   id="input_nuevo_detalle_color"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: AAAA">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_detalle_color_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVA UNIDAD -->
+    <div class="modal fade"
+         id="miniModalUnidad"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-primary text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Unidad
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Código SUNAT</label>
+            <input type="text"
+                   id="input_nueva_unidad_codigo"
+                   class="form-control rounded-pill mb-2"
+                   placeholder="Ej: NIU">
+            <label class="form-label fw-semibold">Abreviación</label>
+            <input type="text"
+                   id="input_nueva_unidad_nombre"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: Unidad">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-primary btn-sm rounded-pill"
+                    id="btn_guardar_unidad_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ======================================================== -->
+    <!-- MODAL: NUEVO REPUESTO EN CATÁLOGO DESDE COMPRA           -->
+    <!-- ======================================================== -->
+    <div class="modal fade"
+         id="modalNuevoRepuestoCompra"
+         tabindex="-1"
+         data-bs-backdrop="static"
+         data-bs-keyboard="false"
+         style="z-index:1090">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-3 shadow-lg">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">
+              <i class="fa-solid fa-screwdriver-wrench me-2"></i>Nuevo Repuesto en Catálogo
+            </h5>
+            <button type="button"
+                    class="btn-close btn-close-white"
+                    onclick="cerrarModalNuevoRepuesto()"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2">
+              <i class="fa-solid fa-circle-info me-2"></i>Complete los datos del repuesto. Al guardar, se seleccionará automáticamente en la compra.
+            </div>
+            <div id="alertNuevoRepuesto"></div>
+            <form id="formNuevoRepuestoCompra">
+              {% csrf_token %}
+              <!-- SECCION 1: Información del Repuesto -->
+              <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
+                <i class="fa-solid fa-circle-info me-1"></i> Información del Repuesto
+              </h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Código Interno</label>
+                  <input type="text"
+                         name="codigo_interno"
+                         id="nr_codigo_interno"
+                         class="form-control"
+                         placeholder="Ej: REP-001">
                 </div>
-                <button type="button" class="btn btn-success px-2 py-2 flex-shrink-0" style="height:38px;width:38px;" title="Nueva Garantía" onclick="setMainModal('modalNuevoRepuestoCompra')" data-bs-toggle="modal" data-bs-target="#miniModalGarantiaRep">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
+                <div class="col-md-8">
+                  <label class="form-label fw-semibold">
+                    Nombre del Repuesto <span class="text-danger">*</span>
+                  </label>
+                  <input type="text"
+                         name="nombre"
+                         id="nr_nombre"
+                         class="form-control"
+                         required
+                         placeholder="Ej: FILTRO DE ACEITE">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Categoría</label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="nr_categoria_rep_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="— Seleccionar —"
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('nr_categoria_rep_search_add', 'nr_categoria_rep_results_add', categoriasRepData, 'nr_categoria_rep_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden"
+                             name="idcategoria_rep"
+                             id="nr_categoria_rep_id_add"
+                             class="select-add">
+                      <div class="autocomplete-results" id="nr_categoria_rep_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-success px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Categoría"
+                            onclick="setMainModal('modalNuevoRepuestoCompra')"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalCategoriaRep">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Marca</label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="nr_marca_rep_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="— Seleccionar —"
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('nr_marca_rep_search_add', 'nr_marca_rep_results_add', marcasRepData, 'nr_marca_rep_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden"
+                             name="idmarca_rep"
+                             id="nr_marca_rep_id_add"
+                             class="select-add">
+                      <div class="autocomplete-results" id="nr_marca_rep_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-success px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Marca"
+                            onclick="setMainModal('modalNuevoRepuestoCompra')"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalMarcaRep">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">
+                    Unidad de Medida <span class="text-danger">*</span>
+                  </label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="nr_unidad_rep_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="— Seleccionar —"
+                             autocomplete="off"
+                             required>
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('nr_unidad_rep_search_add', 'nr_unidad_rep_results_add', unidadesData, 'nr_unidad_rep_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden"
+                             name="idunidad_rep"
+                             id="nr_unidad_rep_id_add"
+                             class="select-add"
+                             required>
+                      <div class="autocomplete-results" id="nr_unidad_rep_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-success px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Unidad"
+                            onclick="setMainModal('modalNuevoRepuestoCompra')"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalUnidadRep">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Modelo / Referencia</label>
+                  <input type="text"
+                         name="modelo_referencia"
+                         id="nr_modelo_referencia"
+                         class="form-control"
+                         placeholder="Ej: W 712/52">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Código de Barras</label>
+                  <input type="text"
+                         name="codigo_barras"
+                         id="nr_codigo_barras"
+                         class="form-control"
+                         placeholder="Ej: 7894561230012">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Compatibilidad</label>
+                  <textarea name="compatibilidad"
+                            id="nr_compatibilidad"
+                            class="form-control"
+                            rows="2"
+                            placeholder="Vehículos o repuestos compatibles..."></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Descripción</label>
+                  <textarea name="descripcion"
+                            id="nr_descripcion"
+                            class="form-control"
+                            rows="2"
+                            placeholder="Descripción breve del repuesto..."></textarea>
+                </div>
               </div>
-            </div>
-            <div class="col-md-8">
-              <label class="form-label fw-semibold">Observaciones</label>
-              <textarea name="observaciones" id="nr_observaciones" class="form-control" rows="2" placeholder="Observaciones internas..."></textarea>
-            </div>
+              <!-- SECCION 2: Información de Inventario -->
+              <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
+                <i class="fa-solid fa-boxes-stacked me-1"></i> Información de Inventario y Precios
+              </h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Stock Mínimo</label>
+                  <input type="number"
+                         name="stock_minimo"
+                         id="nr_stock_minimo"
+                         class="form-control"
+                         value="0"
+                         min="0">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Stock Máximo</label>
+                  <input type="number"
+                         name="stock_maximo"
+                         id="nr_stock_maximo"
+                         class="form-control"
+                         value="0"
+                         min="0">
+                </div>
+                <div class="col-md-4"></div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Costo Unitario (S/)</label>
+                  <input type="number"
+                         name="costo_unitario"
+                         id="nr_costo_unitario"
+                         class="form-control"
+                         value="0.00"
+                         min="0"
+                         step="0.01">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Precio x Mayor (S/)</label>
+                  <input type="number"
+                         name="precio_minimo"
+                         id="nr_precio_minimo"
+                         class="form-control"
+                         value="0.00"
+                         min="0"
+                         step="0.01">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Precio x Menor (S/)</label>
+                  <input type="number"
+                         name="precio_sugerido"
+                         id="nr_precio_sugerido"
+                         class="form-control"
+                         value="0.00"
+                         min="0"
+                         step="0.01">
+                </div>
+              </div>
+              <!-- SECCION 3: Información Adicional -->
+              <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
+                <i class="fa-solid fa-circle-dot me-1"></i> Información Adicional
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Garantía</label>
+                  <div class="d-flex gap-2 align-items-start">
+                    <div class="autocomplete-wrapper flex-grow-1">
+                      <input type="text"
+                             id="nr_garantia_rep_search_add"
+                             class="form-control autocomplete-input autocomplete-with-arrow"
+                             placeholder="— Sin garantía —"
+                             autocomplete="off">
+                      <button type="button"
+                              class="autocomplete-arrow"
+                              onclick="toggleAutocompleteNew('nr_garantia_rep_search_add', 'nr_garantia_rep_results_add', garantiasRepData, 'nr_garantia_rep_id_add')">
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <input type="hidden"
+                             name="id_garantia_repuesto"
+                             id="nr_garantia_rep_id_add"
+                             class="select-add">
+                      <div class="autocomplete-results" id="nr_garantia_rep_results_add"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-success px-2 py-2 flex-shrink-0"
+                            style="height:38px;
+                                   width:38px"
+                            title="Nueva Garantía"
+                            onclick="setMainModal('modalNuevoRepuestoCompra')"
+                            data-bs-toggle="modal"
+                            data-bs-target="#miniModalGarantiaRep">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label fw-semibold">Observaciones</label>
+                  <textarea name="observaciones"
+                            id="nr_observaciones"
+                            class="form-control"
+                            rows="2"
+                            placeholder="Observaciones internas..."></textarea>
+                </div>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary rounded-pill" onclick="cerrarModalNuevoRepuesto()">
-          <i class="fa-solid fa-xmark me-2"></i>Cancelar
-        </button>
-        <button type="button" class="btn btn-success rounded-pill" id="btnGuardarNuevoRepuesto" onclick="guardarNuevoRepuesto()">
-          <i class="fa-solid fa-save me-2"></i>Guardar Repuesto
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA CATEGORÍA REPUESTO (COMPRAS) -->
-<div class="modal fade" id="miniModalCategoriaRep" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Categoría</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre de la Categoría</label>
-        <input type="text" id="input_nueva_categoria_rep" class="form-control rounded-pill" placeholder="Ej: Filtros">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-success text-white btn-sm rounded-pill" id="btn_guardar_categoria_rep_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
+          <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-secondary rounded-pill"
+                    onclick="cerrarModalNuevoRepuesto()">
+              <i class="fa-solid fa-xmark me-2"></i>Cancelar
+            </button>
+            <button type="button"
+                    class="btn btn-success rounded-pill"
+                    id="btnGuardarNuevoRepuesto"
+                    onclick="guardarNuevoRepuesto()">
+              <i class="fa-solid fa-save me-2"></i>Guardar Repuesto
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA MARCA REPUESTO (COMPRAS) -->
-<div class="modal fade" id="miniModalMarcaRep" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Marca</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre de la Marca</label>
-        <input type="text" id="input_nueva_marca_rep" class="form-control rounded-pill" placeholder="Ej: Bosch">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-success text-white btn-sm rounded-pill" id="btn_guardar_marca_rep_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA GARANTÍA REPUESTO (COMPRAS) -->
-<div class="modal fade" id="miniModalGarantiaRep" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Garantía</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Nombre / Tiempo</label>
-        <input type="text" id="input_nueva_garantia_rep" class="form-control rounded-pill" placeholder="Ej: 6 Meses">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-success text-white btn-sm rounded-pill" id="btn_guardar_garantia_rep_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
+    <!-- MINI-MODAL: NUEVA CATEGORÍA REPUESTO (COMPRAS) -->
+    <div class="modal fade"
+         id="miniModalCategoriaRep"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-success text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Categoría
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre de la Categoría</label>
+            <input type="text"
+                   id="input_nueva_categoria_rep"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: Filtros">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-success text-white btn-sm rounded-pill"
+                    id="btn_guardar_categoria_rep_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- MINI-MODAL: NUEVA UNIDAD REPUESTO (COMPRAS) -->
-<div class="modal fade" id="miniModalUnidadRep" tabindex="-1" style="z-index:1100;">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content rounded-3 shadow border-0">
-      <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold"><i class="fa-solid fa-plus me-1"></i>Nueva Unidad</h6>
-        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Código SUNAT</label>
-        <input type="text" id="input_nueva_unidad_codigo_rep" class="form-control rounded-pill mb-2" placeholder="Ej: NIU">
-        <label class="form-label fw-semibold">Abreviación</label>
-        <input type="text" id="input_nueva_unidad_nombre_rep" class="form-control rounded-pill" placeholder="Ej: Unidad">
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-success text-white btn-sm rounded-pill" id="btn_guardar_unidad_rep_rapida">
-          <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-        </button>
+    <!-- MINI-MODAL: NUEVA MARCA REPUESTO (COMPRAS) -->
+    <div class="modal fade"
+         id="miniModalMarcaRep"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-success text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Marca
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre de la Marca</label>
+            <input type="text"
+                   id="input_nueva_marca_rep"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: Bosch">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-success text-white btn-sm rounded-pill"
+                    id="btn_guardar_marca_rep_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-
-</main>
-
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-
-<!-- DataTables -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
-<!-- SweetAlert -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
+    <!-- MINI-MODAL: NUEVA GARANTÍA REPUESTO (COMPRAS) -->
+    <div class="modal fade"
+         id="miniModalGarantiaRep"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-success text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Garantía
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Nombre / Tiempo</label>
+            <input type="text"
+                   id="input_nueva_garantia_rep"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: 6 Meses">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-success text-white btn-sm rounded-pill"
+                    id="btn_guardar_garantia_rep_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MINI-MODAL: NUEVA UNIDAD REPUESTO (COMPRAS) -->
+    <div class="modal fade"
+         id="miniModalUnidadRep"
+         tabindex="-1"
+         style="z-index:1100">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-3 shadow border-0">
+          <div class="modal-header bg-success text-white py-2">
+            <h6 class="modal-title fw-bold">
+              <i class="fa-solid fa-plus me-1"></i>Nueva Unidad
+            </h6>
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm"
+                    data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-semibold">Código SUNAT</label>
+            <input type="text"
+                   id="input_nueva_unidad_codigo_rep"
+                   class="form-control rounded-pill mb-2"
+                   placeholder="Ej: NIU">
+            <label class="form-label fw-semibold">Abreviación</label>
+            <input type="text"
+                   id="input_nueva_unidad_nombre_rep"
+                   class="form-control rounded-pill"
+                   placeholder="Ej: Unidad">
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm rounded-pill"
+                    data-bs-dismiss="modal">Cancelar</button>
+            <button type="button"
+                    class="btn btn-success text-white btn-sm rounded-pill"
+                    id="btn_guardar_unidad_rep_rapida">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <!-- DataTables -->
+  <link rel="stylesheet"
+        href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
   let itemIndex = 0;
   let total = 0;
   let totalConfiguracionCuotas = 0; // NUEVA: Para rastrear coherencia entre total y cuotas
 
   //DATOS PARA AUTOCOMPLETE
   const proveedoresData = [
-    {% for p in proveedor %}
-    { id: {{ p.idproveedor }}, text: "{{ p.razonsocial|escapejs }}" },
-    {% endfor %}
+    {% for p in proveedor %}{ id: {{ p.idproveedor }}, text: "{{ p.razonsocial|escapejs }}" },{% endfor %}
   ];
 
   const vehiculosData = [
-    {% for produc in producto %}
-    { id: {{ produc.idproducto }}, text: "{{ produc.nomproducto|escapejs }}" },
-    {% endfor %}
+    {% for produc in producto %}{ id: {{ produc.idproducto }}, text: "{{ produc.nomproducto|escapejs }}" },{% endfor %}
   ];
 
   const repuestosData = [
@@ -1394,15 +1911,11 @@
     {% endfor %}
   ];
   const marcasRepData = [
-    {% for m in marcas_rep %}
-    { id: {{ m.idmarca_repuesto }}, text: "{{ m.nombremarca|escapejs }}" },
-    {% endfor %}
+    {% for m in marcas_rep %}{ id: {{ m.idmarca_repuesto }}, text: "{{ m.nombremarca|escapejs }}" },{% endfor %}
   ];
 
   const garantiasRepData = [
-    {% for g in garantias_rep %}
-    { id: {{ g.id_garantia_repuesto }}, text: "{{ g.nombre|escapejs }}" },
-    {% endfor %}
+    {% for g in garantias_rep %}{ id: {{ g.id_garantia_repuesto }}, text: "{{ g.nombre|escapejs }}" },{% endfor %}
   ];
 
   //FUNCIÓN AUTOCOMPLETE GENÉRICA
@@ -2661,12 +3174,7 @@
       <tr>
         <td class="text-center"><strong>Cuota ${i}</strong></td>
         <td class="text-center">
-          <input type="date" 
-                 id="fecha_cuota_visual_${i}"
-                 class="form-control form-control-sm fecha-cuota-editable" 
-                 value="${fechaISO}" 
-                 data-cuota="${i}"
-                 onchange="actualizarFechaCuota(${i})">
+          <input type="date" id="fecha_cuota_visual_${i}" class="form-control form-control-sm fecha-cuota-editable" value="${fechaISO}" data-cuota="${i}" onchange="actualizarFechaCuota(${i})">
         </td>
         <td class="text-end">S/ ${montoCuotaBase.toFixed(2)}</td>
         <td class="text-end ${tasaInteres > 0 ? 'text-danger' : ''}">S/ ${interesCuota.toFixed(2)}</td>
@@ -2760,12 +3268,7 @@
       <tr>
         <td class="text-center"><strong>Cuota ${i}</strong></td>
         <td class="text-center">
-          <input type="date" 
-                 id="fecha_cuota_visual_${i}"
-                 class="form-control form-control-sm fecha-cuota-editable" 
-                 value="${c.fecha_vencimiento}" 
-                 data-cuota="${i}"
-                 onchange="actualizarFechaCuota(${i})">
+          <input type="date" id="fecha_cuota_visual_${i}" class="form-control form-control-sm fecha-cuota-editable" value="${c.fecha_vencimiento}" data-cuota="${i}" onchange="actualizarFechaCuota(${i})">
         </td>
         <td class="text-end">S/ ${montoCuotaBase.toFixed(2)}</td>
         <td class="text-end ${interesCuota > 0 ? 'text-danger' : ''}">S/ ${interesCuota.toFixed(2)}</td>
@@ -3270,9 +3773,8 @@
   });
 }
 
-</script>
-
-<style>
+  </script>
+  <style>
   /* ====== OVERRIDE SWEETALERT Z-INDEX ====== */
   .swal2-container {
     z-index: 2000 !important;
@@ -3471,7 +3973,7 @@
   }
 
   .modal-xl {
-    max-width: 1200px;
+    max-width: 93%;
   }
 
   .modal-body .card {
@@ -3661,9 +4163,8 @@
       border-bottom: none;
     }
   }
-</style>
-
-<script>
+  </style>
+  <script>
 // =====================================================================
 // GENERACIÓN AUTOMÁTICA DE NOMBRE (REPLICADO DE VEHÍCULOS)
 // =====================================================================
@@ -3888,24 +4389,19 @@ function agregarFilaPagoCompra(tpId='', monto='', operacion='') {
     div.id = `pago-row-compra-${pagoCompraCount}`;
     div.innerHTML = `
       <div class="col-md-5 col-selector-c">
-        <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago-compra"
-                required onchange="toggleOperacionCompra(this)">
+        <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago-compra" required onchange="toggleOperacionCompra(this)">
           <option value="">Método de Pago...</option>
           ${TIPOS_PAGO_COMPRA_TPL}
         </select>
       </div>
       <div class="col-md-4 nro-op-compra-container d-none">
-        <input type="text" name="nro_operacion[]" class="form-control form-control-sm nro-operacion-input"
-               placeholder="N° Operación" value="${operacion}">
+        <input type="text" name="nro_operacion[]" class="form-control form-control-sm nro-operacion-input" placeholder="N° Operación" value="${operacion}">
       </div>
       <div class="col-md-3 flex-grow-1 col-monto-c">
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-white">S/</span>
-          <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-pago-compra"
-                 step="0.01" min="0.01" placeholder="0.00" value="${monto}" required
-                 oninput="calcularTotalPagadoCompra()">
-          <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-compra no-auth"
-                  title="Quitar" onclick="eliminarFilaPagoCompra(this)">
+          <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-pago-compra" step="0.01" min="0.01" placeholder="0.00" value="${monto}" required oninput="calcularTotalPagadoCompra()">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-compra no-auth" title="Quitar" onclick="eliminarFilaPagoCompra(this)">
             <i class="fa-solid fa-minus"></i>
           </button>
         </div>
@@ -4242,9 +4738,8 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
   });
-</script>
-
-<script>
+  </script>
+  <script>
 // ==========================================
 // 🚀 SERVER-SIDE PROCESSING - COMPRAS
 // ==========================================
@@ -4495,7 +4990,7 @@ function abrirModalDetallesCompra(id) {
                       <i class="fa-solid fa-circle-info me-2"></i>Información General
                     </h6>
                     <div class="row">
-                      <div class="col-md-6 mb-2">
+                      <div class="col-md-4 mb-2">
                         <strong class="text-muted">Proveedor:</strong><br>
                         <span class="fs-6">${c.proveedor}</span>
                       </div>
@@ -4503,9 +4998,13 @@ function abrirModalDetallesCompra(id) {
                         <strong class="text-muted">Fecha Compra:</strong><br>
                         <span class="fs-6">${c.fechacompra}</span>
                       </div>
-                      <div class="col-md-3 mb-2">
+                      <div class="col-md-2 mb-2">
                         <strong class="text-muted">N° Correlativo:</strong><br>
                         <span class="badge bg-secondary fs-6">${c.numcorrelativo}</span>
+                      </div>
+                      <div class="col-md-3 mb-2">
+                        <strong class="text-muted">Tipo de Cambio:</strong><br>
+                        <span class="badge bg-warning text-dark fs-6">${c.tipo_cambio ? c.tipo_cambio.toFixed(4) : '1.0000'}</span>
                       </div>
                     </div>
                     <div class="row mt-2">
@@ -4540,13 +5039,15 @@ function abrirModalDetallesCompra(id) {
                     <thead class="table-dark">
                       <tr>
                         <th style="width: 5%;" class="text-center">#</th>
-                        <th style="width: 10%;">Tipo</th>
+                        <th style="width: 5%;">Tipo</th>
                         <th style="width: 35%;">Detalle</th>
-                        <th style="width: 10%;" class="text-center">Cantidad</th>
-                        <th style="width: 15%;" class="text-end">Precio Compra</th>
-                        <th style="width: 15%;" class="text-end">Precio Mínimo</th>
-                        <th style="width: 15%;" class="text-end">Precio Máximo</th>
-                        <th style="width: 10%;" class="text-end">Subtotal</th>
+                        <th style="width: 5%;" class="text-center">Cant.</th>
+                        <th style="width: 5%;" class="text-center">Moneda</th>
+                        <th style="width: 10%;" class="text-end">Precio $</th>
+                        <th style="width: 10%;" class="text-end">Precio Compra</th>
+                        <th style="width: 10%;" class="text-end">Precio Mínimo</th>
+                        <th style="width: 10%;" class="text-end">Precio Máximo</th>
+                        <th style="width: 5%;" class="text-end">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4588,6 +5089,8 @@ function abrirModalDetallesCompra(id) {
                         <td class="text-center">
                           <span class="badge bg-info">${d.cantidad}</span>
                         </td>
+                        <td class="text-center fw-bold">${d.moneda}</td>
+                        <td class="text-end">${d.precio_dolares > 0 ? '$ ' + d.precio_dolares.toFixed(2) : '-'}</td>
                         <td class="text-end">S/. ${d.precio_compra.toFixed(2)}</td>
                         <td class="text-end">S/. ${d.precio_minimo.toFixed(2)}</td>
                         <td class="text-end">S/. ${d.precio_maximo.toFixed(2)}</td>
@@ -4600,7 +5103,7 @@ function abrirModalDetallesCompra(id) {
 
             html += `
                       <tr class="table-light">
-                        <td colspan="7" class="text-end fw-bold fs-5">TOTAL COMPRA:</td>
+                        <td colspan="9" class="text-end fw-bold fs-5">TOTAL COMPRA:</td>
                         <td class="text-end fw-bold text-success fs-5">S/. ${c.total_compra.toFixed(2)}</td>
                       </tr>
                     </tbody>
@@ -4734,5 +5237,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     setTimeout(autoFillTipoCambio, 500);
 });
-</script>
-{% endblock %}
+  </script>
+{% endblock %}

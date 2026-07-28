@@ -1670,15 +1670,19 @@ def compra_pdf(request, idcompra):
 
     fp_bg = BADGE_BLUE if 'contado' in forma_pago_nom.lower() else BADGE_ORANGE
 
-    # Fila 1: Proveedor | Fecha | Correlativo  (sin colores, igual que proveedor/fecha)
+    tipo_cam_str = f"{float(compra.tipo_cambio):.4f}" if compra.tipo_cambio else "1.0000"
+    
+    # Fila 1: Proveedor | Fecha | Correlativo | Tipo de Cambio
     r1 = Table([
         [Paragraph('PROVEEDOR', s_info_label),
          Paragraph('FECHA COMPRA', s_info_label),
-         Paragraph('N\u00b0 CORRELATIVO', s_info_label)],
+         Paragraph('N\u00b0 CORRELATIVO', s_info_label),
+         Paragraph('TIPO DE CAMBIO', s_info_label)],
         [Paragraph(proveedor_nombre, s_info_valor),
          Paragraph(fecha_str, s_info_valor),
-         Paragraph(compra.numcorrelativo, s_info_valor)],
-    ], colWidths=[7 * cm, 5 * cm, 4.5 * cm])
+         Paragraph(compra.numcorrelativo, s_info_valor),
+         Paragraph(tipo_cam_str, s_info_valor)],
+    ], colWidths=[6.5 * cm, 3.5 * cm, 4.0 * cm, 3.5 * cm])
     r1.setStyle(TableStyle([
         ('VALIGN',       (0, 0), (-1, -1), 'TOP'),
         ('TOPPADDING',   (0, 0), (-1, -1), 3),
@@ -1727,8 +1731,8 @@ def compra_pdf(request, idcompra):
     # ════════════════════════════════════════════════════════════════
     story.append(Paragraph('Productos / Repuestos', s_sec_hdr))
 
-    prod_hdrs  = ['#', 'TIPO', 'DETALLE', 'CANTIDAD', 'P. COMPRA', 'P. VENTA', 'SUBTOTAL']
-    prod_col_w = [1*cm, 2.2*cm, 6.3*cm, 2*cm, 2.5*cm, 2.5*cm, 2*cm]
+    prod_hdrs  = ['#', 'TIPO', 'DETALLE', 'CANT.', 'MON.', 'PRECIO $', 'P. COMPRA', 'P. VENTA', 'SUBTOTAL']
+    prod_col_w = [0.8*cm, 1.7*cm, 6.1*cm, 1.2*cm, 1.1*cm, 1.8*cm, 2.0*cm, 2.0*cm, 1.8*cm]
     prod_data  = [[Paragraph(h, s_th) for h in prod_hdrs]]
 
     for idx, det in enumerate(detalles, start=1):
@@ -1779,14 +1783,20 @@ def compra_pdf(request, idcompra):
             ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
         ]))
 
+        precio_dol = float(det.precio_dolares) if det.precio_dolares else 0.0
+        moneda = det.moneda if det.moneda else 'PEN'
+        precio_dol_str = f'$ {precio_dol:,.2f}' if precio_dol > 0 else '-'
+
         prod_data.append([
             Paragraph(str(idx), s_cell_c),
             tipo_badge,
             Paragraph(detalle_txt, s_cell),
             cant_badge,
-            Paragraph(f'S/. {float(det.precio_compra):,.2f}', s_cell_c),
+            Paragraph(f'<b>{moneda}</b>', s_cell_c),
+            Paragraph(precio_dol_str, s_cell_c),
+            Paragraph(f'S/.\n{float(det.precio_compra):,.2f}', s_cell_c),
             Paragraph(f'S/.\n{float(det.precio_maximo):,.2f}', s_cell_c),
-            Paragraph(f'<b>S/. {float(det.subtotal):,.2f}</b>', s_cell_br),
+            Paragraph(f'<b>S/.\n{float(det.subtotal):,.2f}</b>', s_cell_br),
         ])
 
     # Fila de total: Mini-tabla alineada a la derecha para emparejar Label y Valor sin mucho espacio
@@ -1807,8 +1817,9 @@ def compra_pdf(request, idcompra):
     prod_data.append([
         Paragraph('', s_cell), Paragraph('', s_cell),
         Paragraph('', s_cell), Paragraph('', s_cell),
+        Paragraph('', s_cell), Paragraph('', s_cell),
         mini_tbl,
-        Paragraph('', s_cell), Paragraph('', s_cell),   # celdas fantasma para el SPAN
+        Paragraph('', s_cell), Paragraph('', s_cell),
     ])
 
     prod_tbl = Table(prod_data, colWidths=prod_col_w, repeatRows=1)
@@ -1824,9 +1835,9 @@ def compra_pdf(request, idcompra):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ('LEFTPADDING',   (0, 0), (-1, -1), 4),
         ('RIGHTPADDING',  (0, 0), (-1, -1), 4),
-        # Unir columnas 4, 5 y 6 solo en la fila de total para que la mini-tabla fluya a la derecha
-        ('SPAN',          (4, -1), (6, -1)),
-        ('ALIGN',         (4, -1), (6, -1), 'RIGHT'),
+        # Unir columnas 6, 7 y 8 solo en la fila de total para que la mini-tabla fluya a la derecha
+        ('SPAN',          (6, -1), (8, -1)),
+        ('ALIGN',         (6, -1), (8, -1), 'RIGHT'),
     ]))
     story.append(prod_tbl)
 
@@ -2364,6 +2375,8 @@ def api_obtener_detalle_compra(request, id):
         for d in detalles_qs:
             item = {
                 'cantidad': d.cantidad,
+                'moneda': d.moneda if d.moneda else 'PEN',
+                'precio_dolares': float(d.precio_dolares) if d.precio_dolares else 0,
                 'precio_compra': float(d.precio_compra) if d.precio_compra else 0,
                 'precio_minimo': float(d.precio_minimo) if d.precio_minimo else 0,
                 'precio_maximo': float(d.precio_maximo) if d.precio_maximo else 0,
@@ -2422,6 +2435,7 @@ def api_obtener_detalle_compra(request, id):
             'sucursal': compra.id_sucursal.nombre_sucursal if compra.id_sucursal else '-',
             'total_compra': float(compra.total_compra) if compra.total_compra else 0,
             'estado': compra.estado,
+            'tipo_cambio': float(compra.tipo_cambio) if compra.tipo_cambio else 1.0,
             'pagos_list': pagos_list,
             'cuotas_list': cuotas_list,
             'detalles': detalles_list
