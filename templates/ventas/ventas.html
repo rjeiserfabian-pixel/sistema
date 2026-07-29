@@ -1711,6 +1711,18 @@
       $('.columna-descuento').addClass('d-none');
       $('.columna-credito').removeClass('d-none');
 
+      // Bloquear y restablecer precios de servicios
+      $('.precio-servicio-input').each(function() {
+          $(this).prop('readonly', true);
+          const precioOriginal = $(this).attr('data-precio-original');
+          if (precioOriginal) {
+              $(this).val(precioOriginal);
+          }
+      });
+
+      // Forzar recálculo para que tome los precios a crédito
+      $('.precio-credito-input').trigger('input');
+
       // ⭐ AJUSTAR COLSPAN DEL FOOTER
       $('.colspan-dinamico').attr('colspan', '7');
 
@@ -1718,6 +1730,12 @@
       // ⭐ MOSTRAR COLUMNA DESCUENTO, OCULTAR COLUMNA CRÉDITO
       $('.columna-descuento').removeClass('d-none');
       $('.columna-credito').addClass('d-none');
+
+      // Desbloquear precios de servicios
+      $('.precio-servicio-input').prop('readonly', false);
+
+      // Forzar recálculo para que tome los precios al contado
+      $('.precio-servicio-input').trigger('input');
 
       // ⭐ AJUSTAR COLSPAN DEL FOOTER
       $('.colspan-dinamico').attr('colspan', '7');
@@ -1828,6 +1846,7 @@
       return;
     }
 
+    const esCredito = $('#forma_pago').val() === '2';
     itemCounter++;
     const html = `
     <tr id="item_${itemCounter}" data-item-num="${itemCounter}">
@@ -1850,12 +1869,14 @@
       <td></td>
       <!-- 6. P. Máximo (Precio del servicio) -->
       <td>
-        <input type="number" step="0.01" id="precio_venta_contado_${itemCounter}" name="precio_venta_contado_${itemCounter}" class="form-control form-control-sm text-end precio-servicio-input" value="${parseFloat(precio).toFixed(2)}" data-item="${itemCounter}" style="width:100px;">
+        <input type="number" step="0.01" id="precio_venta_contado_${itemCounter}" name="precio_venta_contado_${itemCounter}" class="form-control form-control-sm text-end precio-servicio-input" value="${parseFloat(precio).toFixed(2)}" data-precio-original="${parseFloat(precio).toFixed(2)}" data-item="${itemCounter}" style="width:100px;" ${esCredito ? 'readonly' : ''}>
       </td>
       <!-- 7. P. Descuento -->
-      <td></td>
+      <td class="columna-descuento ${esCredito ? 'd-none' : ''}"></td>
       <!-- 8. P. Crédito -->
-      <td class="columna-credito d-none"></td>
+      <td class="columna-credito ${esCredito ? '' : 'd-none'}">
+        <input type="number" step="0.01" name="precio_credito_${itemCounter}" id="precio_credito_${itemCounter}" class="form-control form-control-sm text-end precio-credito-input" data-item="${itemCounter}" value="${parseFloat(precio).toFixed(2)}" placeholder="Requerido" ${esCredito ? 'required' : ''} style="width:100px;">
+      </td>
       <!-- 9. Subtotal -->
       <td class="text-end fw-bold" id="subtotal_${itemCounter}">S/ ${parseFloat(precio).toFixed(2)}</td>
       <!-- 10. Ganancia -->
@@ -1877,9 +1898,23 @@
     bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarServicio')).hide();
   });
 
-  $(document).on('input', '.precio-servicio-input, .cantidad-servicio-input', function() {
+  $(document).on('input', '.precio-servicio-input, .cantidad-servicio-input, .precio-credito-input', function() {
     const item = $(this).data('item');
-    const precio = parseFloat($(`.precio-servicio-input[data-item="${item}"]`).val()) || 0;
+    const tipoItem = $(`input[name="tipo_item_${item}"]`).val();
+    
+    // Solo aplicar esta lógica si es un servicio
+    if (tipoItem !== 'servicio') return;
+
+    const esCredito = $('#forma_pago').val() === '2';
+    
+    // Si es crédito, el precio a usar es el de crédito; si no, el de contado (servicio)
+    let precio = 0;
+    if (esCredito) {
+        precio = parseFloat($(`#precio_credito_${item}`).val()) || 0;
+    } else {
+        precio = parseFloat($(`.precio-servicio-input[data-item="${item}"]`).val()) || 0;
+    }
+    
     const cantidad = parseInt($(`.cantidad-servicio-input[data-item="${item}"]`).val()) || 1;
     const subtotal = precio * cantidad;
     
