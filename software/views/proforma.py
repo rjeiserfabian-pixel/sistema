@@ -39,6 +39,8 @@ from software.models.stockModel import Stock
 from software.models.empresaModel import Empresa
 from software.models.Tipo_entidadModel import TipoEntidad
 from software.models.RegionModel import Region
+from software.models.FormaPagoModel import FormaPago
+from software.models.ZonaCreditoModel import ZonaCredito
 from software.utils.logo_utils import get_logo_image_for_pdf
 
 
@@ -332,6 +334,8 @@ def nueva_proforma(request):
         'hoy_str': date.today().strftime('%Y-%m-%d'),
         'vencimiento_default': (date.today() + timedelta(days=15)).strftime('%Y-%m-%d'),
         'regiones': Region.objects.all(),
+        'forma_pago': FormaPago.objects.filter(estado=1),
+        'zonas': ZonaCredito.objects.filter(estado=1),
     })
 
 
@@ -375,13 +379,32 @@ def _guardar_proforma(request):
         idempresa = request.session.get('idempresa')
 
         # Creamos la cabecera
+        # Leer campos de crédito
+        forma_pago_id = request.POST.get('forma_pago', '1')
+        es_credito = (forma_pago_id == '2')
+        forma_pago_nombre = 'Crédito' if es_credito else 'Contado'
+        
+        monto_inicial = Decimal(request.POST.get('monto_inicial_venta', '0') or '0') if es_credito else Decimal('0')
+        numero_cuotas = int(request.POST.get('cantidad_cuotas_config', '0') or '0') if es_credito else 0
+        factor_aplicado = Decimal(request.POST.get('tasa_interes_venta', '0') or '0') if es_credito else Decimal('0') # Usaremos este campo o crearemos validación del factor si es necesario, pero simplificamos tomando montos
+        monto_cuota = Decimal(request.POST.get('monto_cuota', '0') or '0') if es_credito else Decimal('0')
+        interes_total = Decimal(request.POST.get('tasa_interes_venta', '0') or '0') if es_credito else Decimal('0')
+        tipo_periodo = request.POST.get('tipo_periodo', 'mensual') if es_credito else 'mensual'
+
         proforma = Proforma.objects.create(
             numero_proforma=numero,
             idcliente=cliente,
             idusuario_id=idusuario_session,
             fecha_vencimiento=fecha_vencimiento,
             idempresa=idempresa,
-            forma_pago='Contado',
+            forma_pago=forma_pago_nombre,
+            es_credito=es_credito,
+            monto_inicial=monto_inicial,
+            numero_cuotas=numero_cuotas,
+            factor_aplicado=factor_aplicado,
+            monto_cuota=monto_cuota,
+            interes_total=interes_total,
+            tipo_periodo=tipo_periodo,
             tiempo_entrega='Variable', 
             garantia='Según fabricante',
             observaciones=observaciones,
@@ -826,6 +849,34 @@ def proforma_pdf(request, idproforma):
     story.append(Spacer(1, 12))
 
     # ═══════════════════════════════════════════════════════════════════
+    # SECCIÓN 4.5: INFORMACIÓN DE CRÉDITO
+    # ═══════════════════════════════════════════════════════════════════
+    if getattr(proforma, 'es_credito', False):
+        periodo_texto = "meses"
+        if getattr(proforma, 'tipo_periodo', '') == 'dias':
+            periodo_texto = "días"
+        elif getattr(proforma, 'tipo_periodo', '') == 'semanal':
+            periodo_texto = "semanas"
+        elif getattr(proforma, 'tipo_periodo', '') == 'quincenal':
+            periodo_texto = "quincenas"
+            
+        texto_credito = f"<b>Condiciones de Financiamiento:</b> Inicial S/ {proforma.monto_inicial:,.2f} con un precio total de S/ {proforma.total:,.2f} por {proforma.numero_cuotas} {periodo_texto}. La cuota es S/ {proforma.monto_cuota:,.2f} por {proforma.numero_cuotas} {periodo_texto}."
+        story.append(Paragraph(texto_credito, ParagraphStyle(
+            name='CreditoStyle',
+            fontName='Helvetica',
+            fontSize=10,
+            textColor=colors.HexColor('#0b1c3f'),
+            backColor=colors.HexColor('#e3f2fd'),
+            borderPadding=8,
+            borderColor=colors.HexColor('#90caf9'),
+            borderWidth=1,
+            borderRadius=4,
+            spaceAfter=10,
+            alignment=TA_CENTER
+        )))
+        story.append(Spacer(1, 12))
+
+    # ═══════════════════════════════════════════════════════════════════
     # SECCIÓN 5: CONDICIONES COMERCIALES
     # ═══════════════════════════════════════════════════════════════════
     story.append(HRFlowable(width='100%', thickness=0.5, color=SILVER))
@@ -937,10 +988,39 @@ def editar_proforma(request, idproforma):
         porcentaje_igv = (proforma.igv / proforma.subtotal * 100).quantize(Decimal('0'))
 
     # Obtener detalles para precargar en el JS
-    detalles_qs = ProformaDetalle.objects.filter(idproforma=proforma).select_related(
-        'id_vehiculo__idproducto', 'id_repuesto'
-    )
+    detalles_qs = list(ProformaDetalle.objects.filter(idproforma=proforma).select_related(
+        'id_vehiculo__idproducto__idcolor', 
+        'id_repuesto__id_categoria_repuesto'
+    ))
     
+    # ─── BULK FETCH PRECIOS BASE ───
+    from software.models.CompraModel import CompraDetalle
+    from software.models.RespuestoCompModel import RepuestoComp
+
+    # Para vehículos
+    vehiculos_ids = [d.id_vehiculo_id for d in detalles_qs if d.tipo_item == 'vehiculo' and d.id_vehiculo_id]
+    precio_vehiculos = {}
+    if vehiculos_ids:
+        cds_v = CompraDetalle.objects.filter(id_vehiculo_id__in=vehiculos_ids).order_by('idcompradetalle')
+        for cd in cds_v:
+            precio_vehiculos[cd.id_vehiculo_id] = float(cd.precio_maximo)
+
+    # Para repuestos
+    repuestos_ids = [d.id_repuesto_id for d in detalles_qs if d.tipo_item == 'repuesto' and d.id_repuesto_id]
+    codigo_repuestos = {}
+    precio_repuestos = {}
+    if repuestos_ids:
+        rc_list = RepuestoComp.objects.filter(id_repuesto_id__in=repuestos_ids).select_related('id_repuesto')
+        rc_dict = {}
+        for rc in rc_list:
+            rc_dict[rc.id_repuesto_id] = rc
+            codigo_repuestos[rc.id_repuesto_id] = rc.id_repuesto.codigo_barras if rc.id_repuesto else 'S/N'
+        
+        rc_comprados_ids = [rc.id_repuesto_comprado for rc in rc_list]
+        cds_r = CompraDetalle.objects.filter(id_repuesto_comprado__in=rc_comprados_ids).order_by('idcompradetalle')
+        for cd in cds_r:
+            precio_repuestos[cd.id_repuesto_comprado] = float(cd.precio_maximo)
+            
     detalles_json = []
     for d in detalles_qs:
         item = {
@@ -948,6 +1028,7 @@ def editar_proforma(request, idproforma):
             'cantidad': d.cantidad,
             'precio': float(d.precio_unitario),
             'subtotal': float(d.subtotal),
+            'precio_base': 0.0,
         }
         if d.tipo_item == 'vehiculo' and d.id_vehiculo:
             prod = d.id_vehiculo.idproducto
@@ -958,12 +1039,12 @@ def editar_proforma(request, idproforma):
                 'anio': d.id_vehiculo.anio or '-',
                 'color': prod.idcolor.nombrecolor if (prod and prod.idcolor) else '-',
                 'stock': 1,
+                'precio_base': precio_vehiculos.get(d.id_vehiculo_id, 0.0),
             })
         elif d.tipo_item == 'repuesto' and d.id_repuesto:
-            # Buscar el código de barras real desde RepuestoComp
-            from software.models.RespuestoCompModel import RepuestoComp
-            rc = RepuestoComp.objects.filter(id_repuesto=d.id_repuesto).first()
-            codigo = rc.id_repuesto.codigo_barras if rc else 'S/N'
+            rc = rc_dict.get(d.id_repuesto_id)
+            codigo = codigo_repuestos.get(d.id_repuesto_id, 'S/N')
+            precio_base = precio_repuestos.get(rc.id_repuesto_comprado, 0.0) if rc else 0.0
             
             item.update({
                 'id_item': d.id_repuesto_id,
@@ -972,6 +1053,7 @@ def editar_proforma(request, idproforma):
                 'anio': '-',
                 'color': d.id_repuesto.id_categoria_repuesto.nomcategoria if (d.id_repuesto and d.id_repuesto.id_categoria_repuesto) else '-',
                 'stock': d.cantidad,
+                'precio_base': precio_base,
             })
         detalles_json.append(item)
 

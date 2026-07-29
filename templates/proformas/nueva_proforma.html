@@ -317,12 +317,79 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="section-title-premium">
-                            <i class="bi bi-truck"></i> Logística y Venta
+                        
+                        <!-- FORMA DE PAGO Y CRÉDITO -->
+                        <div class="section-title-premium mt-4">
+                            <i class="bi bi-wallet2"></i> Método de Pago y Financiamiento
                         </div>
                         <div class="premium-input-group">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Forma de Pago</label>
+                                    <select id="forma_pago" name="forma_pago" class="form-select bg-light border fw-bold" onchange="toggleCreditoPf()">
+                                        {% for fp in forma_pago %}
+                                        <option value="{{ fp.id_forma_pago }}">{{ fp.nombre }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12" id="seccion_credito_pf" style="display: none;">
+                                    <div class="p-3 border border-dashed rounded bg-white mt-2 shadow-sm">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Monto Inicial</label>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">S/</span>
+                                                    <input type="number" id="monto_inicial_venta" name="monto_inicial_venta" class="form-control" value="0" min="0" step="0.01" oninput="calcularCreditoPf()">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Tipo Periodo</label>
+                                                <select id="tipo_periodo" name="tipo_periodo" class="form-select form-select-sm" onchange="calcularCreditoPf()">
+                                                    <option value="dias">Días</option>
+                                                    <option value="semanal">Semanal</option>
+                                                    <option value="quincenal">Quincenal</option>
+                                                    <option value="mensual" selected>Mensual</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Cant. Cuotas</label>
+                                                <input type="number" id="cantidad_cuotas_manual" class="form-control form-control-sm" value="0" min="1" step="1" oninput="calcularCreditoPf()">
+                                            </div>
+                                            
+                                            <div class="col-12"><hr class="my-1 text-muted"></div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Ó Zona (Opcional para usar factor)</label>
+                                                <select id="zona_credito_pf" class="form-select form-select-sm" onchange="cargarFactoresPf()">
+                                                    <option value="">Seleccione Zona...</option>
+                                                    {% for z in zonas %}
+                                                    <option value="{{ z.id_zona }}">{{ z.nombre }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Aplicar Factor</label>
+                                                <select id="factor_credito_pf" class="form-select form-select-sm" onchange="aplicarFactorACuotas()">
+                                                    <option value="">Seleccione zona...</option>
+                                                </select>
+                                            </div>
+
+                                            <input type="hidden" id="precio_total_credito_manual" value="0">
+                                            <input type="hidden" id="cantidad_cuotas_config" name="cantidad_cuotas_config" value="0">
+                                            <input type="hidden" id="tasa_interes_venta" name="tasa_interes_venta" value="0">
+                                            <input type="hidden" id="monto_cuota" name="monto_cuota" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="section-title-premium mt-0">
+                            <i class="bi bi-truck"></i> Logística y Venta
+                        </div>
+                        <div class="premium-input-group mb-4">
                             <div class="row g-3">
                                 <div class="col-12">
                                     <select id="validez_pf_tipo" class="form-select bg-light border">
@@ -338,6 +405,43 @@
                                 <div class="col-12">
                                     <input type="text" class="form-control bg-light border" placeholder="Asesor Comercial asignado" 
                                            value="{{ request.session.nombre_usuario }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="resumen_credito_wrapper" style="display: none;" class="mb-4">
+                            <div class="section-title-premium mt-0">
+                                <i class="bi bi-calculator"></i> Resumen de Crédito
+                            </div>
+                            <div class="alert alert-primary py-3 px-3 mb-0 text-start shadow-sm d-flex flex-column justify-content-center" style="border-left: 4px solid #0d6efd;">
+                                <div class="row g-2">
+                                    <div class="col-6 mb-1">
+                                        <span class="text-muted" style="font-size: 12px;">Total Proforma:</span><br>
+                                        <span class="fw-bold" id="lbl_proforma_total" style="font-size: 15px;">S/ 0.00</span>
+                                    </div>
+                                    <div class="col-6 mb-1">
+                                        <span class="text-muted" style="font-size: 12px;">Inicial:</span><br>
+                                        <span class="fw-bold" id="lbl_monto_inicial" style="font-size: 15px;">S/ 0.00</span>
+                                    </div>
+                                    <div class="col-6 mb-1">
+                                        <span class="text-muted" style="font-size: 12px;">A Financiar:</span><br>
+                                        <span class="fw-bold text-danger" id="lbl_total_financiar" style="font-size: 15px;">S/ 0.00</span>
+                                    </div>
+                                    <div class="col-6 mb-1">
+                                        <span class="text-muted" style="font-size: 12px;">Factor:</span><br>
+                                        <span class="fw-bold text-primary" id="lbl_factor_aplicado" style="font-size: 15px;">-</span>
+                                    </div>
+                                    <div class="col-12 mb-1">
+                                        <span class="text-muted" style="font-size: 12px;">Cuotas:</span><br>
+                                        <span class="fw-bold" id="lbl_num_cuotas" style="font-size: 15px;">0</span> 
+                                        <span class="fw-bold text-muted" id="lbl_tipo_periodo" style="font-size: 13px; text-transform: capitalize;"></span>
+                                    </div>
+                                    <div class="col-12 mt-2 pt-2 border-top border-primary border-opacity-25">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold" style="font-size: 15px;">Valor por Cuota:</span>
+                                            <span class="fw-bold text-end" id="lbl_monto_cuota" style="font-size: 20px;">S/ 0.00</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -369,6 +473,7 @@
                                 <th style="width: 8%;" class="text-center">Año</th>
                                 <th style="width: 8%;" class="text-center">Color/Categoría</th>
                                 <th style="width: 6%;" class="text-center">Cant.</th>
+                                <th style="width: 10%;" class="text-center">P. Base </th>
                                 <th style="width: 10%;">P. Unit </th>
                                 <th style="width: 10%;" class="text-end">Total </th>
                                 <th style="width: 3%;"></th>
@@ -1132,6 +1237,12 @@
     function seleccionarItemFilaPf(i, tipo, itemData, nombreProd) {
         document.getElementById(`hiddenId_${i}`).value = tipo === 'vehiculo' ? itemData.id_vehiculo : itemData.id_repuesto_comprado;
         document.getElementById(`precio_${i}`).value = parseFloat(itemData.precio_venta).toFixed(2);
+        
+        const precioBaseEL = document.getElementById(`precio_base_${i}`);
+        if (precioBaseEL) {
+            precioBaseEL.textContent = parseFloat(itemData.precio_venta || 0).toFixed(2);
+        }
+
         document.getElementById(`anio_${i}`).textContent = itemData.anio || '-';
         document.getElementById(`color_${i}`).textContent = itemData.color || '-';
 
@@ -1346,6 +1457,7 @@
                 <input type="number" name="cantidad_${i}" id="cant_${i}" class="form-control form-control-sm text-center" 
                        value="1" min="1" oninput="recalcularFilaPf(${i})" ${tipo === 'vehiculo' ? 'readonly' : ''} required>
             </td>
+            <td id="precio_base_${i}" class="text-center text-muted align-middle" style="font-size: 0.9em;">0.00</td>
             <td>
                 <div class="input-group input-group-sm">
                     <input type="number" name="precio_venta_contado_${i}" id="precio_${i}" step="0.01" 
@@ -1402,6 +1514,11 @@
         if (subtotalEL) subtotalEL.textContent = subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         if (igvEL) igvEL.textContent = igv.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         if (totalEL) totalEL.textContent = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Recalcular crédito si aplica
+        if (typeof calcularCreditoPf === 'function') {
+            calcularCreditoPf();
+        }
     }
 
     function eliminarFilaPf(i) {
@@ -1502,6 +1619,11 @@
                     document.getElementById(`cant_${i}`).value = det.cantidad;
                     document.getElementById(`precio_${i}`).value = det.precio;
                     
+                    const precioBaseEL = document.getElementById(`precio_base_${i}`);
+                    if (precioBaseEL) {
+                        precioBaseEL.textContent = parseFloat(det.precio_base || 0).toFixed(2);
+                    }
+
                     // Llenar el contenedor de serie/modelo visualmente
                     const container = document.getElementById(`detalle_container_${i}`);
                     container.innerHTML = `
@@ -1523,6 +1645,142 @@
         setTimeout(actualizarGlobalesPf, 500);
     });
     {% endif %}
+
+    // ═══════════════════════════════════════════════════════
+    // LÓGICA DE CRÉDITO Y FACTORES
+    // ═══════════════════════════════════════════════════════
+    function toggleCreditoPf() {
+        const formaPago = $('#forma_pago').val();
+        if (formaPago === '2') { // Crédito
+            $('#seccion_credito_pf').slideDown();
+        } else {
+            $('#seccion_credito_pf').slideUp();
+        }
+        actualizarGlobalesPf();
+    }
+
+    function cargarFactoresPf() {
+        const idZona = $('#zona_credito_pf').val();
+        const $selectorCuotas = $('#factor_credito_pf');
+        
+        $selectorCuotas.html('<option value="">Cargando...</option>');
+        
+        if (!idZona) {
+            $selectorCuotas.html('<option value="">Seleccione zona...</option>');
+            calcularCreditoPf();
+            return;
+        }
+
+        $.ajax({
+            url: '/ventas/obtener-factores-por-zona/',
+            type: 'GET',
+            data: { id_zona: idZona },
+            success: function (response) {
+                if (response.ok && response.factores.length > 0) {
+                    let options = '<option value="">Seleccione Factor</option>';
+                    response.factores.forEach(function (f) {
+                        options += `<option value="${f.numero_cuotas}" data-factor="${f.factor}">${f.numero_cuotas} Cuotas (F: ${f.factor})</option>`;
+                    });
+                    $selectorCuotas.html(options);
+                } else {
+                    $selectorCuotas.html('<option value="">No hay factores disponibles</option>');
+                }
+                calcularCreditoPf();
+            },
+            error: function () {
+                $selectorCuotas.html('<option value="">Error al cargar factores</option>');
+                calcularCreditoPf();
+            }
+        });
+    }
+
+    function aplicarFactorACuotas() {
+        const $factorOption = $('#factor_credito_pf option:selected');
+        const numCuotas = parseInt($factorOption.val()) || 0;
+        const factor = parseFloat($factorOption.data('factor')) || 0;
+
+        let subtotalBase = parseFloat(document.getElementById('subtotalPf').textContent.replace(/,/g, '')) || 0;
+        let igvBase = parseFloat(document.getElementById('igvPf').textContent.replace(/,/g, '')) || 0;
+        let totalBase = subtotalBase + igvBase;
+        const montoInicial = parseFloat($('#monto_inicial_venta').val()) || 0;
+
+        if (numCuotas > 0 && factor > 0) {
+            $('#cantidad_cuotas_manual').val(numCuotas);
+            const precioBaseFinanciar = totalBase - montoInicial;
+            if (precioBaseFinanciar > 0) {
+                const totalFinanciadoSinInicial = precioBaseFinanciar * factor * numCuotas;
+                const totalCreditoFinal = totalFinanciadoSinInicial + montoInicial;
+                $('#precio_total_credito_manual').val(totalCreditoFinal.toFixed(2));
+            }
+        }
+        calcularCreditoPf();
+    }
+
+    function calcularCreditoPf() {
+        const formaPago = $('#forma_pago').val();
+        const $box = $('#resumen_credito_wrapper');
+        
+        let subtotalBase = parseFloat(document.getElementById('subtotalPf').textContent.replace(/,/g, '')) || 0;
+        let igvBase = parseFloat(document.getElementById('igvPf').textContent.replace(/,/g, '')) || 0;
+        let totalBase = subtotalBase + igvBase; 
+        
+        if (formaPago !== '2' || totalBase <= 0) {
+            $box.slideUp();
+            return;
+        }
+
+        const montoInicial = parseFloat($('#monto_inicial_venta').val()) || 0;
+        const cuotasManual = parseInt($('#cantidad_cuotas_manual').val()) || 0;
+        const precioManualInput = parseFloat($('#precio_total_credito_manual').val());
+        
+        let totalCreditoFinal = totalBase;
+        if (!isNaN(precioManualInput) && precioManualInput > 0) {
+            totalCreditoFinal = precioManualInput;
+        }
+
+        if (cuotasManual > 0) {
+            const precioBaseFinanciar = totalCreditoFinal - montoInicial;
+            if (precioBaseFinanciar > 0) {
+                const montoCuota = precioBaseFinanciar / cuotasManual;
+                const interesTotal = totalCreditoFinal - totalBase;
+
+                $('#lbl_monto_cuota').text(`S/ ${montoCuota.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                $('#lbl_proforma_total').text(`S/ ${totalBase.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                $('#lbl_monto_inicial').text(`S/ ${montoInicial.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                $('#lbl_total_financiar').text(`S/ ${precioBaseFinanciar.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                
+                const $factorOption = $('#factor_credito_pf option:selected');
+                const factorVal = parseFloat($factorOption.data('factor')) || 0;
+                $('#lbl_factor_aplicado').text(factorVal > 0 ? factorVal : '-');
+
+                $('#lbl_num_cuotas').text(cuotasManual);
+                const tipoPeriodoText = $('#tipo_periodo option:selected').text();
+                $('#lbl_tipo_periodo').text(tipoPeriodoText.toLowerCase());
+                
+                $('#cantidad_cuotas_config').val(cuotasManual);
+                $('#tasa_interes_venta').val(interesTotal.toFixed(2));
+                $('#monto_cuota').val(montoCuota.toFixed(2));
+                
+                // Actualizar total final visual
+                const totalEL = document.getElementById('totalPf');
+                if (totalEL) totalEL.textContent = totalCreditoFinal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                $box.slideDown();
+            } else {
+                $box.slideUp();
+            }
+        } else {
+            // Restore visual total
+            const totalEL = document.getElementById('totalPf');
+            if (totalEL) totalEL.textContent = totalCreditoFinal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            $box.slideUp();
+        }
+    }
+    
+    // Inicializar estado al cargar
+    $(document).ready(function() {
+        toggleCreditoPf();
+    });
 </script>
 
 {% endblock %}

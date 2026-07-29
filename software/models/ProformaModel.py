@@ -60,6 +60,36 @@ class Proforma(models.Model):
         max_length=255, default='Inmediata',
         verbose_name='Tiempo de Entrega'
     )
+    # Nuevos campos para proformas al crédito
+    es_credito = models.BooleanField(
+        default=False,
+        verbose_name='Es al Crédito'
+    )
+    monto_inicial = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name='Monto Inicial'
+    )
+    numero_cuotas = models.IntegerField(
+        default=0,
+        verbose_name='Número de Cuotas'
+    )
+    factor_aplicado = models.DecimalField(
+        max_digits=10, decimal_places=4, default=0,
+        verbose_name='Factor Aplicado'
+    )
+    monto_cuota = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        verbose_name='Monto por Cuota'
+    )
+    interes_total = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        verbose_name='Interés Total'
+    )
+    tipo_periodo = models.CharField(
+        max_length=50, default='meses',
+        verbose_name='Tipo de Periodo'
+    )
     garantia = models.CharField(
         max_length=255, default='Según fabricante',
         verbose_name='Garantía'
