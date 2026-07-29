@@ -1967,7 +1967,9 @@ def obtener_venta(request, id):
                 'vuelto': float(venta.vuelto) if venta.vuelto else 0,
                 'observaciones': venta.observaciones or '',
                 'total_venta': float(venta.total_venta),
-                'total_ganancia': float(venta.total_ganancia)
+                'total_ganancia': float(venta.total_ganancia),
+                'idusuario': venta.idusuario.idusuario if venta.idusuario else None,
+                'usuario_nombre': venta.idusuario.nombrecompleto if venta.idusuario else ''
             },
             'detalles': detalles_list,
             'credito_data': credito_data,
@@ -2373,6 +2375,7 @@ def actualizar_venta(request, id):
             venta.id_forma_pago_id = nueva_forma_pago
             venta.id_tipo_pago_id = cabecera['id_tipo_pago_id']
             venta.observaciones = request.POST.get("observaciones", "")
+            venta.idusuario_id = cabecera['idusuario']
             
             # Actualizar a la ubicación de la sesión actual
             venta.id_sucursal_id = id_sucursal_session
