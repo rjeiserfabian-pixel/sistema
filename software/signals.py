@@ -195,6 +195,10 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
     def crear_movimiento_caja():
         # Refrescar la venta desde la BD para obtener el total actualizado
         venta.refresh_from_db()
+
+        # 🔥 VALIDACIÓN CLAVE: Si la venta NO está pagada, NO generar movimiento
+        if getattr(venta, 'estado_cobro', '') != 'Pagado':
+            return
         
         # Verificar que no exista ya un movimiento
         existe_movimiento = MovimientoCaja.objects.filter(
@@ -214,10 +218,23 @@ def procesar_venta_detalle(sender, instance, created, **kwargs):
         if venta.total_venta <= 0:
             print(f"[WARN] SIGNAL: La venta #{venta.idventa} tiene total S/ 0")
             return
+
+        # Intentar obtener la apertura actual para que no quede flotante
+        apertura = None
+        try:
+            from software.models.cajaModel import AperturaCierreCaja
+            apertura = AperturaCierreCaja.objects.filter(
+                idusuario=venta.idusuario,
+                id_caja=venta.id_caja,
+                estado__in=['abierta', 'reabierta']
+            ).first()
+        except Exception:
+            pass
         
         # [OK] CREAR MOVIMIENTO DE CAJA
         movimiento = MovimientoCaja.objects.create(
             id_caja=venta.id_caja,
+            id_movimiento=apertura,
             idusuario=venta.idusuario,
             idventa=venta,
             tipo_movimiento='ingreso',

@@ -585,7 +585,7 @@ def imprimir_recibo_pre_financiamiento(request, id_pre_credito):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            elements.append(Spacer(1, 3*mm))
+            # elements.append(Spacer(1, 0.5*mm))
             
         # ENCABEZADO
         nombre_empresa = empresa.razonsocial if empresa.razonsocial else empresa.nombrecomercial
@@ -926,7 +926,7 @@ def imprimir_recibo_devolucion_pre_financiamiento(request, id_pre_credito):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            elements.append(Spacer(1, 3*mm))
+            # elements.append(Spacer(1, 0.5*mm))
             
         # ENCABEZADO
         nombre_empresa = empresa.razonsocial if empresa.razonsocial else empresa.nombrecomercial

@@ -90,17 +90,15 @@ def get_logo_image_for_pdf(empresa, width_mm=40, height_mm=40, circular=True, us
         img = PILImage.open(logo_buf).convert("RGBA")
 
         if circular:
+            img.thumbnail((200, 200), PILImage.Resampling.LANCZOS if hasattr(PILImage, 'Resampling') else PILImage.ANTIALIAS)
             w, h = img.size
-            min_dim = min(w, h)
-            left = (w - min_dim) / 2
-            top = (h - min_dim) / 2
-            right = (w + min_dim) / 2
-            bottom = (h + min_dim) / 2
-            img = img.crop((left, top, right, bottom)).resize((200, 200))
+            bg = PILImage.new('RGBA', (200, 200), (255, 255, 255, 0))
+            bg.paste(img, ((200 - w) // 2, (200 - h) // 2))
+            
             mask = PILImage.new('L', (200, 200), 0)
             ImageDraw.Draw(mask).ellipse((0, 0, 200, 200), fill=255)
             output = PILImage.new('RGBA', (200, 200), (255, 255, 255, 0))
-            output.paste(img, (0, 0), mask=mask)
+            output.paste(bg, (0, 0), mask=mask)
             img = output
 
         out_buf = BytesIO()
@@ -109,6 +107,7 @@ def get_logo_image_for_pdf(empresa, width_mm=40, height_mm=40, circular=True, us
 
         rl_img = RLImage(out_buf, width=width_mm * mm, height=height_mm * mm)
         rl_img.hAlign = 'CENTER'
+        rl_img.preserveAspectRatio = True
         return rl_img
 
     except Exception as e:
@@ -119,6 +118,7 @@ def get_logo_image_for_pdf(empresa, width_mm=40, height_mm=40, circular=True, us
             if logo_buf2:
                 rl_img = RLImage(logo_buf2, width=width_mm * mm, height=height_mm * mm)
                 rl_img.hAlign = 'CENTER'
+                rl_img.preserveAspectRatio = True
                 return rl_img
         except Exception:
             pass

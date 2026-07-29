@@ -2556,24 +2556,37 @@ def actualizar_venta(request, id):
             venta.save()
 
             # ✅ ACTUALIZAR MOVIMIENTO DE CAJA (solo si es Contado y el total cambió)
-            if nueva_forma_pago == 1:
+            # 🔄 ACTUALIZAR MOVIMIENTO DE CAJA (solo si es Contado, está Pagado y el total cambió)
+            if nueva_forma_pago == 1 and getattr(venta, 'estado_cobro', '') == 'Pagado':
                 movimiento = MovimientoCaja.objects.filter(idventa=venta, tipo_movimiento='ingreso', estado=1).first()
                 if movimiento:
                     if movimiento.monto != total_calculado:
-                        print(f"💰 ACTUALIZANDO MOVIMIENTO DE CAJA: S/ {movimiento.monto} -> S/ {total_calculado}")
+                        print(f'💰 ACTUALIZANDO MOVIMIENTO DE CAJA: S/ {movimiento.monto} -> S/ {total_calculado}')
                         movimiento.monto = total_calculado
-                        movimiento.descripcion = f"Venta {venta.numero_comprobante} (Editada) - Cliente: {venta.idcliente.razonsocial}"
+                        movimiento.descripcion = f'Venta {venta.numero_comprobante} (Editada) - Cliente: {venta.idcliente.razonsocial}'
                         movimiento.id_caja_id = id_caja_session # Por si cambió la caja
                         movimiento.save()
                 else:
-                    # Si por algún motivo no existía, se crea (aunque el signal debería haberlo creado al inicio)
+                    # Si estaba Pagado pero no existía, lo creamos asignándolo a la apertura actual
+                    apertura = None
+                    try:
+                        from software.models.cajaModel import AperturaCierreCaja
+                        apertura = AperturaCierreCaja.objects.filter(
+                            idusuario_id=request.session.get('idusuario'),
+                            id_caja_id=id_caja_session,
+                            estado__in=['abierta', 'reabierta']
+                        ).first()
+                    except Exception:
+                        pass
+
                     MovimientoCaja.objects.create(
                         id_caja_id=id_caja_session,
+                        id_movimiento=apertura,
                         idusuario_id=request.session.get('idusuario'),
                         idventa=venta,
                         tipo_movimiento='ingreso',
                         monto=total_calculado,
-                        descripcion=f"Venta {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial}",
+                        descripcion=f'Venta {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial}',
                         estado=1
                     )
 

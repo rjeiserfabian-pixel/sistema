@@ -2047,7 +2047,7 @@ def imprimir_recibo_pago(request, idpagocuota):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            elements.append(Spacer(1, 3*mm))
+            # elements.append(Spacer(1, 0.5*mm))
         
         # ==========================================
         # DATOS DE LA EMPRESA
@@ -2935,7 +2935,7 @@ def imprimir_recibo_pago_multiple(request, pago_ids):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            elements.append(Spacer(1, 3*mm))
+            # elements.append(Spacer(1, 0.5*mm))
 
 
         # Cabecera empresa
@@ -3579,7 +3579,7 @@ def imprimir_recibo_pago_total(request, idmovimiento):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            elements.append(Spacer(1, 3*mm))
+            # elements.append(Spacer(1, 0.5*mm))
 
         # Cabecera empresa
         nombre_empresa = empresa.razonsocial if empresa.razonsocial else empresa.nombrecomercial
