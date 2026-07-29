@@ -553,6 +553,15 @@
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             {% endif %}
+                                            {% if request.session.idtipousuario == 1 %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-fecha" 
+                                                    data-id="{{ cuota.idcuotaventa }}"
+                                                    data-numero="{{ cuota.numero_cuota }}"
+                                                    data-fecha="{{ cuota.fecha_vencimiento|date:'Y-m-d' }}"
+                                                    title="Editar Fecha de Vencimiento">
+                                                <i class="bi bi-calendar-event"></i>
+                                            </button>
+                                            {% endif %}
                                             {% endif %}
                                         {% endif %}
 
@@ -2465,6 +2474,48 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Modal Editar Interés Mora -->
+<!-- Modal Editar Fecha de Vencimiento -->
+<div class="modal fade" id="modalEditarFechaCuota" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-primary"><i class="bi bi-calendar-event me-2"></i>Editar Fecha de Cuota #<span id="modal-fecha-cuota-num"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarFechaCuota">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit-fecha-cuota-id" name="idcuota">
+                    <div class="mb-3">
+                        <label class="form-label">Nueva Fecha de Vencimiento</label>
+                        <input type="date" class="form-control" id="edit-fecha-nueva" name="nueva_fecha" required>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3 mt-4">
+                        <input class="form-check-input" type="checkbox" id="check-reprogramar" name="reprogramar_siguientes" value="1">
+                        <label class="form-check-label fw-bold" for="check-reprogramar">¿Reprogramar cuotas siguientes automáticamente?</label>
+                        <small class="d-block text-muted">Las cuotas posteriores a esta ajustarán su fecha de vencimiento según el intervalo seleccionado.</small>
+                    </div>
+
+                    <div class="mb-3 d-none" id="div-frecuencia-reprogramar">
+                        <label class="form-label">Intervalo de Reprogramación</label>
+                        <select class="form-select" id="select-frecuencia" name="frecuencia_periodo">
+                            <option value="mensual">Mensual (Mismo día cada mes)</option>
+                            <option value="quincenal">Quincenal (Cada 15 días)</option>
+                            <option value="semanal">Semanal (Cada 7 días)</option>
+                            <option value="diario">Diario (Cada 1 día)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-guardar-fecha-cuota">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalEditarMora" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
@@ -2498,6 +2549,81 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- LÓGICA MODAL EDITAR FECHA DE VENCIMIENTO ---
+    const modalFecha = new bootstrap.Modal(document.getElementById('modalEditarFechaCuota'));
+    
+    document.querySelectorAll('.btn-editar-fecha').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('edit-fecha-cuota-id').value = this.dataset.id;
+            document.getElementById('modal-fecha-cuota-num').textContent = this.dataset.numero;
+            document.getElementById('edit-fecha-nueva').value = this.dataset.fecha;
+            
+            // Resetear checkbox y ocultar select
+            document.getElementById('check-reprogramar').checked = false;
+            document.getElementById('div-frecuencia-reprogramar').classList.add('d-none');
+            
+            modalFecha.show();
+        });
+    });
+
+    document.getElementById('check-reprogramar').addEventListener('change', function() {
+        if(this.checked) {
+            document.getElementById('div-frecuencia-reprogramar').classList.remove('d-none');
+        } else {
+            document.getElementById('div-frecuencia-reprogramar').classList.add('d-none');
+        }
+    });
+
+    document.getElementById('btn-guardar-fecha-cuota').addEventListener('click', function() {
+        const idcuota = document.getElementById('edit-fecha-cuota-id').value;
+        const nueva_fecha = document.getElementById('edit-fecha-nueva').value;
+        const reprogramar = document.getElementById('check-reprogramar').checked ? '1' : '0';
+        const frecuencia = document.getElementById('select-frecuencia').value;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        if(!nueva_fecha) {
+            Swal.fire('Error', 'Debe ingresar una fecha válida', 'warning');
+            return;
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+
+        fetch('/creditos/cuota/editar-fecha/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
+            },
+            body: `idcuota=${idcuota}&nueva_fecha=${nueva_fecha}&reprogramar_siguientes=${reprogramar}&frecuencia_periodo=${frecuencia}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Éxito',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Error al actualizar', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Guardar Cambios';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('Error', 'Error de comunicación', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Guardar Cambios';
+        });
+    });
+
     const modalMora = new bootstrap.Modal(document.getElementById('modalEditarMora'));
     const formMora = document.getElementById('formEditarMora');
     const inputMonto = document.getElementById('mora-monto');

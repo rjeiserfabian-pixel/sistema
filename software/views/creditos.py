@@ -1050,6 +1050,78 @@ def ajax_editar_mora(request, idcuotaventa):
 
 
 @transaction.atomic
+def editar_fecha_cuota(request):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Método no permitido'}, status=405)
+        
+    if str(request.session.get('idtipousuario')) != '1':
+        return JsonResponse({'ok': False, 'message': 'No tiene permisos para editar fechas'}, status=403)
+        
+    idcuota = request.POST.get('idcuota')
+    nueva_fecha_str = request.POST.get('nueva_fecha')
+    reprogramar = request.POST.get('reprogramar_siguientes') == '1'
+    frecuencia = request.POST.get('frecuencia_periodo')
+    
+    if not idcuota or not nueva_fecha_str:
+        return JsonResponse({'ok': False, 'message': 'Faltan datos obligatorios'}, status=400)
+        
+    def add_months(sourcedate, months):
+        import calendar
+        month = sourcedate.month - 1 + months
+        year = sourcedate.year + month // 12
+        month = month % 12 + 1
+        day = min(sourcedate.day, calendar.monthrange(year, month)[1])
+        return sourcedate.replace(year=year, month=month, day=day)
+        
+    try:
+        from datetime import datetime, timedelta
+        
+        cuota = CuotasVenta.objects.get(idcuotaventa=idcuota)
+        nueva_fecha = datetime.strptime(nueva_fecha_str, '%Y-%m-%d').date()
+        
+        # 1. Actualizar la cuota seleccionada
+        cuota.fecha_vencimiento = nueva_fecha
+        cuota.save()
+        
+        # 2. Reprogramar siguientes si se solicitó
+        if reprogramar:
+            # Buscar cuotas posteriores del mismo crédito
+            if cuota.idventa:
+                cuotas_siguientes = CuotasVenta.objects.filter(
+                    idventa=cuota.idventa,
+                    numero_cuota__gt=cuota.numero_cuota
+                ).order_by('numero_cuota')
+            elif cuota.idcredito:
+                cuotas_siguientes = CuotasVenta.objects.filter(
+                    idcredito=cuota.idcredito,
+                    numero_cuota__gt=cuota.numero_cuota
+                ).order_by('numero_cuota')
+            else:
+                cuotas_siguientes = []
+                
+            i = 1
+            for c in cuotas_siguientes:
+                if frecuencia == 'mensual':
+                    c.fecha_vencimiento = add_months(nueva_fecha, i)
+                elif frecuencia == 'quincenal':
+                    c.fecha_vencimiento = nueva_fecha + timedelta(days=15 * i)
+                elif frecuencia == 'semanal':
+                    c.fecha_vencimiento = nueva_fecha + timedelta(days=7 * i)
+                elif frecuencia == 'diario':
+                    c.fecha_vencimiento = nueva_fecha + timedelta(days=1 * i)
+                
+                c.save()
+                i += 1
+                
+        return JsonResponse({'ok': True, 'message': 'Fechas actualizadas correctamente'})
+        
+    except CuotasVenta.DoesNotExist:
+        return JsonResponse({'ok': False, 'message': 'Cuota no encontrada'}, status=404)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=500)
+
+
+@transaction.atomic
 def fraccionar_pago(request, idpagocuota):
     """
     Permite dividir un pago ya registrado en múltiples métodos de pago

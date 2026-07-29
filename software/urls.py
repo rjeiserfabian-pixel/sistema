@@ -304,6 +304,7 @@ urlpatterns = [
     path('creditos/registrar-directo/', creditos.registrar_credito_directo, name='registrar_credito_directo'),
     path('creditos/api/obtener-stock-almacen/', creditos.obtener_stock_almacen_credito, name='obtener_stock_almacen_credito'),
     path('creditos/api/editar-mora/<int:idcuotaventa>/', creditos.ajax_editar_mora, name='ajax_editar_mora'),
+    path('creditos/cuota/editar-fecha/', creditos.editar_fecha_cuota, name='editar_fecha_cuota'),
     
     # APIs DE NOTIFICACIONES
     path('api/notificaciones/vencidas/', creditos.obtener_notificaciones_vencidas, name='obtener_notificaciones_vencidas'),
