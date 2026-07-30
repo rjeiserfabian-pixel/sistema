@@ -336,14 +336,22 @@
                                 <div class="col-12" id="seccion_credito_pf" style="display: none;">
                                     <div class="p-3 border border-dashed rounded bg-white mt-2 shadow-sm">
                                         <div class="row g-3">
-                                            <div class="col-md-4">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Monto Inicial</label>
+                                            <input type="hidden" id="monto_inicial_venta" name="monto_inicial_venta" value="0">
+                                            <div class="col-md-3">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Inicial Vehículo</label>
                                                 <div class="input-group input-group-sm">
                                                     <span class="input-group-text">S/</span>
-                                                    <input type="number" id="monto_inicial_venta" name="monto_inicial_venta" class="form-control" value="0" min="0" step="0.01" oninput="calcularCreditoPf()">
+                                                    <input type="number" id="monto_inicial_vehiculo" class="form-control" value="0" min="0" step="0.01" oninput="montoInicialModificado()">
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
+                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Inicial Repuesto</label>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">S/</span>
+                                                    <input type="number" id="monto_inicial_repuesto" class="form-control" value="0" min="0" step="0.01" oninput="montoInicialModificado()">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <label class="form-label text-muted mb-1" style="font-size: 11px;">Tipo Periodo</label>
                                                 <select id="tipo_periodo" name="tipo_periodo" class="form-select form-select-sm" onchange="calcularCreditoPf()">
                                                     <option value="dias">Días</option>
@@ -352,7 +360,7 @@
                                                     <option value="mensual" selected>Mensual</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
                                                 <label class="form-label text-muted mb-1" style="font-size: 11px;">Cant. Cuotas</label>
                                                 <input type="number" id="cantidad_cuotas_manual" class="form-control form-control-sm" value="0" min="1" step="1" oninput="calcularCreditoPf()">
                                             </div>
@@ -1694,26 +1702,82 @@
         });
     }
 
+    function montoInicialModificado() {
+        const inv = parseFloat($('#monto_inicial_vehiculo').val()) || 0;
+        const inr = parseFloat($('#monto_inicial_repuesto').val()) || 0;
+        $('#monto_inicial_venta').val((inv + inr).toFixed(2));
+
+        const factor = parseFloat($('#factor_credito_pf option:selected').data('factor')) || 0;
+        if (factor > 0) {
+            aplicarFactorACuotas();
+        } else {
+            calcularCreditoPf();
+        }
+    }
+
     function aplicarFactorACuotas() {
         const $factorOption = $('#factor_credito_pf option:selected');
         const numCuotas = parseInt($factorOption.val()) || 0;
         const factor = parseFloat($factorOption.data('factor')) || 0;
 
-        let subtotalBase = parseFloat(document.getElementById('subtotalPf').textContent.replace(/,/g, '')) || 0;
-        let igvBase = parseFloat(document.getElementById('igvPf').textContent.replace(/,/g, '')) || 0;
-        let totalBase = subtotalBase + igvBase;
-        const montoInicial = parseFloat($('#monto_inicial_venta').val()) || 0;
-
         if (numCuotas > 0 && factor > 0) {
             $('#cantidad_cuotas_manual').val(numCuotas);
-            const precioBaseFinanciar = totalBase - montoInicial;
-            if (precioBaseFinanciar > 0) {
-                const totalFinanciadoSinInicial = precioBaseFinanciar * factor * numCuotas;
-                const totalCreditoFinal = totalFinanciadoSinInicial + montoInicial;
-                $('#precio_total_credito_manual').val(totalCreditoFinal.toFixed(2));
+            
+            // 1. Contar unidades de vehículos y repuestos
+            let totalUnidadesVehiculo = 0;
+            let totalUnidadesRepuesto = 0;
+            for (let i = 1; i <= itemCounterPf; i++) {
+                const pb_el = document.getElementById(`precio_base_${i}`);
+                const cant_el = document.getElementById(`cant_${i}`);
+                const tipo_el = document.querySelector(`input[name="tipo_item_${i}"]`);
+                if (pb_el && cant_el && tipo_el) {
+                    let pb = parseFloat(pb_el.textContent) || 0;
+                    let c = parseFloat(cant_el.value) || 0;
+                    let tipo = tipo_el.value;
+                    if (pb > 0 && c > 0) {
+                        if (tipo === 'vehiculo') totalUnidadesVehiculo += c;
+                        else totalUnidadesRepuesto += c;
+                    }
+                }
+            }
+
+            const inv = parseFloat($('#monto_inicial_vehiculo').val()) || 0;
+            const inr = parseFloat($('#monto_inicial_repuesto').val()) || 0;
+            
+            const inicialPorVehiculo = totalUnidadesVehiculo > 0 ? (inv / totalUnidadesVehiculo) : 0;
+            const inicialPorRepuesto = totalUnidadesRepuesto > 0 ? (inr / totalUnidadesRepuesto) : 0;
+                
+            // 3. Calcular el nuevo precio unitario individualmente
+            for (let i = 1; i <= itemCounterPf; i++) {
+                const pb_el = document.getElementById(`precio_base_${i}`);
+                const cant_el = document.getElementById(`cant_${i}`);
+                const pu_el = document.getElementById(`precio_${i}`);
+                const tipo_el = document.querySelector(`input[name="tipo_item_${i}"]`);
+                
+                if (pb_el && cant_el && pu_el && tipo_el) {
+                    let pb = parseFloat(pb_el.textContent) || 0;
+                    let c = parseFloat(cant_el.value) || 0;
+                    let tipo = tipo_el.value;
+                    
+                    if (pb > 0 && c > 0) {
+                        let inicialAplicar = (tipo === 'vehiculo') ? inicialPorVehiculo : inicialPorRepuesto;
+                        let baseFinanciar = pb - inicialAplicar;
+                        if (baseFinanciar < 0) baseFinanciar = 0;
+                        
+                        let totalFinanciadoUnidad = baseFinanciar * factor * numCuotas;
+                        let nuevoPU = totalFinanciadoUnidad + inicialAplicar;
+                        let nuevoSubtotalItem = nuevoPU * c;
+                        
+                        pu_el.value = nuevoPU.toFixed(2);
+                        
+                        const st_el = document.getElementById(`total_fila_${i}`);
+                        if (st_el) st_el.textContent = nuevoSubtotalItem.toFixed(2);
+                    }
+                }
             }
         }
-        calcularCreditoPf();
+        
+        actualizarGlobalesPf();
     }
 
     function calcularCreditoPf() {
@@ -1731,21 +1795,30 @@
 
         const montoInicial = parseFloat($('#monto_inicial_venta').val()) || 0;
         const cuotasManual = parseInt($('#cantidad_cuotas_manual').val()) || 0;
-        const precioManualInput = parseFloat($('#precio_total_credito_manual').val());
         
         let totalCreditoFinal = totalBase;
-        if (!isNaN(precioManualInput) && precioManualInput > 0) {
-            totalCreditoFinal = precioManualInput;
-        }
 
         if (cuotasManual > 0) {
-            const precioBaseFinanciar = totalCreditoFinal - montoInicial;
-            if (precioBaseFinanciar > 0) {
-                const montoCuota = precioBaseFinanciar / cuotasManual;
-                const interesTotal = totalCreditoFinal - totalBase;
+            let totalPrecioBase = 0;
+            for (let i = 1; i <= itemCounterPf; i++) {
+                const pb_el = document.getElementById(`precio_base_${i}`);
+                const cant_el = document.getElementById(`cant_${i}`);
+                if (pb_el && cant_el) {
+                    let pb = parseFloat(pb_el.textContent) || 0;
+                    let c = parseFloat(cant_el.value) || 0;
+                    totalPrecioBase += (pb * c);
+                }
+            }
+            if (totalPrecioBase <= 0) totalPrecioBase = totalBase;
+
+            const precioBaseFinanciar = totalPrecioBase - montoInicial;
+            const saldoPagar = totalCreditoFinal - montoInicial;
+
+            if (saldoPagar > 0) {
+                const montoCuota = saldoPagar / cuotasManual;
 
                 $('#lbl_monto_cuota').text(`S/ ${montoCuota.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-                $('#lbl_proforma_total').text(`S/ ${totalBase.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                $('#lbl_proforma_total').text(`S/ ${totalCreditoFinal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                 $('#lbl_monto_inicial').text(`S/ ${montoInicial.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                 $('#lbl_total_financiar').text(`S/ ${precioBaseFinanciar.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                 
@@ -1758,10 +1831,8 @@
                 $('#lbl_tipo_periodo').text(tipoPeriodoText.toLowerCase());
                 
                 $('#cantidad_cuotas_config').val(cuotasManual);
-                $('#tasa_interes_venta').val(interesTotal.toFixed(2));
                 $('#monto_cuota').val(montoCuota.toFixed(2));
                 
-                // Actualizar total final visual
                 const totalEL = document.getElementById('totalPf');
                 if (totalEL) totalEL.textContent = totalCreditoFinal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 
@@ -1770,7 +1841,6 @@
                 $box.slideUp();
             }
         } else {
-            // Restore visual total
             const totalEL = document.getElementById('totalPf');
             if (totalEL) totalEL.textContent = totalCreditoFinal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             $box.slideUp();
