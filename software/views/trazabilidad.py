@@ -70,7 +70,7 @@ def _get_trazabilidad_vehiculo_data(termino):
         auditorias = list(
             AuditoriaVentas.objects.filter(
                 idventa=venta_det.idventa_id
-            ).select_related('idusuario').order_by('fecha_auditoria')
+            ).select_related('idusuario').defer('datos_anteriores').order_by('fecha_auditoria')
         )
 
     if venta_det and venta_det.idventa.estado == 0:

@@ -2565,7 +2565,6 @@ def actualizar_venta(request, id):
                     # Si estaba Pagado pero no existía, lo creamos asignándolo a la apertura actual
                     apertura = None
                     try:
-                        from software.models.cajaModel import AperturaCierreCaja
                         apertura = AperturaCierreCaja.objects.filter(
                             idusuario_id=request.session.get('idusuario'),
                             id_caja_id=id_caja_session,
