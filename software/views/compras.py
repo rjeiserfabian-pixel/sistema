@@ -623,11 +623,23 @@ def nueva_compra(request):
                 )
 
                 # Una sola consulta para traer el costo_unitario del catálogo
-                # (se usa como fallback si no se ingresó costo en el formulario)
+                # (se usa como fallback si no se ingresó costo en el formulario y para calcular el PPP)
                 costos_catalogo = dict(
                     Repuesto.objects.filter(
                         id_repuesto__in=ids_repuesto_en_carrito
                     ).values_list('id_repuesto', 'costo_unitario')
+                )
+
+                # Una sola consulta para obtener el stock total actual de cada repuesto (para el PPP)
+                from software.models.stockModel import Stock
+                from django.db.models import Sum
+                stock_actual_repuestos = dict(
+                    Stock.objects.filter(
+                        id_repuesto_comprado__id_repuesto_id__in=ids_repuesto_en_carrito,
+                        estado=1
+                    ).values('id_repuesto_comprado__id_repuesto_id')
+                     .annotate(total_stock=Sum('cantidad_disponible'))
+                     .values_list('id_repuesto_comprado__id_repuesto_id', 'total_stock')
                 )
                 # -------------------------------------------------------
 
@@ -690,6 +702,8 @@ def nueva_compra(request):
                             raise ValueError(f"Debe seleccionar un repuesto para el ítem {i}")
                         
                         ubicacion = request.POST.get(f"descripcion_{i}", "").strip()
+                        if not ubicacion or ubicacion.lower() == 'sin ubicacion':
+                            ubicacion = 'Sin ubicacion'
                         repuesto, _ = RepuestoComp.objects.get_or_create(
                             id_repuesto_id=int(id_repuesto),
                             ubicacion=ubicacion,
@@ -702,13 +716,29 @@ def nueva_compra(request):
                             if costo_cat:
                                 precio_compra = float(costo_cat)
 
+                        # --- CÁLCULO DEL PRECIO PROMEDIO PONDERADO (PPP) ---
+                        stock_actual = float(stock_actual_repuestos.get(int(id_repuesto), 0))
+                        costo_actual = float(costos_catalogo.get(int(id_repuesto), 0))
+                        
+                        nuevo_ppp = precio_compra
+                        if stock_actual > 0:
+                            valor_inventario_actual = stock_actual * costo_actual
+                            valor_nueva_compra = cantidad * precio_compra
+                            total_unidades = stock_actual + cantidad
+                            nuevo_ppp = (valor_inventario_actual + valor_nueva_compra) / total_unidades
+                            nuevo_ppp = round(nuevo_ppp, 4)
+
                         # --- SINCRONIZAR PRECIOS DEL CATÁLOGO (sin N+1) ---
                         ultima_fecha = ultimas_fechas_compra.get(int(id_repuesto))
                         if not ultima_fecha or (compra.fechacompra and ultima_fecha and compra.fechacompra >= ultima_fecha):
                             Repuesto.objects.filter(id_repuesto=int(id_repuesto)).update(
+                                costo_unitario=nuevo_ppp,
                                 precio_minimo=precio_minimo,
                                 precio_sugerido=precio_maximo,
                             )
+                        # Actualizar diccionario para el siguiente loop (si compran el mismo repuesto 2 veces en la misma factura)
+                        costos_catalogo[int(id_repuesto)] = nuevo_ppp
+                        stock_actual_repuestos[int(id_repuesto)] = stock_actual + cantidad
                         # ---------------------------------------------------
 
                         nuevos_detalles.append(CompraDetalle(

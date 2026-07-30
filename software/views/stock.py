@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
 from django.db import transaction
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Sum
 from software.models.compradetalleModel import CompraDetalle
 from software.models.comprasModel import Compras
 from software.models.VehiculosModel import Vehiculo
@@ -344,6 +344,8 @@ def agregar_repuesto_stock_directo(request):
 
             id_repuesto = request.POST.get('id_repuesto')
             ubicacion = request.POST.get('ubicacion', '').strip()
+            if not ubicacion or ubicacion.lower() == 'sin ubicacion':
+                ubicacion = 'Sin ubicacion'
             cantidad = int(request.POST.get('cantidad', '1'))
             precio_compra = float(request.POST.get('precio_compra', '0.0'))
             precio_minimo = float(request.POST.get('precio_minimo', '0.0'))
@@ -419,6 +421,24 @@ def agregar_repuesto_stock_directo(request):
                 subtotal=0.00
             )
 
+            # --- CÁLCULO DEL PRECIO PROMEDIO PONDERADO (PPP) ---
+            # Calcular ANTES de sumar el nuevo stock
+            stock_actual_agregado = Stock.objects.filter(
+                id_repuesto_comprado__id_repuesto_id=int(id_repuesto),
+                estado=1
+            ).aggregate(total=Sum('cantidad_disponible'))['total'] or 0
+
+            costo_actual = Repuesto.objects.filter(id_repuesto=int(id_repuesto)).values_list('costo_unitario', flat=True).first() or 0.0
+
+            nuevo_ppp = precio_compra
+            if stock_actual_agregado > 0:
+                valor_inventario_actual = float(stock_actual_agregado) * float(costo_actual)
+                valor_nueva_compra = cantidad * precio_compra
+                total_unidades = float(stock_actual_agregado) + cantidad
+                nuevo_ppp = (valor_inventario_actual + valor_nueva_compra) / total_unidades
+                nuevo_ppp = round(nuevo_ppp, 4)
+            # ---------------------------------------------------
+
             stock_obj, created = Stock.objects.get_or_create(
                 id_almacen=almacen,
                 id_repuesto_comprado=repuesto_comp,
@@ -437,6 +457,7 @@ def agregar_repuesto_stock_directo(request):
             # El ingreso directo siempre usa la fecha actual, por lo que siempre
             # es el más reciente. Se actualiza el catálogo con una sola consulta.
             Repuesto.objects.filter(id_repuesto=int(id_repuesto)).update(
+                costo_unitario=nuevo_ppp,
                 precio_minimo=precio_minimo,
                 precio_sugerido=precio_maximo,
             )
@@ -925,7 +946,7 @@ def api_listar_repuestos_stock(request):
         det = s.idcompradetalle or fallback_r.get(rc.id_repuesto_comprado)
         rep = rc.id_repuesto
 
-        p_compra = det.precio_compra if det else rep.costo_unitario
+        p_compra = rep.costo_unitario or (det.precio_compra if det else 0)
         p_minimo = rep.precio_minimo or (det.precio_minimo if det else 0)
         p_maximo = rep.precio_sugerido or (det.precio_maximo if det else 0)
 

@@ -228,22 +228,17 @@ def ventas(request):
             if precios_cero:
                 detalle_compra = ultimos_cd.get(rc_id)
 
-            if detalle_compra and (
-                float(detalle_compra.precio_minimo) > 0 or
-                float(detalle_compra.precio_maximo) > 0
-            ):
-                precio_minimo_val = float(detalle_compra.precio_minimo)
-                precio_maximo_val = float(detalle_compra.precio_maximo)
-                precio_compra_val = float(detalle_compra.precio_compra)
-            else:
-                # Paso 3: último recurso — precios del catálogo base (Repuesto)
-                rep_cat = catalogo_precios.get(rc_id)
-                # También intentar con el catálogo del propio repuesto base
-                if not rep_cat:
-                    rep_cat = repuesto_comp.id_repuesto  # ya cargado por select_related
-                precio_minimo_val = float(rep_cat.precio_minimo) if rep_cat else 0
-                precio_maximo_val = float(rep_cat.precio_sugerido) if rep_cat else 0
-                precio_compra_val = float(rep_cat.costo_unitario) if rep_cat else 0
+            rep_cat = catalogo_precios.get(rc_id)
+            if not rep_cat:
+                rep_cat = repuesto_comp.id_repuesto  # ya cargado por select_related
+            
+            p_compra = float(detalle_compra.precio_compra) if detalle_compra and detalle_compra.precio_compra else (float(rep_cat.costo_unitario) if rep_cat and rep_cat.costo_unitario else 0)
+            p_mayor = float(rep_cat.precio_minimo) if rep_cat and rep_cat.precio_minimo else (float(detalle_compra.precio_minimo) if detalle_compra and detalle_compra.precio_minimo else 0)
+            p_menor = float(rep_cat.precio_sugerido) if rep_cat and rep_cat.precio_sugerido else (float(detalle_compra.precio_maximo) if detalle_compra and detalle_compra.precio_maximo else 0)
+            
+            precio_minimo_val = p_mayor
+            precio_maximo_val = p_menor
+            precio_compra_val = p_compra
 
             nom_repuesto = repuesto_comp.id_repuesto.nombre
             if nom_repuesto not in repuestos_stock:
