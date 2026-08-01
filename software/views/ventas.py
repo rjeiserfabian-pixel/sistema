@@ -2603,6 +2603,10 @@ def actualizar_venta(request, id):
                     credito.monto_adelanto = monto_adelanto
                     credito.saldo_pendiente = saldo_financiar
                     credito.cantidad_cuotas = cantidad_cuotas
+                    # Sincronizar fecha, vendedor y cliente desde la venta
+                    credito.fecha_credito = venta.fecha_venta
+                    credito.idusuario = venta.idusuario
+                    credito.idcliente = venta.idcliente
                     credito.save()
                     print(f"✅ CRÉDITO ACTUALIZADO - ID: {credito.idcredito}")
                 else:
