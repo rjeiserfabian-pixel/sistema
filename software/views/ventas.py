@@ -396,11 +396,9 @@ def ventas(request):
 
     # Optimización: Obtener lista de vendedores según el rol y la sucursal
     vendedores_filtros = {'estado': 1}
-    if id_sucursal:
+    # Si NO es administrador ni analista, filtramos por la sucursal de la sesión
+    if id_sucursal and not es_admin and id2 != 6:
         vendedores_filtros['id_sucursal_id'] = id_sucursal
-        
-    if id2 == 6:  # Analista
-        vendedores_filtros['idtipousuario'] = 2
         
     vendedores_qs = Usuario.objects.filter(**vendedores_filtros).only('idusuario', 'nombrecompleto')
 
