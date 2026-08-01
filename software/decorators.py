@@ -66,7 +66,7 @@ def requiere_caja_aperturada(view_func):
         # Si tiene caja abierta, guardar en sesión si no está
         if apertura and not request.session.get('id_caja'):
             request.session['id_caja'] = apertura.id_caja.id_caja
-            if apertura.id_caja.id_sucursal:
+            if apertura.id_caja.id_sucursal and not request.session.get('id_sucursal'):
                 request.session['id_sucursal'] = apertura.id_caja.id_sucursal.id_sucursal
         
         # Todo OK, ejecutar la vista

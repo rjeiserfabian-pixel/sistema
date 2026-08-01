@@ -199,6 +199,7 @@ def cambiar_contexto(request):
 
     idusuario = request.session.get('idusuario')
     es_admin = request.session.get('es_admin', False)
+    idtipousuario = request.session.get('idtipousuario')
 
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
@@ -220,7 +221,7 @@ def cambiar_contexto(request):
 
         # Actualizar sucursal
         if id_sucursal:
-            if es_admin:
+            if es_admin or idtipousuario in [1, 2, 5, 6]:
                 # Admin puede cambiar a cualquier sucursal de su empresa
                 sucursal = Sucursales.objects.get(
                     id_sucursal=id_sucursal,
@@ -253,7 +254,28 @@ def cambiar_contexto(request):
             request.session['id_almacen'] = almacen.id_almacen
             print(f"✅ Almacén seleccionado: {almacen.nombre_almacen}")
         else:
-            request.session.pop('id_almacen', None)
+            # ✅ Auto-asignar almacén de exhibición si no envió ninguno
+            from django.db.models import Q
+            id_suc_actual = request.session.get('id_sucursal')
+            almacen_auto = None
+            if id_suc_actual:
+                almacen_auto = Almacenes.objects.filter(
+                    Q(nombre_almacen__icontains='exhibicion') | Q(nombre_almacen__icontains='exhivicion'),
+                    id_sucursal_id=id_suc_actual,
+                    estado=1
+                ).first() or Almacenes.objects.filter(id_sucursal_id=id_suc_actual, estado=1).first()
+            
+            if almacen_auto:
+                request.session['id_almacen'] = almacen_auto.id_almacen
+                AperturaCierreCaja.objects.filter(
+                    idusuario_id=idusuario, estado__in=['abierta', 'reabierta']
+                ).update(id_almacen=almacen_auto)
+                print(f"✅ Almacén auto-asignado en context_processors: {almacen_auto.nombre_almacen}")
+            else:
+                request.session.pop('id_almacen', None)
+                AperturaCierreCaja.objects.filter(
+                    idusuario_id=idusuario, estado__in=['abierta', 'reabierta']
+                ).update(id_almacen=None)
 
         # ── Invalidar caché de empresa_context para este usuario ──
         # (el nuevo contexto se recalculará en el próximo request)

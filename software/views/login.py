@@ -101,6 +101,31 @@ def login(request):
                     print(f"✅ Almacén restaurado: {apertura_abierta.id_almacen}")
                 print(f"✅ Caja abierta restaurada: {apertura_abierta.id_caja.nombre_caja}")
             
+            # ✅ Pre-selección automática de almacén de exhibición si no hay ninguno
+            if not request.session.get('id_almacen') and request.session.get('id_sucursal'):
+                from django.db.models import Q
+                id_suc = request.session['id_sucursal']
+                
+                # Intentar buscar uno de exhibición en una sola consulta
+                almacen_exhibicion = Almacenes.objects.filter(
+                    Q(nombre_almacen__icontains='exhibicion') | Q(nombre_almacen__icontains='exhivicion'),
+                    id_sucursal_id=id_suc,
+                    estado=1
+                ).first()
+                
+                if almacen_exhibicion:
+                    request.session['id_almacen'] = almacen_exhibicion.id_almacen
+                    print(f"✅ Almacén de exhibición auto-seleccionado: {almacen_exhibicion.nombre_almacen}")
+                else:
+                    # Fallback al primero disponible
+                    primer_almacen = Almacenes.objects.filter(
+                        id_sucursal_id=id_suc,
+                        estado=1
+                    ).first()
+                    if primer_almacen:
+                        request.session['id_almacen'] = primer_almacen.id_almacen
+                        print(f"✅ Almacén fallback auto-seleccionado: {primer_almacen.nombre_almacen}")
+            
             print(f"✅ Login exitoso: {usuario_encontrado.nombrecompleto} ({'Admin' if es_admin else 'Usuario'})")
             print(f"   Sucursal: {request.session.get('id_sucursal')}")
             print(f"   Caja: {request.session.get('id_caja', 'Sin caja')}")
@@ -145,7 +170,7 @@ def cambiar_contexto(request):
         
         # Actualizar sucursal
         if id_sucursal:
-            puede_cambiar_sucursal = usuario.idtipousuario.idtipousuario in [1, 5, 6]
+            puede_cambiar_sucursal = usuario.idtipousuario.idtipousuario in [1, 2, 5, 6]
             if puede_cambiar_sucursal:
                 # Admin, Gerente o Analista pueden cambiar a cualquier sucursal de su empresa
                 sucursal = Sucursales.objects.get(
@@ -188,12 +213,28 @@ def cambiar_contexto(request):
                 apertura_activa.save(update_fields=['id_almacen'])
                 print(f"✅ Almacén guardado en apertura: {almacen.nombre_almacen}")
         else:
-            request.session.pop('id_almacen', None)
-            # También limpiar de la apertura activa
-            AperturaCierreCaja.objects.filter(
-                idusuario_id=idusuario,
-                estado__in=['abierta', 'reabierta']
-            ).update(id_almacen=None)
+            # ✅ Auto-asignar almacén de exhibición si no envió ninguno
+            from django.db.models import Q
+            id_suc_actual = request.session.get('id_sucursal')
+            almacen_auto = None
+            if id_suc_actual:
+                almacen_auto = Almacenes.objects.filter(
+                    Q(nombre_almacen__icontains='exhibicion') | Q(nombre_almacen__icontains='exhivicion'),
+                    id_sucursal_id=id_suc_actual,
+                    estado=1
+                ).first() or Almacenes.objects.filter(id_sucursal_id=id_suc_actual, estado=1).first()
+            
+            if almacen_auto:
+                request.session['id_almacen'] = almacen_auto.id_almacen
+                AperturaCierreCaja.objects.filter(
+                    idusuario_id=idusuario, estado__in=['abierta', 'reabierta']
+                ).update(id_almacen=almacen_auto)
+                print(f"✅ Almacén auto-asignado: {almacen_auto.nombre_almacen}")
+            else:
+                request.session.pop('id_almacen', None)
+                AperturaCierreCaja.objects.filter(
+                    idusuario_id=idusuario, estado__in=['abierta', 'reabierta']
+                ).update(id_almacen=None)
         
         return JsonResponse({
             'success': True,
@@ -223,7 +264,7 @@ def obtener_datos_apertura(request):
     
     usuario = Usuario.objects.get(idusuario=idusuario)
     es_admin = idtipousuario == 1
-    puede_cambiar_sucursal = idtipousuario in [1, 5, 6]
+    puede_cambiar_sucursal = idtipousuario in [1, 2, 5, 6]
     
     data = {
         'es_admin': es_admin,
@@ -307,7 +348,7 @@ def obtener_cajas_almacenes(request):
         id_tipo_usuario = request.session.get('idtipousuario')
         
         # Obtener cajas
-        if id_tipo_usuario in [1, 5, 6]:
+        if id_tipo_usuario in [1, 2, 5, 6]:
             cajas = Caja.objects.filter(
                 Q(id_sucursal_id=id_sucursal) | Q(id_sucursal__isnull=True),
                 estado=1
