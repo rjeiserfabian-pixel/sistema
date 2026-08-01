@@ -2435,10 +2435,16 @@ def imprimir_recibo_pago(request, idpagocuota):
                 try:
                     w, h = element.wrap(ancho_util, 2000 * mm)
                     total_height += h
+                    # Sumar el espacio antes y después si es un párrafo
+                    if hasattr(element, 'style'):
+                        if hasattr(element.style, 'spaceBefore'):
+                            total_height += element.style.spaceBefore
+                        if hasattr(element.style, 'spaceAfter'):
+                            total_height += element.style.spaceAfter
                 except:
                     total_height += 15 * mm # Valor por defecto seguro
                     
-        doc_height = total_height + (35 * mm) # Amplio margen para evitar saltos de página a otra hoja
+        doc_height = total_height + (42 * mm) # Amplio margen para evitar saltos de página a otra hoja
         if doc_height < 100 * mm:  # Minimo
             doc_height = 100 * mm
 
@@ -3214,10 +3220,15 @@ def imprimir_recibo_pago_multiple(request, pago_ids):
                 try:
                     _, h = element.wrap(ancho_util, 2000 * mm)
                     total_height += h
+                    if hasattr(element, 'style'):
+                        if hasattr(element.style, 'spaceBefore'):
+                            total_height += element.style.spaceBefore
+                        if hasattr(element.style, 'spaceAfter'):
+                            total_height += element.style.spaceAfter
                 except Exception:
                     total_height += 15 * mm
 
-        doc_height = max(total_height + (35 * mm), 100 * mm)
+        doc_height = max(total_height + (42 * mm), 100 * mm)
 
         doc = SimpleDocTemplate(
             buffer,
