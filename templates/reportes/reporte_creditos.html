@@ -41,7 +41,24 @@
       <div class="card-body pt-4">
 
         <form method="GET" class="row g-3 mb-4" id="filtroForm">
-          <div class="col-md-3">
+          <div class="col-md-2">
+            <label class="form-label">Fecha Inicio</label>
+            <input type="date" name="fecha_inicio" class="form-control" value="{{ fi_str }}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Fecha Fin</label>
+            <input type="date" name="fecha_fin" class="form-control" value="{{ ff_str }}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Sucursal</label>
+            <select name="sucursal" class="form-select">
+              <option value="">Todas las sucursales</option>
+              {% for s in sucursales %}
+                <option value="{{ s.id_sucursal }}" {% if sucursal_filtro == s.id_sucursal|stringformat:"s" %}selected{% endif %}>{{ s.nombre_sucursal }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
             <label class="form-label">Filtrar Estado</label>
             <select name="estado" class="form-select">
               <option value="activo" {% if estado_filtro == 'activo' %}selected{% endif %}>Activos</option>
@@ -49,11 +66,11 @@
               <option value="pagado" {% if estado_filtro == 'pagado' %}selected{% endif %}>Pagados</option>
             </select>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label">Buscar por Código</label>
             <input type="text" name="codigo" class="form-control" placeholder="Ej: CR-001" value="{{ codigo_filtro }}">
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label">Cliente</label>
             <div class="autocomplete-wrapper flex-grow-1">
               <input type="text" id="cliente_search" class="form-control autocomplete-input autocomplete-with-arrow" placeholder="Buscar cliente..." autocomplete="off">
@@ -64,7 +81,7 @@
               <div class="autocomplete-results" id="cliente_results"></div>
             </div>
           </div>
-          <div class="col-md-3 d-flex align-items-end">
+          <div class="col-md-12 d-flex justify-content-end align-items-end mt-3">
             <button type="button" class="btn btn-primary w-100" id="btnFiltrar">
               <i class="bi bi-funnel"></i> Filtrar
             </button>
@@ -296,9 +313,12 @@ function toggleAutocomplete(inputId, resultsId) {
 $(document).ready(function() {
     var getFiltros = function() {
         return {
+            fecha_inicio: $('input[name="fecha_inicio"]').val(),
+            fecha_fin: $('input[name="fecha_fin"]').val(),
             estado: $('select[name="estado"]').val(),
             codigo: $('input[name="codigo"]').val(),
-            cliente_id: $('#cliente_id').val()
+            cliente_id: $('#cliente_id').val(),
+            sucursal: $('select[name="sucursal"]').val()
         };
     };
 
@@ -310,9 +330,12 @@ $(document).ready(function() {
             type: "GET",
             data: function(d) {
                 var f = getFiltros();
+                d.fecha_inicio = f.fecha_inicio;
+                d.fecha_fin = f.fecha_fin;
                 d.estado = f.estado;
                 d.codigo = f.codigo;
                 d.cliente_id = f.cliente_id;
+                d.sucursal = f.sucursal;
             }
         },
         columns: [

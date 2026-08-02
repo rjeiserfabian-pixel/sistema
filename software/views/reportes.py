@@ -10,6 +10,7 @@ from django.db.models import Sum, Count, Q, F, OuterRef, Subquery, DecimalField,
 from django.db.models.functions import Coalesce, Cast
 
 from software.models.VentasModel import Ventas
+from software.models.sucursalesModel import Sucursales
 from software.models.comprasModel import Compras
 from software.models.ClienteModel import Cliente
 from software.models.ProveedoresModel import Proveedor
@@ -1211,12 +1212,14 @@ def reporte_creditos(request):
     if not idusuario:
         return redirect('iniciar_sesion')
         
-    estado_filtro = request.GET.get('estado', 'activo')
-    codigo_filtro = request.GET.get('codigo', '')
-    cliente_id = request.GET.get('cliente_id', '')
+    fi, ff, fi_str, ff_str = _parse_fechas(request)
+    estado_filtro = request.GET.get('estado', 'activo').strip()
+    codigo_filtro = request.GET.get('codigo', '').strip()
+    cliente_id = request.GET.get('cliente_id', '').strip()
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     id_suc = request.session.get('id_sucursal')
     
-    creditos_qs = Credito.objects.filter(estado_credito=estado_filtro)
+    creditos_qs = Credito.objects.filter(estado_credito=estado_filtro, fecha_credito__date__range=[fi, ff])
     if codigo_filtro:
         creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
     if cliente_id:
@@ -1225,10 +1228,10 @@ def reporte_creditos(request):
             Q(idventa__idcliente_id=cliente_id)
         )
         
-    if id_suc:
+    if sucursal_filtro:
         creditos_qs = creditos_qs.filter(
-            Q(idventa__id_sucursal_id=id_suc) | 
-            Q(id_sucursal_id=id_suc)
+            Q(idventa__id_sucursal_id=sucursal_filtro) | 
+            Q(id_sucursal_id=sucursal_filtro)
         )
     creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
 
@@ -1246,10 +1249,10 @@ def reporte_creditos(request):
     ).exclude(
         idventa__credito__estado=0
     )
-    if id_suc:
+    if sucursal_filtro:
         cuotas_vencidas = cuotas_vencidas.filter(
-            Q(idventa__id_sucursal_id=id_suc) | 
-            Q(idcredito__id_sucursal_id=id_suc)
+            Q(idventa__id_sucursal_id=sucursal_filtro) | 
+            Q(idcredito__id_sucursal_id=sucursal_filtro)
         )
     if cliente_id:
         cuotas_vencidas = cuotas_vencidas.filter(
@@ -1358,6 +1361,8 @@ def reporte_creditos(request):
         clientes = Cliente.objects.filter(estado=1).order_by('razonsocial')
         c_id_int = int(cliente_id) if cliente_id.isdigit() else ''
         return render(request, 'reportes/reporte_creditos.html', {
+            'fi_str': fi_str,
+            'ff_str': ff_str,
             'estado_filtro': estado_filtro,
             'codigo_filtro': codigo_filtro,
             'cliente_id': c_id_int,
@@ -1365,6 +1370,8 @@ def reporte_creditos(request):
             'total_deuda': total_deuda,
             'total_cuotas_vencidas': total_cuotas_vencidas,
             'active_tab': request.GET.get('tab', 'listado'),
+            'sucursales': Sucursales.objects.all(),
+            'sucursal_filtro': sucursal_filtro,
         })
     else:
         pass
@@ -1374,12 +1381,14 @@ def api_listar_reporte_creditos(request):
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
-    estado_filtro = request.GET.get('estado', 'activo')
-    codigo_filtro = request.GET.get('codigo', '')
-    cliente_id = request.GET.get('cliente_id', '')
+    fi, ff, fi_str, ff_str = _parse_fechas(request)
+    estado_filtro = request.GET.get('estado', 'activo').strip()
+    codigo_filtro = request.GET.get('codigo', '').strip()
+    cliente_id = request.GET.get('cliente_id', '').strip()
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     id_suc = request.session.get('id_sucursal')
     
-    creditos_qs = Credito.objects.filter(estado_credito=estado_filtro)
+    creditos_qs = Credito.objects.filter(estado_credito=estado_filtro, fecha_credito__date__range=[fi, ff])
     if codigo_filtro:
         creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
     if cliente_id:
@@ -1388,10 +1397,10 @@ def api_listar_reporte_creditos(request):
             Q(idventa__idcliente_id=cliente_id)
         )
         
-    if id_suc:
+    if sucursal_filtro:
         creditos_qs = creditos_qs.filter(
-            Q(idventa__id_sucursal_id=id_suc) | 
-            Q(id_sucursal_id=id_suc)
+            Q(idventa__id_sucursal_id=sucursal_filtro) | 
+            Q(id_sucursal_id=sucursal_filtro)
         )
     creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
 
@@ -1405,8 +1414,22 @@ def api_listar_reporte_creditos(request):
             Q(codigo_credito__icontains=search_value) |
             Q(idcliente__razonsocial__icontains=search_value) |
             Q(idventa__idcliente__razonsocial__icontains=search_value) |
-            Q(idventa__numero_comprobante__icontains=search_value)
-        )
+            Q(idventa__numero_comprobante__icontains=search_value) |
+            # Vehiculos (Credito directo)
+            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(id_vehiculo__serie_motor__icontains=search_value) |
+            # Vehiculos (Credito por venta)
+            Q(idventa__ventadetalle__id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            # Repuestos (Credito directo)
+            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
+            # Repuestos (Credito por venta)
+            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
 
     records_total = creditos_qs.count()
     records_filtered = records_total
@@ -1462,7 +1485,8 @@ def api_listar_reporte_moras(request):
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
-    cliente_id = request.GET.get('cliente_id', '')
+    cliente_id = request.GET.get('cliente_id', '').strip()
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     id_suc = request.session.get('id_sucursal')
     
     ESTADOS_EXCLUIDOS = ['retenido', 'cancelado', 'reparado', 'segunda']
@@ -1479,10 +1503,10 @@ def api_listar_reporte_moras(request):
     ).exclude(
         idventa__credito__estado=0
     )
-    if id_suc:
+    if sucursal_filtro:
         cuotas_vencidas = cuotas_vencidas.filter(
-            Q(idventa__id_sucursal_id=id_suc) | 
-            Q(idcredito__id_sucursal_id=id_suc)
+            Q(idventa__id_sucursal_id=sucursal_filtro) | 
+            Q(idcredito__id_sucursal_id=sucursal_filtro)
         )
     if cliente_id:
         cuotas_vencidas = cuotas_vencidas.filter(
