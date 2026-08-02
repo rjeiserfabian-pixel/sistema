@@ -40,7 +40,7 @@
     <div class="card">
       <div class="card-body pt-4">
 
-        <form method="GET" class="row g-3 mb-4" id="filtroForm">
+        <form id="filtroForm" onsubmit="return false;" class="row g-3 mb-4">
           <div class="col-md-2">
             <label class="form-label">Fecha Inicio</label>
             <input type="date" name="fecha_inicio" class="form-control" value="{{ fi_str }}">
@@ -82,19 +82,17 @@
             </div>
           </div>
           <div class="col-md-12 d-flex justify-content-end align-items-end mt-3">
-            <button type="button" class="btn btn-primary w-100" id="btnFiltrar">
-              <i class="bi bi-funnel"></i> Filtrar
-            </button>
-            <button type="submit" name="export" value="excel_creditos" class="btn btn-success ms-2 tooltip-custom" title="Exportar Créditos (Excel)">
+            <!-- Botón filtrado quitado (todo se hace en onchange) -->
+            <button type="button" onclick="exportarReporte('excel_creditos')" class="btn btn-success ms-2 tooltip-custom" title="Exportar Créditos (Excel)">
               <i class="bi bi-file-earmark-excel"></i>
             </button>
-            <button type="submit" name="export" value="pdf_creditos" class="btn btn-danger ms-2 tooltip-custom" title="Exportar Créditos (PDF)">
+            <button type="button" onclick="exportarReporte('pdf_creditos')" class="btn btn-danger ms-2 tooltip-custom" title="Exportar Créditos (PDF)">
               <i class="bi bi-file-earmark-pdf"></i>
             </button>
-            <button type="submit" name="export" value="excel_moras" class="btn btn-outline-success ms-2 tooltip-custom" title="Exportar Morosos (Excel)">
+            <button type="button" onclick="exportarReporte('excel_moras')" class="btn btn-outline-success ms-2 tooltip-custom" title="Exportar Morosos (Excel)">
               Mora <i class="bi bi-file-excel"></i>
             </button>
-            <button type="submit" name="export" value="pdf_moras" class="btn btn-outline-danger ms-2 tooltip-custom" title="Exportar Morosos (PDF)">
+            <button type="button" onclick="exportarReporte('pdf_moras')" class="btn btn-outline-danger ms-2 tooltip-custom" title="Exportar Morosos (PDF)">
               Mora <i class="bi bi-file-pdf"></i>
             </button>
           </div>
@@ -105,7 +103,7 @@
             <div class="card bg-warning-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Saldo Total Pendiente/Mora:</h5>
-                <h3 class="mb-0 text-warning">S/ {{ total_deuda|default:"0.00" }}</h3>
+                <h3 class="mb-0 text-warning" id="tot_deuda">S/ {{ total_deuda|default:"0.00" }}</h3>
               </div>
             </div>
           </div>
@@ -113,7 +111,7 @@
             <div class="card bg-danger-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Cuotas Vencidas Hoy:</h5>
-                <h3 class="mb-0 text-danger">{{ total_cuotas_vencidas }} cuotas en Mora</h3>
+                <h3 class="mb-0 text-danger"><span id="tot_cuotas_vencidas">{{ total_cuotas_vencidas }}</span> cuotas en Mora</h3>
               </div>
             </div>
           </div>
@@ -127,7 +125,7 @@
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link text-danger fw-bold {% if active_tab == 'moras' %}active{% endif %}" id="moras-tab" data-bs-toggle="tab" data-bs-target="#moras-creditos" type="button" role="tab" aria-selected="false">
-              Cuotas Morosas <span class="badge bg-danger ms-1">{{ total_cuotas_vencidas }}</span>
+              Cuotas Morosas <span class="badge bg-danger ms-1" id="badge_moras">{{ total_cuotas_vencidas }}</span>
             </button>
           </li>
         </ul>
@@ -226,7 +224,13 @@ function setupAutocomplete(inputId, resultsId, data, hiddenId) {
     
     if (value.length < 1) {
       results.style.display = 'none';
-      hidden.value = '';
+      if (hidden.value !== '') {
+        hidden.value = '';
+        if ($.fn.DataTable.isDataTable('#tablaCreditos')) {
+            $('#tablaCreditos').DataTable().ajax.reload();
+            $('#tablaMoras').DataTable().ajax.reload();
+        }
+      }
       return;
     }
     
@@ -290,6 +294,10 @@ function toggleAutocomplete(inputId, resultsId) {
     input.value = '';
     document.getElementById(hiddenId).value = '';
     results.style.display = 'none';
+    if ($.fn.DataTable.isDataTable('#tablaCreditos')) {
+        $('#tablaCreditos').DataTable().ajax.reload();
+        $('#tablaMoras').DataTable().ajax.reload();
+    }
   });
   results.appendChild(divTodos);
 
@@ -437,12 +445,46 @@ $(document).ready(function() {
         ordering: false
     });
 
-    $('#btnFiltrar').on('click', function(e) {
-        e.preventDefault();
+    $('#tablaCreditos').on('xhr.dt', function ( e, settings, json, xhr ) {
+        if(json && json.totales) {
+            $('#tot_deuda').text('S/ ' + parseFloat(json.totales.total_deuda).toFixed(2));
+        }
+    });
+
+    $('#tablaMoras').on('xhr.dt', function ( e, settings, json, xhr ) {
+        if(json && json.totales) {
+            $('#tot_cuotas_vencidas').text(json.totales.total_cuotas_vencidas);
+            $('#badge_moras').text(json.totales.total_cuotas_vencidas);
+        }
+    });
+
+    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="estado"], select[name="sucursal"], input[name="codigo"]').on('change keyup', function() {
         tablaCreditos.ajax.reload();
         tablaMoras.ajax.reload();
     });
+
+    const originalValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    Object.defineProperty($('#cliente_id')[0], "value", {
+        set: function(val) {
+            originalValueSetter.call(this, val);
+            tablaCreditos.ajax.reload();
+            tablaMoras.ajax.reload();
+        }
+    });
 });
+
+function exportarReporte(fmt) {
+    const urlParams = new URLSearchParams({
+        export: fmt,
+        fecha_inicio: $('input[name="fecha_inicio"]').val(),
+        fecha_fin: $('input[name="fecha_fin"]').val(),
+        estado: $('select[name="estado"]').val(),
+        sucursal: $('select[name="sucursal"]').val(),
+        codigo: $('input[name="codigo"]').val(),
+        cliente_id: $('#cliente_id').val()
+    });
+    window.location.href = "{% url 'reporte_creditos' %}?" + urlParams.toString();
+}
 
 document.addEventListener('DOMContentLoaded', function() {
   setupAutocomplete('cliente_search', 'cliente_results', clientesData, 'cliente_id');

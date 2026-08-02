@@ -39,7 +39,7 @@
   <section class="section">
     <div class="card">
       <div class="card-body pt-4">
-        <form method="GET" class="row g-3 mb-4">
+        <form id="filtroForm" onsubmit="return false;" class="row g-3 mb-4">
           <div class="col-md-2">
             <label class="form-label">Fecha Inicio</label>
             <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
@@ -79,13 +79,10 @@
             </select>
           </div>
           <div class="col-md-12 d-flex justify-content-end align-items-end mt-3">
-            <button type="submit" class="btn btn-primary px-4">
-              <i class="bi bi-search"></i> Filtrar
-            </button>
-            <button type="submit" name="export" value="excel" class="btn btn-success ms-2 tooltip-custom" title="Exportar Excel">
+            <button type="button" onclick="exportarReporte('excel')" class="btn btn-success ms-2 tooltip-custom" title="Exportar Excel">
               <i class="bi bi-file-earmark-excel"></i> Excel
             </button>
-            <button type="submit" name="export" value="pdf" class="btn btn-danger ms-2 tooltip-custom" title="Exportar PDF">
+            <button type="button" onclick="exportarReporte('pdf')" class="btn btn-danger ms-2 tooltip-custom" title="Exportar PDF">
               <i class="bi bi-file-earmark-pdf"></i> PDF
             </button>
           </div>
@@ -96,7 +93,7 @@
             <div class="card bg-success-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Monto Adelantos (S/)</h5>
-                <h3 class="mb-0 text-success">S/ {{ totales.total_monto|default:"0.00" }}</h3>
+                <h3 class="mb-0 text-success" id="tot_monto">S/ {{ totales.total_monto|default:"0.00" }}</h3>
               </div>
             </div>
           </div>
@@ -104,7 +101,7 @@
             <div class="card bg-primary-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Cantidad Reportada</h5>
-                <h3 class="mb-0 text-primary">{{ totales.cantidad|default:"0" }}</h3>
+                <h3 class="mb-0 text-primary" id="tot_cantidad">{{ totales.cantidad|default:"0" }}</h3>
               </div>
             </div>
           </div>
@@ -160,7 +157,12 @@ function setupAutocomplete(inputId, resultsId, data, hiddenId) {
     
     if (value.length < 1) {
       results.style.display = 'none';
-      hidden.value = '';
+      if (hidden.value !== '') {
+        hidden.value = '';
+        if ($.fn.DataTable.isDataTable('#tablaPreFinanciamientos')) {
+            $('#tablaPreFinanciamientos').DataTable().ajax.reload();
+        }
+      }
       return;
     }
     
@@ -222,6 +224,9 @@ function toggleAutocomplete(inputId, resultsId, data, hiddenId) {
     input.value = '';
     document.getElementById(hiddenId).value = '';
     results.style.display = 'none';
+    if ($.fn.DataTable.isDataTable('#tablaPreFinanciamientos')) {
+        $('#tablaPreFinanciamientos').DataTable().ajax.reload();
+    }
   });
   results.appendChild(divTodos);
 
@@ -261,8 +266,15 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_reporte_pre_financiamiento' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}&estado={{ estado_seleccionado|default:'' }}&cliente_id={{ cliente_id|default:'' }}&sucursal={{ sucursal_filtro|default:'' }}",
+            url: "{% url 'api_listar_reporte_pre_financiamiento' %}",
             type: "GET",
+            data: function(d) {
+                d.fecha_inicio = $('input[name="fecha_inicio"]').val();
+                d.fecha_fin = $('input[name="fecha_fin"]').val();
+                d.estado = $('select[name="estado"]').val();
+                d.sucursal = $('select[name="sucursal"]').val();
+                d.cliente_id = $('#cliente_id').val();
+            }
         },
         columns: [
             { data: 'fecha' },
@@ -283,6 +295,38 @@ $(document).ready(function() {
         ordering: false,
         searchDelay: 500
     });
+
+    $('#tablaPreFinanciamientos').on('xhr.dt', function ( e, settings, json, xhr ) {
+        if(json && json.totales) {
+            $('#tot_monto').text('S/ ' + parseFloat(json.totales.total_monto).toFixed(2));
+            $('#tot_cantidad').text(json.totales.cantidad);
+        }
+    });
+
+    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="estado"], select[name="sucursal"]').on('change', function() {
+        $('#tablaPreFinanciamientos').DataTable().ajax.reload();
+    });
+
+    // To trigger reload when autocomplete selects
+    const originalValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    Object.defineProperty($('#cliente_id')[0], "value", {
+        set: function(val) {
+            originalValueSetter.call(this, val);
+            $('#tablaPreFinanciamientos').DataTable().ajax.reload();
+        }
+    });
 });
+
+function exportarReporte(fmt) {
+    const urlParams = new URLSearchParams({
+        export: fmt,
+        fecha_inicio: $('input[name="fecha_inicio"]').val(),
+        fecha_fin: $('input[name="fecha_fin"]').val(),
+        estado: $('select[name="estado"]').val(),
+        sucursal: $('select[name="sucursal"]').val(),
+        cliente_id: $('#cliente_id').val()
+    });
+    window.location.href = "{% url 'reporte_pre_financiamiento' %}?" + urlParams.toString();
+}
 </script>
 {% endblock %}

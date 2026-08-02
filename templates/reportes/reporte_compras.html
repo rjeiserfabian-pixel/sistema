@@ -40,7 +40,7 @@
     <div class="card">
       <div class="card-body pt-4">
         <!-- Filtros -->
-        <form method="GET" class="row g-3 mb-4">
+        <form id="filtroForm" onsubmit="return false;" class="row g-3 mb-4">
           <div class="col-md-2">
             <label class="form-label">Fecha Inicio</label>
             <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
@@ -78,14 +78,11 @@
               <option value="2" {% if forma_pago_id == 2 %}selected{% endif %}>Crédito</option>
             </select>
           </div>
-          <div class="col-md-3 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">
-              <i class="bi bi-search"></i> Filtrar
-            </button>
-            <button type="submit" name="export" value="excel" class="btn btn-success ms-2 tooltip-custom" title="Exportar Excel">
+          <div class="col-md-3 d-flex align-items-end justify-content-end mt-3">
+            <button type="button" class="btn btn-success ms-2 tooltip-custom" onclick="exportarReporte('excel')" title="Exportar Excel">
               <i class="bi bi-file-earmark-excel"></i>
             </button>
-            <button type="submit" name="export" value="pdf" class="btn btn-danger ms-2 tooltip-custom" title="Exportar PDF">
+            <button type="button" class="btn btn-danger ms-2 tooltip-custom" onclick="exportarReporte('pdf')" title="Exportar PDF">
               <i class="bi bi-file-earmark-pdf"></i>
             </button>
           </div>
@@ -97,7 +94,7 @@
             <div class="card bg-success-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Total Compras</h5>
-                <h3 class="mb-0 text-success">S/ {{ totales.total_compras|default:"0.00" }}</h3>
+                <h3 class="mb-0 text-success" id="tot_compras">S/ {{ totales.total_compras|default:"0.00" }}</h3>
               </div>
             </div>
           </div>
@@ -105,7 +102,7 @@
             <div class="card bg-primary-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Cantidad</h5>
-                <h3 class="mb-0 text-primary">{{ totales.cantidad|default:"0" }}</h3>
+                <h3 class="mb-0 text-primary" id="tot_cantidad">{{ totales.cantidad|default:"0" }}</h3>
               </div>
             </div>
           </div>
@@ -164,7 +161,12 @@ function setupAutocomplete(inputId, resultsId, data, hiddenId) {
     
     if (value.length < 1) {
       results.style.display = 'none';
-      hidden.value = '';
+      if (hidden.value !== '') {
+        hidden.value = '';
+        if ($.fn.DataTable.isDataTable('#tablaCompras')) {
+            $('#tablaCompras').DataTable().ajax.reload();
+        }
+      }
       return;
     }
     
@@ -184,6 +186,7 @@ function setupAutocomplete(inputId, resultsId, data, hiddenId) {
         input.value = item.text;
         hidden.value = item.id;
         results.style.display = 'none';
+        $('#tablaCompras').DataTable().ajax.reload();
       });
       results.appendChild(div);
     });
@@ -226,6 +229,9 @@ function toggleAutocomplete(inputId, resultsId, data, hiddenId) {
     input.value = '';
     document.getElementById(hiddenId).value = '';
     results.style.display = 'none';
+    if ($.fn.DataTable.isDataTable('#tablaCompras')) {
+        $('#tablaCompras').DataTable().ajax.reload();
+    }
   });
   results.appendChild(divTodos);
 
@@ -238,6 +244,7 @@ function toggleAutocomplete(inputId, resultsId, data, hiddenId) {
       input.value = item.text;
       document.getElementById(hiddenId).value = item.id;
       results.style.display = 'none';
+      $('#tablaCompras').DataTable().ajax.reload();
     });
     results.appendChild(div);
   });
@@ -269,8 +276,15 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_reporte_compras' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}&proveedor={{ proveedor_id|default:'' }}&forma_pago={{ forma_pago_id|default:'' }}&sucursal={{ sucursal_filtro|default:'' }}",
+            url: "{% url 'api_listar_reporte_compras' %}",
             type: "GET",
+            data: function(d) {
+                d.fecha_inicio = $('input[name="fecha_inicio"]').val();
+                d.fecha_fin = $('input[name="fecha_fin"]').val();
+                d.proveedor = $('input[name="proveedor"]').val();
+                d.forma_pago = $('select[name="forma_pago"]').val();
+                d.sucursal = $('select[name="sucursal"]').val();
+            }
         },
         columns: [
             { data: 'fecha' },
@@ -301,6 +315,29 @@ $(document).ready(function() {
         lengthChange: false,
         ordering: false
     });
+
+    $('#tablaCompras').on('xhr.dt', function ( e, settings, json, xhr ) {
+        if(json && json.totales) {
+            $('#tot_compras').text('S/ ' + parseFloat(json.totales.total_compras).toFixed(2));
+            $('#tot_cantidad').text(json.totales.cantidad);
+        }
+    });
+
+    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="forma_pago"], select[name="sucursal"]').on('change', function() {
+        $('#tablaCompras').DataTable().ajax.reload();
+    });
 });
+
+function exportarReporte(fmt) {
+    const urlParams = new URLSearchParams({
+        export: fmt,
+        fecha_inicio: $('input[name="fecha_inicio"]').val(),
+        fecha_fin: $('input[name="fecha_fin"]').val(),
+        proveedor: $('input[name="proveedor"]').val(),
+        forma_pago: $('select[name="forma_pago"]').val(),
+        sucursal: $('select[name="sucursal"]').val()
+    });
+    window.location.href = "{% url 'reporte_compras' %}?" + urlParams.toString();
+}
 </script>
 {% endblock %}

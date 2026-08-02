@@ -22,6 +22,7 @@ from software.models.stockModel import Stock
 from software.models.compradetalleModel import CompraDetalle
 from software.models.TipoPagoModel import TipoPago
 from software.models.PagoCuotaModel import PagoCuota
+from software.models.TipocomprobanteModel import Tipocomprobante
 
 from software.views.report_exports import export_to_excel, export_to_pdf
 
@@ -72,11 +73,15 @@ def reporte_ventas(request):
     if cliente_id:
         ventas_qs = ventas_qs.filter(idcliente_id=cliente_id)
 
-    ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago').order_by('-fecha_venta', '-idventa')
+    tipo_comprobante_id = request.GET.get('tipo_comprobante')
+    if tipo_comprobante_id:
+        ventas_qs = ventas_qs.filter(idtipocomprobante_id=tipo_comprobante_id)
+
+    ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago', 'idtipocomprobante', 'id_sucursal').order_by('-fecha_venta', '-idventa')
 
     export_fmt = request.GET.get('export')
     if export_fmt in ['pdf', 'excel']:
-        headers = ['Nº', 'Fecha', 'Cliente', 'Comprobante', 'Sucursal', 'Vendedor', 'Forma Pago', 'Estado', 'Total (S/)']
+        headers = ['Nº', 'Fecha', 'Cliente', 'Tipo Comprobante', 'Comprobante', 'Sucursal', 'Vendedor', 'Forma Pago', 'Estado', 'Total (S/)']
         data = []
         for i, v in enumerate(ventas_qs, 1):
             estado_str = "Completada" if v.estado == 1 else ("Crédito" if v.estado == 2 else "Anulada")
@@ -84,6 +89,7 @@ def reporte_ventas(request):
                 i,
                 v.fecha_venta.strftime("%d/%m/%Y"),
                 v.idcliente.razonsocial if v.idcliente else '-',
+                v.idtipocomprobante.nombre if v.idtipocomprobante else '-',
                 v.numero_comprobante or '-',
                 v.id_sucursal.nombre_sucursal if v.id_sucursal else '-',
                 v.idusuario.nombrecompleto if v.idusuario else '-',
@@ -115,6 +121,8 @@ def reporte_ventas(request):
         'totales': totales,
         'sucursales': Sucursales.objects.all(),
         'sucursal_filtro': sucursal_filtro,
+        'tipos_comprobante': Tipocomprobante.objects.all().order_by('nombre'),
+        'tipo_comprobante_id': int(tipo_comprobante_id) if tipo_comprobante_id and tipo_comprobante_id.isdigit() else None,
     })
 
 
@@ -144,6 +152,10 @@ def api_listar_reporte_ventas(request):
     cliente_id = request.GET.get('cliente_id')
     if cliente_id:
         ventas_qs = ventas_qs.filter(idcliente_id=cliente_id)
+
+    tipo_comprobante_id = request.GET.get('tipo_comprobante')
+    if tipo_comprobante_id:
+        ventas_qs = ventas_qs.filter(idtipocomprobante_id=tipo_comprobante_id)
         
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
@@ -153,13 +165,28 @@ def api_listar_reporte_ventas(request):
     if search_value:
         ventas_qs = ventas_qs.filter(
             Q(idcliente__razonsocial__icontains=search_value) |
-            Q(numero_comprobante__icontains=search_value)
-        )
+            Q(numero_comprobante__icontains=search_value) |
+            Q(ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
 
     records_total = ventas_qs.count()
     records_filtered = records_total
 
-    ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago', 'id_sucursal').order_by('-fecha_venta', '-idventa')
+    totales_agregados = ventas_qs.aggregate(
+        total_ventas=Sum('total_venta'),
+        total_subtotal=Sum('subtotal'),
+        cantidad=Count('idventa')
+    )
+    
+    totales_dict = {
+        'total_ventas': float(totales_agregados['total_ventas'] or 0),
+        'total_subtotal': float(totales_agregados['total_subtotal'] or 0),
+        'cantidad': totales_agregados['cantidad'] or 0
+    }
+
+    ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago', 'id_sucursal', 'idtipocomprobante').order_by('-fecha_venta', '-idventa')
 
     if length > -1:
         ventas_page = ventas_qs[start:start + length]
@@ -180,6 +207,7 @@ def api_listar_reporte_ventas(request):
             'DT_RowId': f'row_venta_{v.idventa}',
             'fecha': v.fecha_venta.strftime("%d/%m/%Y"),
             'cliente': v.idcliente.razonsocial if v.idcliente else '-',
+            'tipo_comprobante': v.idtipocomprobante.nombre if v.idtipocomprobante else '-',
             'comprobante': v.numero_comprobante or '-',
             'sucursal': v.id_sucursal.nombre_sucursal if v.id_sucursal else '-',
             'vendedor': v.idusuario.nombrecompleto if v.idusuario else '-',
@@ -192,7 +220,8 @@ def api_listar_reporte_ventas(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': totales_dict
     })
 
 
@@ -312,6 +341,16 @@ def api_listar_reporte_compras(request):
     records_total = qs.count()
     records_filtered = records_total
 
+    totales_agregados = qs.aggregate(
+        total_compras=Sum('total_compra'),
+        cantidad=Count('idcompra')
+    )
+    
+    totales_dict = {
+        'total_compras': float(totales_agregados['total_compras'] or 0),
+        'cantidad': totales_agregados['cantidad'] or 0
+    }
+
     qs = qs.prefetch_related('idproveedor', 'id_forma_pago', 'id_tipo_pago', 'id_sucursal').order_by('-fechacompra', '-idcompra')
 
     if length > -1:
@@ -349,7 +388,8 @@ def api_listar_reporte_compras(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': totales_dict
     })
 
 
@@ -484,6 +524,8 @@ def api_listar_almacen_vehiculos(request):
     records_total = stock_qs.count()
     records_filtered = records_total
 
+    total_vehiculos = stock_qs.aggregate(t=Sum('cantidad_disponible'))['t'] or 0
+
     if length > -1:
         stock_page = stock_qs[start:start + length]
     else:
@@ -515,7 +557,8 @@ def api_listar_almacen_vehiculos(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': {'total_vehiculos': total_vehiculos}
     })
 
 def api_listar_almacen_repuestos(request):
@@ -553,6 +596,8 @@ def api_listar_almacen_repuestos(request):
     records_total = stock_qs.count()
     records_filtered = records_total
 
+    total_repuestos = stock_qs.aggregate(t=Sum('cantidad_disponible'))['t'] or 0
+
     if length > -1:
         stock_page = stock_qs[start:start + length]
     else:
@@ -582,7 +627,8 @@ def api_listar_almacen_repuestos(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': {'total_repuestos': total_repuestos}
     })
 
 
@@ -779,6 +825,18 @@ def api_listar_inventario_vehiculos(request):
     )
 
     vehiculos_qs = vehiculos_qs.order_by('id_stock')
+    
+    resumen_veh = vehiculos_qs.aggregate(
+        inversion=Sum('total_inversion'),
+        proyectada=Sum('total_ganancia'),
+        cantidad=Sum('cantidad_disponible')
+    )
+    
+    totales_dict = {
+        'inversion': float(resumen_veh['inversion'] or 0),
+        'ganancia': float(resumen_veh['proyectada'] or 0),
+        'cantidad': resumen_veh['cantidad'] or 0
+    }
 
     if length > -1:
         vehiculos_page = vehiculos_qs[start:start + length]
@@ -807,7 +865,8 @@ def api_listar_inventario_vehiculos(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': totales_dict
     })
 
 def api_listar_inventario_repuestos(request):
@@ -865,6 +924,18 @@ def api_listar_inventario_repuestos(request):
 
     repuestos_qs = repuestos_qs.order_by('id_stock')
 
+    resumen_rep = repuestos_qs.aggregate(
+        inversion=Sum('total_inversion'),
+        proyectada=Sum('total_ganancia'),
+        cantidad=Sum('cantidad_disponible')
+    )
+    
+    totales_dict = {
+        'inversion': float(resumen_rep['inversion'] or 0),
+        'ganancia': float(resumen_rep['proyectada'] or 0),
+        'cantidad': resumen_rep['cantidad'] or 0
+    }
+
     if length > -1:
         repuestos_page = repuestos_qs[start:start + length]
     else:
@@ -892,7 +963,8 @@ def api_listar_inventario_repuestos(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': totales_dict
     })
 
 
@@ -1492,11 +1564,16 @@ def api_listar_reporte_creditos(request):
             'has_venta': bool(c.idventa)
         })
 
+    total_deuda = creditos_qs.aggregate(t=Sum('saldo_pendiente'))['t'] or 0
+
     return JsonResponse({
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': {
+            'total_deuda': float(total_deuda)
+        }
     })
 
 def api_listar_reporte_moras(request):
@@ -1615,7 +1692,10 @@ def api_listar_reporte_moras(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': {
+            'total_cuotas_vencidas': records_total
+        }
     })
 
 
@@ -1877,6 +1957,16 @@ def api_listar_reporte_pre_financiamiento(request):
 
     # Ordenamiento por defecto
     precreditos_qs = precreditos_qs.select_related('idcliente', 'idusuario', 'id_sucursal').order_by('-fecha_registro', '-id_pre_credito')
+    
+    totales_agregados = precreditos_qs.aggregate(
+        total_monto=Sum('monto_inicial'),
+        cantidad=Count('id_pre_credito')
+    )
+    
+    totales_dict = {
+        'total_monto': float(totales_agregados['total_monto'] or 0),
+        'cantidad': totales_agregados['cantidad'] or 0
+    }
 
     if length != -1:
         precreditos_page = precreditos_qs[start:start + length]
@@ -1920,5 +2010,6 @@ def api_listar_reporte_pre_financiamiento(request):
         'draw': draw,
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
-        'data': data
+        'data': data,
+        'totales': totales_dict
     })

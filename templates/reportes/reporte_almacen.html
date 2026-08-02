@@ -16,7 +16,7 @@
   <section class="section">
     <div class="card">
             <div class="card-body pt-4">
-        <form method="GET" class="row g-3 mb-4">
+        <form id="filtroForm" onsubmit="return false;" class="row g-3 mb-4">
           <div class="col-md-5">
             <label class="form-label">Sucursal</label>
             <select name="sucursal" class="form-select">
@@ -36,16 +36,16 @@
             </select>
           </div>
           <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filtrar</button>
+            <!-- Botón oculto o eliminado -->
           </div>
         </form>
         <div class="d-flex justify-content-between mb-4 flex-wrap gap-2 text-end">
           <div class="ms-auto w-100 pb-2 border-bottom">
             <h5 class="d-inline-block text-muted m-0 me-3">Exportar Data de Base de Datos:</h5>
-            <a href="?export=excel_vehiculos" class="btn btn-success ms-2" title="Exportar Excel (Vehículos)"><i class="bi bi-file-earmark-excel"></i> Vehículos</a>
-            <a href="?export=pdf_vehiculos" class="btn btn-danger ms-2" title="Exportar PDF (Vehículos)"><i class="bi bi-file-earmark-pdf"></i> Vehículos</a>
-            <a href="?export=excel_repuestos" class="btn btn-success ms-2" title="Exportar Excel (Repuestos)"><i class="bi bi-file-earmark-excel"></i> Repuestos</a>
-            <a href="?export=pdf_repuestos" class="btn btn-danger ms-2" title="Exportar PDF (Repuestos)"><i class="bi bi-file-earmark-pdf"></i> Repuestos</a>
+            <button type="button" onclick="exportarReporte('excel_vehiculos')" class="btn btn-success ms-2" title="Exportar Excel (Vehículos)"><i class="bi bi-file-earmark-excel"></i> Vehículos</button>
+            <button type="button" onclick="exportarReporte('pdf_vehiculos')" class="btn btn-danger ms-2" title="Exportar PDF (Vehículos)"><i class="bi bi-file-earmark-pdf"></i> Vehículos</button>
+            <button type="button" onclick="exportarReporte('excel_repuestos')" class="btn btn-success ms-2" title="Exportar Excel (Repuestos)"><i class="bi bi-file-earmark-excel"></i> Repuestos</button>
+            <button type="button" onclick="exportarReporte('pdf_repuestos')" class="btn btn-danger ms-2" title="Exportar PDF (Repuestos)"><i class="bi bi-file-earmark-pdf"></i> Repuestos</button>
           </div>
         </div>
 
@@ -55,7 +55,7 @@
             <div class="card bg-info-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Inventario Vehículos</h5>
-                <h3 class="mb-0 text-info">{{ total_vehiculos|default:"0" }} unids.</h3>
+                <h3 class="mb-0 text-info"><span id="tot_vehiculos">{{ total_vehiculos|default:"0" }}</span> unids.</h3>
               </div>
             </div>
           </div>
@@ -63,7 +63,7 @@
             <div class="card bg-success-light mb-0">
               <div class="card-body p-3 text-center">
                 <h5>Inventario Repuestos</h5>
-                <h3 class="mb-0 text-success">{{ total_repuestos|default:"0" }} unids.</h3>
+                <h3 class="mb-0 text-success"><span id="tot_repuestos">{{ total_repuestos|default:"0" }}</span> unids.</h3>
               </div>
             </div>
           </div>
@@ -141,8 +141,12 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_almacen_vehiculos' %}?sucursal={{ sucursal_filtro|default:'' }}&almacen={{ almacen_filtro|default:'' }}",
-            type: "GET"
+            url: "{% url 'api_listar_almacen_vehiculos' %}",
+            type: "GET",
+            data: function(d) {
+                d.sucursal = $('select[name="sucursal"]').val();
+                d.almacen = $('select[name="almacen"]').val();
+            }
         },
         columns: [
             { data: 'almacen' },
@@ -167,8 +171,12 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_almacen_repuestos' %}?sucursal={{ sucursal_filtro|default:'' }}&almacen={{ almacen_filtro|default:'' }}",
-            type: "GET"
+            url: "{% url 'api_listar_almacen_repuestos' %}",
+            type: "GET",
+            data: function(d) {
+                d.sucursal = $('select[name="sucursal"]').val();
+                d.almacen = $('select[name="almacen"]').val();
+            }
         },
         columns: [
             { data: 'almacen' },
@@ -186,6 +194,32 @@ $(document).ready(function() {
         lengthChange: false,
         ordering: false
     });
+
+    $('#tablaVehiculos').on('xhr.dt', function ( e, settings, json, xhr ) {
+        if(json && json.totales) {
+            $('#tot_vehiculos').text(json.totales.total_vehiculos);
+        }
+    });
+
+    $('#tablaRepuestos').on('xhr.dt', function ( e, settings, json, xhr ) {
+        if(json && json.totales) {
+            $('#tot_repuestos').text(json.totales.total_repuestos);
+        }
+    });
+
+    $('select[name="sucursal"], select[name="almacen"]').on('change', function() {
+        $('#tablaVehiculos').DataTable().ajax.reload();
+        $('#tablaRepuestos').DataTable().ajax.reload();
+    });
 });
+
+function exportarReporte(fmt) {
+    const urlParams = new URLSearchParams({
+        export: fmt,
+        sucursal: $('select[name="sucursal"]').val(),
+        almacen: $('select[name="almacen"]').val()
+    });
+    window.location.href = "{% url 'reporte_almacen' %}?" + urlParams.toString();
+}
 </script>
 {% endblock %}
