@@ -16,6 +16,29 @@
   <section class="section">
     <div class="card">
             <div class="card-body pt-4">
+        <form method="GET" class="row g-3 mb-4">
+          <div class="col-md-5">
+            <label class="form-label">Sucursal</label>
+            <select name="sucursal" class="form-select">
+              <option value="">Todas las sucursales</option>
+              {% for s in sucursales %}
+                <option value="{{ s.id_sucursal }}" {% if sucursal_filtro == s.id_sucursal|stringformat:"s" %}selected{% endif %}>{{ s.nombre_sucursal }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Almacén</label>
+            <select name="almacen" class="form-select">
+              <option value="">Todos los almacenes</option>
+              {% for a in almacenes %}
+                <option value="{{ a.id_almacen }}" {% if almacen_filtro == a.id_almacen|stringformat:"s" %}selected{% endif %}>{{ a.nombre_almacen }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filtrar</button>
+          </div>
+        </form>
         <div class="d-flex justify-content-between mb-4 flex-wrap gap-2 text-end">
           <div class="ms-auto w-100 pb-2 border-bottom">
             <h5 class="d-inline-block text-muted m-0 me-3">Exportar Data de Base de Datos:</h5>
@@ -118,7 +141,7 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_almacen_vehiculos' %}",
+            url: "{% url 'api_listar_almacen_vehiculos' %}?sucursal={{ sucursal_filtro|default:'' }}&almacen={{ almacen_filtro|default:'' }}",
             type: "GET"
         },
         columns: [
@@ -144,7 +167,7 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_almacen_repuestos' %}",
+            url: "{% url 'api_listar_almacen_repuestos' %}?sucursal={{ sucursal_filtro|default:'' }}&almacen={{ almacen_filtro|default:'' }}",
             type: "GET"
         },
         columns: [

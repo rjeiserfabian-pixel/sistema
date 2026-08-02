@@ -59,7 +59,16 @@
               <div class="autocomplete-results" id="cliente_results"></div>
             </div>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-2">
+            <label class="form-label">Sucursal</label>
+            <select name="sucursal" class="form-select">
+              <option value="">Todas</option>
+              {% for s in sucursales %}
+                <option value="{{ s.id_sucursal }}" {% if sucursal_filtro == s.id_sucursal|stringformat:"s" %}selected{% endif %}>{{ s.nombre_sucursal }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
             <label class="form-label">Estado</label>
             <select name="estado" class="form-select">
               <option value="">Todos los Estados</option>
@@ -108,8 +117,9 @@
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Documento</th>
+                <th>Sucursal</th>
                 <th>Vehículo(s)</th>
-                <th class="text-end">Inicial (S/)</th>
+                <th class="text-end text-nowrap">Inicial (S/)</th>
                 <th>Registrador</th>
                 <th>Estado</th>
               </tr>
@@ -251,15 +261,16 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_reporte_pre_financiamiento' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}&estado={{ estado_seleccionado|default:'' }}&cliente_id={{ cliente_id|default:'' }}",
+            url: "{% url 'api_listar_reporte_pre_financiamiento' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}&estado={{ estado_seleccionado|default:'' }}&cliente_id={{ cliente_id|default:'' }}&sucursal={{ sucursal_filtro|default:'' }}",
             type: "GET",
         },
         columns: [
             { data: 'fecha' },
             { data: 'cliente' },
             { data: 'doc_cliente' },
+            { data: 'sucursal' },
             { data: 'vehiculos' },
-            { data: 'monto_inicial', className: 'text-end' },
+            { data: 'monto_inicial', className: 'text-end text-nowrap' },
             { data: 'registrador' },
             { data: 'estado', orderable: false }
         ],

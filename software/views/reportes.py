@@ -52,13 +52,13 @@ def reporte_ventas(request):
         return redirect('iniciar_sesion')
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     ventas_qs = Ventas.objects.filter(
         fecha_venta__date__range=[fi, ff],
         estado__in=[1, 2]
     )
-    if id_suc:
-        ventas_qs = ventas_qs.filter(id_sucursal_id=id_suc)
+    if sucursal_filtro:
+        ventas_qs = ventas_qs.filter(id_sucursal_id=sucursal_filtro)
         
     vendedor_id = request.GET.get('vendedor')
     if vendedor_id:
@@ -76,7 +76,7 @@ def reporte_ventas(request):
 
     export_fmt = request.GET.get('export')
     if export_fmt in ['pdf', 'excel']:
-        headers = ['Nº', 'Fecha', 'Cliente', 'Comprobante', 'Vendedor', 'Forma Pago', 'Estado', 'Total (S/)']
+        headers = ['Nº', 'Fecha', 'Cliente', 'Comprobante', 'Sucursal', 'Vendedor', 'Forma Pago', 'Estado', 'Total (S/)']
         data = []
         for i, v in enumerate(ventas_qs, 1):
             estado_str = "Completada" if v.estado == 1 else ("Crédito" if v.estado == 2 else "Anulada")
@@ -85,6 +85,7 @@ def reporte_ventas(request):
                 v.fecha_venta.strftime("%d/%m/%Y"),
                 v.idcliente.razonsocial if v.idcliente else '-',
                 v.numero_comprobante or '-',
+                v.id_sucursal.nombre_sucursal if v.id_sucursal else '-',
                 v.idusuario.nombrecompleto if v.idusuario else '-',
                 v.id_forma_pago.nombre if v.id_forma_pago else '-',
                 estado_str,
@@ -112,6 +113,8 @@ def reporte_ventas(request):
         'vendedores': Usuario.objects.filter(estado=1).order_by('nombrecompleto'),
         'clientes_lista': Cliente.objects.filter(estado=1).order_by('razonsocial'),
         'totales': totales,
+        'sucursales': Sucursales.objects.all(),
+        'sucursal_filtro': sucursal_filtro,
     })
 
 
@@ -121,14 +124,14 @@ def api_listar_reporte_ventas(request):
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     
     ventas_qs = Ventas.objects.filter(
         fecha_venta__date__range=[fi, ff],
         estado__in=[1, 2]
     )
-    if id_suc:
-        ventas_qs = ventas_qs.filter(id_sucursal_id=id_suc)
+    if sucursal_filtro:
+        ventas_qs = ventas_qs.filter(id_sucursal_id=sucursal_filtro)
         
     vendedor_id = request.GET.get('vendedor')
     if vendedor_id:
@@ -156,7 +159,7 @@ def api_listar_reporte_ventas(request):
     records_total = ventas_qs.count()
     records_filtered = records_total
 
-    ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago').order_by('-fecha_venta', '-idventa')
+    ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago', 'id_sucursal').order_by('-fecha_venta', '-idventa')
 
     if length > -1:
         ventas_page = ventas_qs[start:start + length]
@@ -178,6 +181,7 @@ def api_listar_reporte_ventas(request):
             'fecha': v.fecha_venta.strftime("%d/%m/%Y"),
             'cliente': v.idcliente.razonsocial if v.idcliente else '-',
             'comprobante': v.numero_comprobante or '-',
+            'sucursal': v.id_sucursal.nombre_sucursal if v.id_sucursal else '-',
             'vendedor': v.idusuario.nombrecompleto if v.idusuario else '-',
             'forma_pago': v.id_forma_pago.nombre if v.id_forma_pago else '-',
             'estado': estado_badge,
@@ -201,15 +205,15 @@ def reporte_compras(request):
         return redirect('iniciar_sesion')
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     
     # Base Query
     qs = Compras.objects.filter(
         fechacompra__range=[fi, ff],
         estado=1
     )
-    if id_suc:
-        qs = qs.filter(id_sucursal_id=id_suc)
+    if sucursal_filtro:
+        qs = qs.filter(id_sucursal_id=sucursal_filtro)
         
     proveedor_id = request.GET.get('proveedor')
     if proveedor_id:
@@ -231,7 +235,7 @@ def reporte_compras(request):
     # Exportación
     export_fmt = request.GET.get('export')
     if export_fmt in ['excel', 'pdf']:
-        headers = ['Fecha', 'Comprobante', 'Proveedor', 'Teléfono', 'Dirección', 'Forma Pago', 'Tipo Pago', 'Estado', 'Total (S/)']
+        headers = ['Fecha', 'Comprobante', 'Proveedor', 'Sucursal', 'Teléfono', 'Dirección', 'Forma Pago', 'Tipo Pago', 'Estado', 'Total (S/)']
         data = []
         for c in listado_qs:
             prov = getattr(c, 'idproveedor', None)
@@ -243,6 +247,7 @@ def reporte_compras(request):
                 c.fechacompra.strftime("%d/%m/%Y"),
                 c.numcorrelativo,
                 prov_name,
+                c.id_sucursal.nombre_sucursal if c.id_sucursal else '-',
                 telefono,
                 direccion,
                 getattr(c.id_forma_pago, 'nombre', '-') if getattr(c, 'id_forma_pago', None) else '-',
@@ -264,6 +269,8 @@ def reporte_compras(request):
         'forma_pago_id': int(forma_pago_id) if forma_pago_id and forma_pago_id.isdigit() else None,
         'proveedores': Proveedor.objects.filter(estado=1).order_by('razonsocial'),
         'totales': totales,
+        'sucursales': Sucursales.objects.all(),
+        'sucursal_filtro': sucursal_filtro,
     })
 
 
@@ -273,14 +280,14 @@ def api_listar_reporte_compras(request):
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     
     qs = Compras.objects.filter(
         fechacompra__range=[fi, ff],
         estado=1
     )
-    if id_suc:
-        qs = qs.filter(id_sucursal_id=id_suc)
+    if sucursal_filtro:
+        qs = qs.filter(id_sucursal_id=sucursal_filtro)
         
     proveedor_id = request.GET.get('proveedor')
     if proveedor_id:
@@ -305,7 +312,7 @@ def api_listar_reporte_compras(request):
     records_total = qs.count()
     records_filtered = records_total
 
-    qs = qs.prefetch_related('idproveedor', 'id_forma_pago', 'id_tipo_pago').order_by('-fechacompra', '-idcompra')
+    qs = qs.prefetch_related('idproveedor', 'id_forma_pago', 'id_tipo_pago', 'id_sucursal').order_by('-fechacompra', '-idcompra')
 
     if length > -1:
         compras_page = qs[start:start + length]
@@ -329,6 +336,7 @@ def api_listar_reporte_compras(request):
             'fecha': c.fechacompra.strftime("%d/%m/%Y"),
             'comprobante': c.numcorrelativo,
             'proveedor': prov_name,
+            'sucursal': getattr(c.id_sucursal, 'nombre_sucursal', '-') if getattr(c, 'id_sucursal', None) else '-',
             'telefono': telefono,
             'direccion': direccion,
             'forma_pago': getattr(c.id_forma_pago, 'nombre', '-') if getattr(c, 'id_forma_pago', None) else '-',
@@ -353,15 +361,14 @@ def reporte_almacen(request):
     if not idusuario:
         return redirect('iniciar_sesion')
         
-    id_sucursal = request.session.get('id_sucursal')
-    id_almacen = request.session.get('id_almacen')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    almacen_filtro = request.GET.get('almacen', '').strip()
 
     stock_qs = Stock.objects.filter(estado=1, cantidad_disponible__gt=0)
-    
-    if id_almacen:
-        stock_qs = stock_qs.filter(id_almacen_id=id_almacen)
-    elif id_sucursal:
-        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=id_sucursal)
+    if almacen_filtro:
+        stock_qs = stock_qs.filter(id_almacen_id=almacen_filtro)
+    elif sucursal_filtro:
+        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=sucursal_filtro)
 
     stock_vehiculos = stock_qs.filter(
         id_vehiculo__isnull=False
@@ -425,9 +432,14 @@ def reporte_almacen(request):
                 return export_to_pdf(headers, data, "Stock Repuestos", 'Reporte_Stock_Repuestos')
 
     if not export_fmt:
+        from software.models.almacenesModel import Almacenes
         return render(request, 'reportes/reporte_almacen.html', {
             'total_vehiculos': stock_vehiculos.aggregate(t=Sum('cantidad_disponible'))['t'] or 0,
             'total_repuestos': stock_repuestos.aggregate(t=Sum('cantidad_disponible'))['t'] or 0,
+            'sucursales': Sucursales.objects.all(),
+            'sucursal_filtro': sucursal_filtro,
+            'almacenes': Almacenes.objects.filter(estado=1),
+            'almacen_filtro': almacen_filtro,
         })
     else:
         # Fallback si export_fmt no es procesado
@@ -441,8 +453,8 @@ def api_listar_almacen_vehiculos(request):
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
 
-    id_sucursal = request.session.get('id_sucursal')
-    id_almacen = request.session.get('id_almacen')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    almacen_filtro = request.GET.get('almacen', '').strip()
 
     stock_qs = Stock.objects.filter(estado=1, cantidad_disponible__gt=0, id_vehiculo__isnull=False).select_related(
         'id_vehiculo__idproducto__idmarca',
@@ -450,10 +462,10 @@ def api_listar_almacen_vehiculos(request):
         'id_almacen'
     ).order_by('-id_stock')
 
-    if id_almacen:
-        stock_qs = stock_qs.filter(id_almacen_id=id_almacen)
-    elif id_sucursal:
-        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=id_sucursal)
+    if almacen_filtro:
+        stock_qs = stock_qs.filter(id_almacen_id=almacen_filtro)
+    elif sucursal_filtro:
+        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=sucursal_filtro)
 
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
@@ -511,8 +523,8 @@ def api_listar_almacen_repuestos(request):
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
 
-    id_sucursal = request.session.get('id_sucursal')
-    id_almacen = request.session.get('id_almacen')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    almacen_filtro = request.GET.get('almacen', '').strip()
 
     stock_qs = Stock.objects.filter(estado=1, cantidad_disponible__gt=0, id_repuesto_comprado__isnull=False).select_related(
         'id_repuesto_comprado__id_repuesto__idmarca',
@@ -520,10 +532,10 @@ def api_listar_almacen_repuestos(request):
         'id_almacen'
     ).order_by('-id_stock')
 
-    if id_almacen:
-        stock_qs = stock_qs.filter(id_almacen_id=id_almacen)
-    elif id_sucursal:
-        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=id_sucursal)
+    if almacen_filtro:
+        stock_qs = stock_qs.filter(id_almacen_id=almacen_filtro)
+    elif sucursal_filtro:
+        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=sucursal_filtro)
 
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
@@ -582,16 +594,16 @@ def reporte_inventario(request):
     if not idusuario:
         return redirect('iniciar_sesion')
         
-    id_sucursal = request.session.get('id_sucursal')
-    id_almacen = request.session.get('id_almacen')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    almacen_filtro = request.GET.get('almacen', '').strip()
 
     # Filtrar stock disponible (estado=1, cantidad > 0)
     stock_qs = Stock.objects.filter(estado=1, cantidad_disponible__gt=0)
     
-    if id_almacen:
-        stock_qs = stock_qs.filter(id_almacen_id=id_almacen)
-    elif id_sucursal:
-        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=id_sucursal)
+    if almacen_filtro:
+        stock_qs = stock_qs.filter(id_almacen_id=almacen_filtro)
+    elif sucursal_filtro:
+        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=sucursal_filtro)
 
     # Definir Subqueries para buscar precios en históricos de compra si no están ligados directamente
     # Para vehículos
@@ -700,10 +712,15 @@ def reporte_inventario(request):
     inversion_total = (resumen_veh['inversion'] or 0) + (resumen_rep['inversion'] or 0)
     ganancia_total  = (resumen_veh['proyectada'] or 0) + (resumen_rep['proyectada'] or 0)
 
+    from software.models.almacenesModel import Almacenes
     return render(request, 'reportes/reporte_inventario.html', {
         'inversion_total': inversion_total,
         'ganancia_total': ganancia_total,
         'total_unidades': stock_qs.aggregate(t=Sum('cantidad_disponible'))['t'] or 0,
+        'sucursales': Sucursales.objects.all(),
+        'sucursal_filtro': sucursal_filtro,
+        'almacenes': Almacenes.objects.filter(estado=1),
+        'almacen_filtro': almacen_filtro,
     })
 
 def api_listar_inventario_vehiculos(request):
@@ -711,14 +728,14 @@ def api_listar_inventario_vehiculos(request):
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
-    id_sucursal = request.session.get('id_sucursal')
-    id_almacen = request.session.get('id_almacen')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    almacen_filtro = request.GET.get('almacen', '').strip()
 
     stock_qs = Stock.objects.filter(estado=1, cantidad_disponible__gt=0)
-    if id_almacen:
-        stock_qs = stock_qs.filter(id_almacen_id=id_almacen)
-    elif id_sucursal:
-        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=id_sucursal)
+    if almacen_filtro:
+        stock_qs = stock_qs.filter(id_almacen_id=almacen_filtro)
+    elif sucursal_filtro:
+        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=sucursal_filtro)
 
     vehiculos_qs = stock_qs.filter(id_vehiculo__isnull=False).select_related(
         'id_vehiculo__idproducto',
@@ -798,14 +815,14 @@ def api_listar_inventario_repuestos(request):
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
-    id_sucursal = request.session.get('id_sucursal')
-    id_almacen = request.session.get('id_almacen')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    almacen_filtro = request.GET.get('almacen', '').strip()
 
     stock_qs = Stock.objects.filter(estado=1, cantidad_disponible__gt=0)
-    if id_almacen:
-        stock_qs = stock_qs.filter(id_almacen_id=id_almacen)
-    elif id_sucursal:
-        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=id_sucursal)
+    if almacen_filtro:
+        stock_qs = stock_qs.filter(id_almacen_id=almacen_filtro)
+    elif sucursal_filtro:
+        stock_qs = stock_qs.filter(id_almacen__id_sucursal_id=sucursal_filtro)
 
     repuestos_qs = stock_qs.filter(id_repuesto_comprado__isnull=False).select_related(
         'id_repuesto_comprado__id_repuesto',
@@ -888,7 +905,7 @@ def reporte_caja(request):
         return redirect('iniciar_sesion')
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     tipo_movimiento = request.GET.get('tipo_movimiento', '')
     if tipo_movimiento not in ['ingreso', 'egreso']:
         tipo_movimiento = ''
@@ -899,10 +916,10 @@ def reporte_caja(request):
         movimientos_qs = MovimientoCaja.objects.filter(
             fecha_movimiento__date__range=[fi, ff]
         )
-        if id_suc:
+        if sucursal_filtro:
             from django.db.models import Q
             movimientos_qs = movimientos_qs.filter(
-                Q(id_caja__id_sucursal_id=id_suc) | Q(id_caja__id_sucursal__isnull=True)
+                id_caja__id_sucursal_id=sucursal_filtro
             )
         if tipo_movimiento:
             movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
@@ -1021,6 +1038,8 @@ def reporte_caja(request):
         'tipo_movimiento': tipo_movimiento,
         'tipos_pago': tipos_pago,
         'metodo_pago': metodo_pago_id,
+        'sucursales': Sucursales.objects.all(),
+        'sucursal_filtro': sucursal_filtro,
     })
 
 
@@ -1033,7 +1052,7 @@ def api_listar_reporte_caja(request):
         return JsonResponse({'error': 'No autorizado'}, status=401)
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     tipo_movimiento = request.GET.get('tipo_movimiento', '')
     metodo_pago_id = request.GET.get('metodo_pago', '')
     
@@ -1041,10 +1060,10 @@ def api_listar_reporte_caja(request):
         fecha_movimiento__date__range=[fi, ff]
     )
     
-    if id_suc:
+    if sucursal_filtro:
         from django.db.models import Q
         movimientos_qs = movimientos_qs.filter(
-            Q(id_caja__id_sucursal_id=id_suc) | Q(id_caja__id_sucursal__isnull=True)
+            id_caja__id_sucursal_id=sucursal_filtro
         )
         
     if tipo_movimiento in ['ingreso', 'egreso']:
@@ -1754,15 +1773,15 @@ def reporte_pre_financiamiento(request):
         return redirect('iniciar_sesion')
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     
     from software.models.PreCreditoModel import PreCredito
     
     precreditos_qs = PreCredito.objects.filter(
         fecha_registro__date__range=[fi, ff]
     )
-    if id_suc:
-        precreditos_qs = precreditos_qs.filter(id_sucursal_id=id_suc)
+    if sucursal_filtro:
+        precreditos_qs = precreditos_qs.filter(id_sucursal_id=sucursal_filtro)
         
     estado = request.GET.get('estado')
     if estado:
@@ -1776,7 +1795,7 @@ def reporte_pre_financiamiento(request):
 
     export_fmt = request.GET.get('export')
     if export_fmt in ['pdf', 'excel']:
-        headers = ['Nº', 'Fecha', 'Cliente', 'Doc. Cliente', 'Registrador', 'Estado', 'Monto Inicial (S/)']
+        headers = ['Nº', 'Fecha', 'Cliente', 'Doc. Cliente', 'Sucursal', 'Registrador', 'Estado', 'Monto Inicial (S/)']
         data = []
         for i, p in enumerate(precreditos_qs, 1):
             data.append([
@@ -1784,6 +1803,7 @@ def reporte_pre_financiamiento(request):
                 p.fecha_registro.strftime("%d/%m/%Y"),
                 p.idcliente.razonsocial if p.idcliente else '-',
                 f"{p.idcliente.tipo_documento} {p.idcliente.numdoc}" if p.idcliente else '-',
+                p.id_sucursal.nombre_sucursal if p.id_sucursal else '-',
                 p.idusuario.nombrecompleto if p.idusuario else '-',
                 p.estado.capitalize(),
                 p.monto_inicial
@@ -1807,6 +1827,8 @@ def reporte_pre_financiamiento(request):
         'cliente_id': int(cliente_id) if cliente_id and cliente_id.isdigit() else '',
         'clientes_lista': Cliente.objects.filter(estado=1).order_by('razonsocial'),
         'totales': totales,
+        'sucursales': Sucursales.objects.all(),
+        'sucursal_filtro': sucursal_filtro,
     })
 
 
@@ -1816,7 +1838,7 @@ def api_listar_reporte_pre_financiamiento(request):
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    id_suc = request.session.get('id_sucursal')
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
     
     from software.models.PreCreditoModel import PreCredito
     from django.db.models import Q
@@ -1824,8 +1846,8 @@ def api_listar_reporte_pre_financiamiento(request):
     precreditos_qs = PreCredito.objects.filter(
         fecha_registro__date__range=[fi, ff]
     )
-    if id_suc:
-        precreditos_qs = precreditos_qs.filter(id_sucursal_id=id_suc)
+    if sucursal_filtro:
+        precreditos_qs = precreditos_qs.filter(id_sucursal_id=sucursal_filtro)
 
     estado = request.GET.get('estado')
     if estado:
@@ -1854,7 +1876,7 @@ def api_listar_reporte_pre_financiamiento(request):
         records_filtered = precreditos_qs.count()
 
     # Ordenamiento por defecto
-    precreditos_qs = precreditos_qs.select_related('idcliente', 'idusuario').order_by('-fecha_registro', '-id_pre_credito')
+    precreditos_qs = precreditos_qs.select_related('idcliente', 'idusuario', 'id_sucursal').order_by('-fecha_registro', '-id_pre_credito')
 
     if length != -1:
         precreditos_page = precreditos_qs[start:start + length]
@@ -1887,6 +1909,7 @@ def api_listar_reporte_pre_financiamiento(request):
             'fecha': p.fecha_registro.strftime("%d/%m/%Y %H:%M"),
             'cliente': p.idcliente.razonsocial if p.idcliente else '-',
             'doc_cliente': doc_cliente,
+            'sucursal': p.id_sucursal.nombre_sucursal if p.id_sucursal else '-',
             'vehiculos': vehiculos_text or 'Sin vehículos',
             'monto_inicial': f"S/ {p.monto_inicial}",
             'estado': estado_html,

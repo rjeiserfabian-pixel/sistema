@@ -67,6 +67,16 @@
               <option value="2" {% if forma_pago_id == 2 %}selected{% endif %}>Crédito</option>
             </select>
           </div>
+          
+          <div class="col-md-2">
+            <label class="form-label">Sucursal</label>
+            <select name="sucursal" class="form-select">
+              <option value="">Todas las sucursales</option>
+              {% for s in sucursales %}
+                <option value="{{ s.id_sucursal }}" {% if sucursal_filtro == s.id_sucursal|stringformat:"s" %}selected{% endif %}>{{ s.nombre_sucursal }}</option>
+              {% endfor %}
+            </select>
+          </div>
           <div class="col-md-3">
             <label class="form-label">Cliente</label>
             <div class="autocomplete-wrapper flex-grow-1">
@@ -125,6 +135,7 @@
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Comprobante</th>
+                <th>Sucursal</th>
                 <th>Vendedor</th>
                 <th>F. Pago</th>
                 <th>Estado</th>
@@ -279,13 +290,14 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{% url 'api_listar_reporte_ventas' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}&vendedor={{ vendedor_id|default:'' }}&forma_pago={{ forma_pago_id|default:'' }}&cliente_id={{ cliente_id|default:'' }}",
+            url: "{% url 'api_listar_reporte_ventas' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}&vendedor={{ vendedor_id|default:'' }}&forma_pago={{ forma_pago_id|default:'' }}&cliente_id={{ cliente_id|default:'' }}&sucursal={{ sucursal_filtro|default:'' }}",
             type: "GET",
         },
         columns: [
             { data: 'fecha' },
             { data: 'cliente' },
             { data: 'comprobante' },
+            { data: 'sucursal' },
             { data: 'vendedor' },
             { data: 'forma_pago' },
             { 
