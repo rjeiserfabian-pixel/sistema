@@ -131,6 +131,7 @@
                     <th>Estado</th>
                     <th class="text-end">Monto Total</th>
                     <th class="text-end text-danger border-start">Deuda Pendiente</th>
+                    <th class="text-center border-start">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,7 +172,8 @@
     </div>
   </section>
 </main>
-{% endblock %}
+
+{% endblock %}
 
 {% block extra_scripts %}
 <!-- DataTables CSS -->
@@ -343,6 +345,14 @@ $(document).ready(function() {
                 data: 'deuda_pendiente', 
                 className: 'text-end fw-bold text-danger bg-light',
                 render: function(data) { return 'S/ ' + data; }
+            },
+            {
+                data: null,
+                className: 'text-center border-start',
+                render: function(data, type, row) {
+                    var url = "{% url 'imprimir_cronograma_directo' 0 %}".replace('0', row.idcredito);
+                    return '<a href="' + url + '" target="_blank" class="btn btn-sm btn-outline-primary tooltip-custom" title="Imprimir Cronograma de Pagos"><i class="bi bi-printer"></i></a>';
+                }
             }
         ],
         pagingType: 'simple_numbers',

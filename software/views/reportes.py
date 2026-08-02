@@ -1720,3 +1720,158 @@ def api_listar_contactos_proveedores(request):
         'recordsFiltered': records_filtered,
         'data': data
     })
+
+# ─────────────────────────────────────────────────
+#  REPORTE DE PRE-FINANCIAMIENTO
+# ─────────────────────────────────────────────────
+def reporte_pre_financiamiento(request):
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return redirect('iniciar_sesion')
+        
+    fi, ff, fi_str, ff_str = _parse_fechas(request)
+    id_suc = request.session.get('id_sucursal')
+    
+    from software.models.PreCreditoModel import PreCredito
+    
+    precreditos_qs = PreCredito.objects.filter(
+        fecha_registro__date__range=[fi, ff]
+    )
+    if id_suc:
+        precreditos_qs = precreditos_qs.filter(id_sucursal_id=id_suc)
+        
+    estado = request.GET.get('estado')
+    if estado:
+        precreditos_qs = precreditos_qs.filter(estado=estado)
+
+    cliente_id = request.GET.get('cliente_id')
+    if cliente_id:
+        precreditos_qs = precreditos_qs.filter(idcliente_id=cliente_id)
+
+    precreditos_qs = precreditos_qs.select_related('idcliente', 'idusuario').order_by('-fecha_registro', '-id_pre_credito')
+
+    export_fmt = request.GET.get('export')
+    if export_fmt in ['pdf', 'excel']:
+        headers = ['Nº', 'Fecha', 'Cliente', 'Doc. Cliente', 'Registrador', 'Estado', 'Monto Inicial (S/)']
+        data = []
+        for i, p in enumerate(precreditos_qs, 1):
+            data.append([
+                i,
+                p.fecha_registro.strftime("%d/%m/%Y"),
+                p.idcliente.razonsocial if p.idcliente else '-',
+                f"{p.idcliente.tipo_documento} {p.idcliente.numdoc}" if p.idcliente else '-',
+                p.idusuario.nombrecompleto if p.idusuario else '-',
+                p.estado.capitalize(),
+                p.monto_inicial
+            ])
+            
+        if export_fmt == 'excel':
+            return export_to_excel(headers, data, f'Reporte_Pre_Financiamiento_{fi_str}_{ff_str}')
+        elif export_fmt == 'pdf':
+            title = f"Reporte de Pre-Financiamiento ({fi_str} al {ff_str})"
+            return export_to_pdf(headers, data, title, f'Reporte_Pre_Financiamiento_{fi_str}_{ff_str}')
+
+    totales = precreditos_qs.aggregate(
+        total_monto=Sum('monto_inicial'),
+        cantidad=Count('id_pre_credito')
+    )
+
+    return render(request, 'reportes/reporte_pre_financiamiento.html', {
+        'fecha_inicio': fi_str,
+        'fecha_fin': ff_str,
+        'estado_seleccionado': estado or '',
+        'cliente_id': int(cliente_id) if cliente_id and cliente_id.isdigit() else '',
+        'clientes_lista': Cliente.objects.filter(estado=1).order_by('razonsocial'),
+        'totales': totales,
+    })
+
+
+def api_listar_reporte_pre_financiamiento(request):
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return JsonResponse({'error': 'No autenticado'}, status=401)
+        
+    fi, ff, fi_str, ff_str = _parse_fechas(request)
+    id_suc = request.session.get('id_sucursal')
+    
+    from software.models.PreCreditoModel import PreCredito
+    from django.db.models import Q
+    
+    precreditos_qs = PreCredito.objects.filter(
+        fecha_registro__date__range=[fi, ff]
+    )
+    if id_suc:
+        precreditos_qs = precreditos_qs.filter(id_sucursal_id=id_suc)
+
+    estado = request.GET.get('estado')
+    if estado:
+        precreditos_qs = precreditos_qs.filter(estado=estado)
+
+    cliente_id = request.GET.get('cliente_id')
+    if cliente_id:
+        precreditos_qs = precreditos_qs.filter(idcliente_id=cliente_id)
+        
+    records_total = precreditos_qs.count()
+    records_filtered = records_total
+
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+    search_value = request.GET.get('search[value]', '').strip()
+
+    if search_value:
+        precreditos_qs = precreditos_qs.filter(
+            Q(detalles_vehiculos__id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(detalles_vehiculos__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(detalles_vehiculos__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(idcliente__razonsocial__icontains=search_value) |
+            Q(idcliente__numdoc__icontains=search_value)
+        ).distinct()
+        records_filtered = precreditos_qs.count()
+
+    # Ordenamiento por defecto
+    precreditos_qs = precreditos_qs.select_related('idcliente', 'idusuario').order_by('-fecha_registro', '-id_pre_credito')
+
+    if length != -1:
+        precreditos_page = precreditos_qs[start:start + length]
+    else:
+        precreditos_page = precreditos_qs
+
+    data = []
+    for p in precreditos_page:
+        # Obtener vehiculos
+        vehiculos = p.detalles_vehiculos.select_related('id_vehiculo__idproducto').all()
+        vehiculos_text = "<br>".join([f"• {v.id_vehiculo.idproducto.nomproducto} <small>(Chasis: {v.id_vehiculo.serie_chasis}, Motor: {v.id_vehiculo.serie_motor})</small>" for v in vehiculos])
+        
+        doc_cliente = f"{p.idcliente.tipo_documento} {p.idcliente.numdoc}" if p.idcliente else '-'
+        
+        # Color del estado
+        badge_class = 'bg-secondary'
+        if p.estado == 'pendiente':
+            badge_class = 'bg-warning text-dark'
+        elif p.estado == 'aprobado':
+            badge_class = 'bg-info'
+        elif p.estado == 'completado':
+            badge_class = 'bg-success'
+        elif p.estado == 'rechazado':
+            badge_class = 'bg-danger'
+            
+        estado_html = f"<span class='badge {badge_class}'>{p.estado.capitalize()}</span>"
+
+        data.append({
+            'DT_RowId': f'row_p_{p.id_pre_credito}',
+            'fecha': p.fecha_registro.strftime("%d/%m/%Y %H:%M"),
+            'cliente': p.idcliente.razonsocial if p.idcliente else '-',
+            'doc_cliente': doc_cliente,
+            'vehiculos': vehiculos_text or 'Sin vehículos',
+            'monto_inicial': f"S/ {p.monto_inicial}",
+            'estado': estado_html,
+            'registrador': p.idusuario.nombrecompleto if p.idusuario else '-'
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': records_total,
+        'recordsFiltered': records_filtered,
+        'data': data
+    })

@@ -460,6 +460,8 @@ urlpatterns = [
     path('reportes/contactos/', reportes.reporte_contactos, name='reporte_contactos'),
     path('reportes/contactos/api/clientes/', reportes.api_listar_contactos_clientes, name='api_listar_contactos_clientes'),
     path('reportes/contactos/api/proveedores/', reportes.api_listar_contactos_proveedores, name='api_listar_contactos_proveedores'),
+    path('reportes/pre-financiamiento/', reportes.reporte_pre_financiamiento, name='reporte_pre_financiamiento'),
+    path('reportes/pre-financiamiento/api/listar/', reportes.api_listar_reporte_pre_financiamiento, name='api_listar_reporte_pre_financiamiento'),
     # SUNAT Integración (módulo existente)
     path('sunat/', sunat.lista_sunat, name='lista_sunat'),
     path('sunat/enviar/<int:idventa>/', sunat.enviar_sunat_manual, name='enviar_sunat_manual'),
