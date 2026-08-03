@@ -371,7 +371,8 @@ function exportarReporte(fmt) {
         forma_pago: $('select[name="forma_pago"]').val(),
         sucursal: $('select[name="sucursal"]').val(),
         tipo_comprobante: $('select[name="tipo_comprobante"]').val(),
-        cliente_id: $('input[name="cliente_id"]').val()
+        cliente_id: $('input[name="cliente_id"]').val(),
+        search: $('.dataTables_filter input').val() || ''
     });
     window.location.href = "{% url 'reporte_ventas' %}?" + urlParams.toString();
 }

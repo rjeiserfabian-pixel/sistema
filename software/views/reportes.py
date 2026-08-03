@@ -77,6 +77,16 @@ def reporte_ventas(request):
     if tipo_comprobante_id:
         ventas_qs = ventas_qs.filter(idtipocomprobante_id=tipo_comprobante_id)
 
+    search_value = request.GET.get('search', '').strip()
+    if search_value:
+        ventas_qs = ventas_qs.filter(
+            Q(idcliente__razonsocial__icontains=search_value) |
+            Q(numero_comprobante__icontains=search_value) |
+            Q(ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
+
     ventas_qs = ventas_qs.select_related('idcliente', 'idusuario', 'idseriecomprobante', 'id_forma_pago', 'idtipocomprobante', 'id_sucursal').order_by('-fecha_venta', '-idventa')
 
     export_fmt = request.GET.get('export')
@@ -252,6 +262,17 @@ def reporte_compras(request):
     if forma_pago_id:
         qs = qs.filter(id_forma_pago_id=forma_pago_id)
         
+    search_value = request.GET.get('search', '').strip()
+    if search_value:
+        qs = qs.filter(
+            Q(idproveedor__razonsocial__icontains=search_value) |
+            Q(idproveedor__numdoc__icontains=search_value) |
+            Q(numcorrelativo__icontains=search_value) |
+            Q(compradetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(compradetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(compradetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
+        
     # Totales (usando el base_qs para que coincidan con la lista)
     totales = qs.aggregate(
         total_compras=Sum('total_compra'),
@@ -335,8 +356,11 @@ def api_listar_reporte_compras(request):
         qs = qs.filter(
             Q(idproveedor__razonsocial__icontains=search_value) |
             Q(idproveedor__numdoc__icontains=search_value) |
-            Q(numcorrelativo__icontains=search_value)
-        )
+            Q(numcorrelativo__icontains=search_value) |
+            Q(compradetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(compradetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(compradetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
 
     records_total = qs.count()
     records_filtered = records_total
@@ -1304,13 +1328,15 @@ def reporte_creditos(request):
         return redirect('iniciar_sesion')
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    estado_filtro = request.GET.get('estado', 'activo').strip()
+    estado_filtro = request.GET.get('estado', 'todos').strip()
     codigo_filtro = request.GET.get('codigo', '').strip()
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
     id_suc = request.session.get('id_sucursal')
     
-    creditos_qs = Credito.objects.filter(estado_credito=estado_filtro, fecha_credito__date__range=[fi, ff])
+    creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
+    if estado_filtro != 'todos':
+        creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
     if codigo_filtro:
         creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
     if cliente_id:
@@ -1324,6 +1350,26 @@ def reporte_creditos(request):
             Q(idventa__id_sucursal_id=sucursal_filtro) | 
             Q(id_sucursal_id=sucursal_filtro)
         )
+        
+    search_value = request.GET.get('search', '').strip()
+    if search_value:
+        creditos_qs = creditos_qs.filter(
+            Q(codigo_credito__icontains=search_value) |
+            Q(idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__numero_comprobante__icontains=search_value) |
+            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(id_vehiculo__serie_motor__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
+            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
+        
     creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
 
     ESTADOS_EXCLUIDOS = ['retenido', 'cancelado', 'reparado', 'segunda']
@@ -1473,13 +1519,15 @@ def api_listar_reporte_creditos(request):
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    estado_filtro = request.GET.get('estado', 'activo').strip()
+    estado_filtro = request.GET.get('estado', 'todos').strip()
     codigo_filtro = request.GET.get('codigo', '').strip()
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
     id_suc = request.session.get('id_sucursal')
     
-    creditos_qs = Credito.objects.filter(estado_credito=estado_filtro, fecha_credito__date__range=[fi, ff])
+    creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
+    if estado_filtro != 'todos':
+        creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
     if codigo_filtro:
         creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
     if cliente_id:
@@ -1494,6 +1542,8 @@ def api_listar_reporte_creditos(request):
             Q(id_sucursal_id=sucursal_filtro)
         )
     creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
+
+    records_total = creditos_qs.count()
 
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
@@ -1522,8 +1572,7 @@ def api_listar_reporte_creditos(request):
             Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
         ).distinct()
 
-    records_total = creditos_qs.count()
-    records_filtered = records_total
+    records_filtered = creditos_qs.count()
 
     if length > -1:
         creditos_page = creditos_qs[start:start + length]

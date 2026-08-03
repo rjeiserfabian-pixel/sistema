@@ -335,7 +335,8 @@ function exportarReporte(fmt) {
         fecha_fin: $('input[name="fecha_fin"]').val(),
         proveedor: $('input[name="proveedor"]').val(),
         forma_pago: $('select[name="forma_pago"]').val(),
-        sucursal: $('select[name="sucursal"]').val()
+        sucursal: $('select[name="sucursal"]').val(),
+        search: $('.dataTables_filter input').val() || ''
     });
     window.location.href = "{% url 'reporte_compras' %}?" + urlParams.toString();
 }

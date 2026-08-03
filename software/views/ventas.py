@@ -3490,8 +3490,11 @@ def api_listar_ventas(request):
         q_search = Q(idcliente__razonsocial__icontains=search) | \
                    Q(idcliente__numdoc__icontains=search) | \
                    Q(numero_comprobante__icontains=search) | \
-                   Q(idusuario__nombrecompleto__icontains=search)
-        ventas_qs = ventas_qs.filter(q_search)
+                   Q(idusuario__nombrecompleto__icontains=search) | \
+                   Q(ventadetalle__id_vehiculo__serie_motor__icontains=search) | \
+                   Q(ventadetalle__id_vehiculo__serie_chasis__icontains=search) | \
+                   Q(ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search)
+        ventas_qs = ventas_qs.filter(q_search).distinct()
 
     # Ordenar descendente (últimas ventas primero)
     ventas_qs = ventas_qs.order_by('-idventa')

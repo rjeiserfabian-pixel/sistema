@@ -61,6 +61,7 @@
           <div class="col-md-2">
             <label class="form-label">Filtrar Estado</label>
             <select name="estado" class="form-select">
+              <option value="todos" {% if estado_filtro == 'todos' %}selected{% endif %}>Todos</option>
               <option value="activo" {% if estado_filtro == 'activo' %}selected{% endif %}>Activos</option>
               <option value="mora" {% if estado_filtro == 'mora' %}selected{% endif %}>En Mora / Vencidos</option>
               <option value="pagado" {% if estado_filtro == 'pagado' %}selected{% endif %}>Pagados</option>
@@ -250,6 +251,10 @@ function setupAutocomplete(inputId, resultsId, data, hiddenId) {
         input.value = item.text;
         hidden.value = item.id;
         results.style.display = 'none';
+        if ($.fn.DataTable.isDataTable('#tablaCreditos')) {
+            $('#tablaCreditos').DataTable().ajax.reload();
+            $('#tablaMoras').DataTable().ajax.reload();
+        }
       });
       results.appendChild(div);
     });
@@ -310,6 +315,10 @@ function toggleAutocomplete(inputId, resultsId) {
       input.value = item.text;
       document.getElementById(hiddenId).value = item.id;
       results.style.display = 'none';
+      if ($.fn.DataTable.isDataTable('#tablaCreditos')) {
+          $('#tablaCreditos').DataTable().ajax.reload();
+          $('#tablaMoras').DataTable().ajax.reload();
+      }
     });
     results.appendChild(div);
   });
@@ -462,15 +471,6 @@ $(document).ready(function() {
         tablaCreditos.ajax.reload();
         tablaMoras.ajax.reload();
     });
-
-    const originalValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-    Object.defineProperty($('#cliente_id')[0], "value", {
-        set: function(val) {
-            originalValueSetter.call(this, val);
-            tablaCreditos.ajax.reload();
-            tablaMoras.ajax.reload();
-        }
-    });
 });
 
 function exportarReporte(fmt) {
@@ -481,7 +481,8 @@ function exportarReporte(fmt) {
         estado: $('select[name="estado"]').val(),
         sucursal: $('select[name="sucursal"]').val(),
         codigo: $('input[name="codigo"]').val(),
-        cliente_id: $('#cliente_id').val()
+        cliente_id: $('#cliente_id').val(),
+        search: $('.dataTables_filter input:visible').first().val() || ''
     });
     window.location.href = "{% url 'reporte_creditos' %}?" + urlParams.toString();
 }

@@ -3916,7 +3916,17 @@ def api_listar_creditos(request):
                 Q(idventa__idcliente__numdoc__icontains=busqueda) |
                 Q(idcliente__razonsocial__icontains=busqueda) |
                 Q(idcliente__numdoc__icontains=busqueda) |
-                Q(idventa__numero_comprobante__icontains=busqueda)
+                Q(idventa__numero_comprobante__icontains=busqueda) |
+                Q(id_vehiculo__idproducto__nomproducto__icontains=busqueda) |
+                Q(id_vehiculo__serie_chasis__icontains=busqueda) |
+                Q(id_vehiculo__serie_motor__icontains=busqueda) |
+                Q(idventa__ventadetalle__id_vehiculo__idproducto__nomproducto__icontains=busqueda) |
+                Q(idventa__ventadetalle__id_vehiculo__serie_chasis__icontains=busqueda) |
+                Q(idventa__ventadetalle__id_vehiculo__serie_motor__icontains=busqueda) |
+                Q(id_repuesto_comprado__id_repuesto__nombre__icontains=busqueda) |
+                Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=busqueda) |
+                Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__nombre__icontains=busqueda) |
+                Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=busqueda)
             )
 
         # 6. Filtrar por búsqueda de producto AMPLIADA (nombre, chasis, motor, cod. barras)

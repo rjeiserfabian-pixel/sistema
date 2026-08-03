@@ -2286,8 +2286,11 @@ def api_listar_compras(request):
     if search:
         q_search = Q(idproveedor__razonsocial__icontains=search) | \
                    Q(idproveedor__numdoc__icontains=search) | \
-                   Q(numcorrelativo__icontains=search)
-        base_queryset = base_queryset.filter(q_search)
+                   Q(numcorrelativo__icontains=search) | \
+                   Q(compradetalle__id_vehiculo__serie_motor__icontains=search) | \
+                   Q(compradetalle__id_vehiculo__serie_chasis__icontains=search) | \
+                   Q(compradetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search)
+        base_queryset = base_queryset.filter(q_search).distinct()
 
     # Ordenar descendente (últimas compras primero)
     compras_qs = base_queryset.order_by('-idcompra')
