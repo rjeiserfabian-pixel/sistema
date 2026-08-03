@@ -656,7 +656,7 @@ def api_listar_imposiciones(request):
         queryset = queryset.filter(
             Q(idcliente__razonsocial__icontains=search_value) |
             Q(idcliente__numdoc__icontains=search_value) |
-            Q(id_vehiculo__idproducto__nombre__icontains=search_value) |
+            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
             Q(id_vehiculo__serie_motor__icontains=search_value) |
             Q(id_vehiculo__serie_chasis__icontains=search_value)
         )

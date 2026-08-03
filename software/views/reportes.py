@@ -1010,21 +1010,33 @@ def reporte_caja(request):
     export_fmt = request.GET.get('export')
     if export_fmt in ['excel', 'pdf']:
         movimientos_qs = MovimientoCaja.objects.filter(
-            fecha_movimiento__date__range=[fi, ff]
+            fecha_movimiento__date__range=[fi, ff],
+            estado=1
         )
+        from django.db.models import Q
         if sucursal_filtro:
-            from django.db.models import Q
             movimientos_qs = movimientos_qs.filter(
                 id_caja__id_sucursal_id=sucursal_filtro
             )
         if tipo_movimiento:
             movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
         if metodo_pago_id:
-            movimientos_qs = movimientos_qs.filter(
-                Q(idventa__id_tipo_pago_id=metodo_pago_id) |
-                Q(idcompra__id_tipo_pago_id=metodo_pago_id) |
-                Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1)
-            ).distinct()
+            is_efectivo = False
+            try:
+                tp = TipoPago.objects.get(pk=metodo_pago_id)
+                if tp.nombre.lower() == 'efectivo':
+                    is_efectivo = True
+            except TipoPago.DoesNotExist:
+                pass
+            
+            cond = Q(idventa__id_tipo_pago_id=metodo_pago_id) | \
+                   Q(idcompra__id_tipo_pago_id=metodo_pago_id) | \
+                   Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1)
+                   
+            if is_efectivo:
+                cond |= Q(idventa__id_tipo_pago__isnull=True, idcompra__id_tipo_pago__isnull=True, pagos_cuota__isnull=True)
+                
+            movimientos_qs = movimientos_qs.filter(cond).distinct()
             
         search = request.GET.get('search', '').strip()
         if search:
@@ -1153,11 +1165,12 @@ def api_listar_reporte_caja(request):
     metodo_pago_id = request.GET.get('metodo_pago', '')
     
     movimientos_qs = MovimientoCaja.objects.filter(
-        fecha_movimiento__date__range=[fi, ff]
+        fecha_movimiento__date__range=[fi, ff],
+        estado=1
     )
     
+    from django.db.models import Q
     if sucursal_filtro:
-        from django.db.models import Q
         movimientos_qs = movimientos_qs.filter(
             id_caja__id_sucursal_id=sucursal_filtro
         )
@@ -1166,11 +1179,22 @@ def api_listar_reporte_caja(request):
         movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
         
     if metodo_pago_id:
-        movimientos_qs = movimientos_qs.filter(
-            Q(idventa__id_tipo_pago_id=metodo_pago_id) |
-            Q(idcompra__id_tipo_pago_id=metodo_pago_id) |
-            Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1)
-        ).distinct()
+        is_efectivo = False
+        try:
+            tp = TipoPago.objects.get(pk=metodo_pago_id)
+            if tp.nombre.lower() == 'efectivo':
+                is_efectivo = True
+        except TipoPago.DoesNotExist:
+            pass
+            
+        cond = Q(idventa__id_tipo_pago_id=metodo_pago_id) | \
+               Q(idcompra__id_tipo_pago_id=metodo_pago_id) | \
+               Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1)
+               
+        if is_efectivo:
+            cond |= Q(idventa__id_tipo_pago__isnull=True, idcompra__id_tipo_pago__isnull=True, pagos_cuota__isnull=True)
+            
+        movimientos_qs = movimientos_qs.filter(cond).distinct()
 
     search_value = request.GET.get('search[value]', '').strip()
     if search_value:
