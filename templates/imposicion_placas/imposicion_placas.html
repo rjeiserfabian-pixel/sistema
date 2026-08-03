@@ -214,13 +214,13 @@
                       <i class="fa-solid fa-circle-info text-info ms-1" 
                         data-bs-toggle="tooltip" 
                         data-bs-placement="top" 
-                        title="Busque la venta por comprobante o cliente."></i>
+                        title="Busque la venta por comprobante, cliente o serie de motor/chasis."></i>
                     </label>
                     <div class="autocomplete-wrapper">
                       <input type="text" 
                              id="venta_search" 
                              class="form-control autocomplete-input autocomplete-with-arrow" 
-                             placeholder="Escriba comprobante o cliente..." 
+                             placeholder="Escriba comprobante, cliente o serie..." 
                              autocomplete="off">
                       <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteVenta()">
                         <i class="bi bi-chevron-down"></i>
@@ -477,6 +477,12 @@ const vehiculosPorVenta = {};
         id_estado: {{ detalle.id_vehiculo.idestadoproducto.idestadoproducto|default:"0" }},
         nombre_estado: "{{ detalle.id_vehiculo.idestadoproducto.nombreestadoproducto|lower|escapejs }}"
       });
+      
+      // Añadir la serie al texto oculto de la Venta para que el buscador la encuentre
+      let ventaIndex = ventasData.findIndex(v => v.id === idventa);
+      if (ventaIndex !== -1) {
+        ventasData[ventaIndex].text += " " + "{{ detalle.id_vehiculo.serie_motor|escapejs }}" + " " + "{{ detalle.id_vehiculo.serie_chasis|escapejs }}";
+      }
     })();
   {% endif %}
 {% endfor %}

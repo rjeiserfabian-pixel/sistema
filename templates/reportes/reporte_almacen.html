@@ -31,7 +31,7 @@
             <select name="almacen" class="form-select">
               <option value="">Todos los almacenes</option>
               {% for a in almacenes %}
-                <option value="{{ a.id_almacen }}" {% if almacen_filtro == a.id_almacen|stringformat:"s" %}selected{% endif %}>{{ a.nombre_almacen }}</option>
+                <option value="{{ a.id_almacen }}" data-sucursal="{{ a.id_sucursal.id_sucursal }}" {% if almacen_filtro == a.id_almacen|stringformat:"s" %}selected{% endif %}>{{ a.nombre_almacen }}</option>
               {% endfor %}
             </select>
           </div>
@@ -206,6 +206,35 @@ $(document).ready(function() {
             $('#tot_repuestos').text(json.totales.total_repuestos);
         }
     });
+
+    const $almacenSelect = $('select[name="almacen"]');
+    const $sucursalSelect = $('select[name="sucursal"]');
+    const allAlmacenOptions = $almacenSelect.find('option:not([value=""])').clone();
+
+    function filterAlmacenes() {
+        const selectedSucursal = $sucursalSelect.val();
+        const currentAlmacen = $almacenSelect.val();
+        
+        $almacenSelect.find('option:not([value=""])').remove();
+        
+        if (selectedSucursal) {
+            const filteredOptions = allAlmacenOptions.filter(`[data-sucursal="${selectedSucursal}"]`);
+            $almacenSelect.append(filteredOptions.clone());
+        } else {
+            $almacenSelect.append(allAlmacenOptions.clone());
+        }
+        
+        if (currentAlmacen && $almacenSelect.find(`option[value="${currentAlmacen}"]`).length > 0) {
+            $almacenSelect.val(currentAlmacen);
+        } else {
+            $almacenSelect.val('');
+        }
+    }
+
+    $sucursalSelect.on('change', filterAlmacenes);
+    
+    // Initial call
+    filterAlmacenes();
 
     $('select[name="sucursal"], select[name="almacen"]').on('change', function() {
         $('#tablaVehiculos').DataTable().ajax.reload();

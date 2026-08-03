@@ -1016,7 +1016,10 @@ def reporte_caja(request):
         from django.db.models import Q
         if sucursal_filtro:
             movimientos_qs = movimientos_qs.filter(
-                id_caja__id_sucursal_id=sucursal_filtro
+                Q(id_caja__id_sucursal_id=sucursal_filtro) |
+                Q(idventa__id_sucursal_id=sucursal_filtro) |
+                Q(idcompra__id_sucursal_id=sucursal_filtro) |
+                Q(idusuario__id_sucursal_id=sucursal_filtro)
             )
         if tipo_movimiento:
             movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
@@ -1172,7 +1175,10 @@ def api_listar_reporte_caja(request):
     from django.db.models import Q
     if sucursal_filtro:
         movimientos_qs = movimientos_qs.filter(
-            id_caja__id_sucursal_id=sucursal_filtro
+            Q(id_caja__id_sucursal_id=sucursal_filtro) |
+            Q(idventa__id_sucursal_id=sucursal_filtro) |
+            Q(idcompra__id_sucursal_id=sucursal_filtro) |
+            Q(idusuario__id_sucursal_id=sucursal_filtro)
         )
         
     if tipo_movimiento in ['ingreso', 'egreso']:
