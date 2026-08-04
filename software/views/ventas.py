@@ -1156,7 +1156,12 @@ def nueva_venta(request):
                 serie.save()
                 
                 id_tipo_igv = cabecera['id_tipo_igv']
-                estado_cobro_val = 'Pendiente' if tipo_usuario_id == 2 else 'Pagado'
+                
+                # ✅ Determinar estado de cobro correcto
+                if id_forma_pago == 2:  # Crédito
+                    estado_cobro_val = 'Crédito'
+                else:                   # Contado
+                    estado_cobro_val = 'Pendiente' if tipo_usuario_id == 2 else 'Pagado'
 
                 # ✅ Crear venta CON ALMACÉN, CAJA Y SUCURSAL
                 venta = Ventas.objects.create(
