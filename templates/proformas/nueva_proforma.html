@@ -1,9 +1,8 @@
 {% extends 'plantilla/base.html' %}
 {% block main %}
-<main id="main" class="main">
-
-    <!-- Estilos personalizados para el look Premium -->
-    <style>
+    <main id="main" class="main">
+        <!-- Estilos personalizados para el look Premium -->
+        <style>
         .proforma-container {
             background-color: #fff;
             padding: 30px;
@@ -120,7 +119,7 @@
             border: 1px solid #ffeeba;
             border-radius: 8px;
             padding: 15px;
-            font-size: 12px;
+            font-size: 15px;
             color: #856404;
         }
         .commercial-conditions ul {
@@ -229,491 +228,618 @@
             color: #856404;
             border: 1px solid #ffeeba;
         }
-    </style>
-
-    <div class="pagetitle d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1>Registrar Proforma</h1>
-            <nav>
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'proformas' %}">Proformas</a></li>
-                    <li class="breadcrumb-item active">Nueva</li>
-                </ol>
-            </nav>
+        </style>
+        <div class="pagetitle d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Registrar Proforma</h1>
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'cpanel' %}">Home</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'proformas' %}">Proformas</a>
+                        </li>
+                        <li class="breadcrumb-item active">Nueva</li>
+                    </ol>
+                </nav>
+            </div>
+            <a href="{% url 'proformas' %}"
+               class="btn btn-outline-primary rounded-pill px-4">
+                <i class="bi bi-arrow-left me-1"></i> Volver
+            </a>
         </div>
-        <a href="{% url 'proformas' %}" class="btn btn-outline-primary rounded-pill px-4">
-            <i class="bi bi-arrow-left me-1"></i> Volver
-        </a>
-    </div>
-
-    <section class="section">
-        <form id="formNuevaProforma" action="{% if proforma_edit %}{% url 'editar_proforma' proforma_edit.idproforma %}{% else %}{% url 'nueva_proforma' %}{% endif %}" method="post">
-            {% csrf_token %}
-            <div class="proforma-container">
-                
-                <!-- ═══ ENCABEZADO CORPORATIVO ═══ -->
-                <div class="row align-items-center mb-5">
-                    <div class="col-md-7 d-flex align-items-center">
-                        <div class="proforma-hdr-logo me-4">
-                            {% if empresa and empresa.logo %}
-                            <img src="{{ empresa.logo }}" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3064/3064155.png';">
-                            {% else %}
-                            <img src="/static/img/logo.png" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3064/3064155.png';">
-                            {% endif %}
+        <section class="section">
+            <form id="formNuevaProforma"
+                  action="{% if proforma_edit %}{% url 'editar_proforma' proforma_edit.idproforma %}{% else %}{% url 'nueva_proforma' %}{% endif %}"
+                  method="post">
+                {% csrf_token %}
+                <div class="proforma-container">
+                    <!-- ═══ ENCABEZADO CORPORATIVO ═══ -->
+                    <div class="row align-items-center mb-5">
+                        <div class="col-md-7 d-flex align-items-center">
+                            <div class="proforma-hdr-logo me-4">
+                                {% if empresa and empresa.logo %}
+                                    <img src="{{ empresa.logo }}"
+                                         alt="Logo"
+                                         onerror="this.src='https://cdn-icons-png.flaticon.com/512/3064/3064155.png';">
+                                {% else %}
+                                    <img src="/static/img/logo.png"
+                                         alt="Logo"
+                                         onerror="this.src='https://cdn-icons-png.flaticon.com/512/3064/3064155.png';">
+                                {% endif %}
+                            </div>
+                            <div class="proforma-hdr-text">
+                                <h2>{{ empresa.razonsocial|default:"CORPORACIÓN AUTOMOTRIZ S.A." }}</h2>
+                                <p>{{ empresa.direccion|default:"Av. Principal 123, Sector Industrial, Lima - Perú" }}</p>
+                                <p>RUC: {{ empresa.ruc|default:"20456789012" }} | Tel: {{ empresa.telefono|default:"(01) 456-7890" }}</p>
+                                <p>{{ empresa.pagina|default:"ventas@corporacion-auto.com" }}</p>
+                            </div>
                         </div>
-                        <div class="proforma-hdr-text">
-                            <h2>{{ empresa.razonsocial|default:"CORPORACIÓN AUTOMOTRIZ S.A." }}</h2>
-                            <p>{{ empresa.direccion|default:"Av. Principal 123, Sector Industrial, Lima - Perú" }}</p>
-                            <p>RUC: {{ empresa.ruc|default:"20456789012" }} | Tel: {{ empresa.telefono|default:"(01) 456-7890" }}</p>
-                            <p>{{ empresa.pagina|default:"ventas@corporacion-auto.com" }}</p>
+                        <div class="col-md-5 d-flex justify-content-end">
+                            <div class="proforma-status-box shadow-sm">
+                                <span class="label">Proforma Oficial</span>
+                                <span class="number" id="preview_num_pf">{{ proforma_num }}</span>
+                                <span class="date">Fecha: {{ hoy|date:"d/m/Y" }}</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-5 d-flex justify-content-end">
-                        <div class="proforma-status-box shadow-sm">
-                            <span class="label">Proforma Oficial</span>
-                            <span class="number" id="preview_num_pf">{{ proforma_num }}</span>
-                            <span class="date">Fecha: {{ hoy|date:"d/m/Y" }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="mb-5" style="opacity: 0.1;">
-
-                <!-- ═══ DATOS DEL CLIENTE Y LOGÍSTICA ═══ -->
-                <div class="row g-4 mb-5">
-                    <div class="col-md-7">
-                        <div class="section-title-premium">
-                            <i class="bi bi-person-circle"></i> Datos del Cliente
-                        </div>
-                        <div class="premium-input-group">
-                            <div class="row g-3">
-                                <div class="col-12 mb-2">
-                                    <div class="d-flex gap-2">
-                                        <div class="autocomplete-wrapper flex-grow-1">
-                                            <input type="text" id="cliente_search_pf"
-                                                class="form-control form-control-lg border bg-light rounded-3 autocomplete-input"
-                                                placeholder="Nombre completo / Razón Social" autocomplete="off" required
-                                                value="{{ proforma_edit.idcliente.razonsocial|default:'' }}">
-                                            <button type="button" class="autocomplete-arrow" 
-                                                    onmousedown="toggleClienteDropdown(event)"
-                                                    title="Ver todos los clientes">
-                                                <i class="bi bi-chevron-down"></i>
+                    <hr class="mb-5" style="opacity: 0.1;">
+                    <!-- ═══ DATOS DEL CLIENTE Y LOGÍSTICA ═══ -->
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-7">
+                            <div class="section-title-premium">
+                                <i class="bi bi-person-circle"></i> Datos del Cliente
+                            </div>
+                            <div class="premium-input-group">
+                                <div class="row g-3">
+                                    <div class="col-12 mb-2">
+                                        <div class="d-flex gap-2">
+                                            <div class="autocomplete-wrapper flex-grow-1">
+                                                <input type="text"
+                                                       id="cliente_search_pf"
+                                                       class="form-control form-control-lg border bg-light rounded-3 autocomplete-input"
+                                                       placeholder="Nombre completo / Razón Social"
+                                                       autocomplete="off"
+                                                       required
+                                                       value="{{ proforma_edit.idcliente.razonsocial|default:'' }}">
+                                                <button type="button"
+                                                        class="autocomplete-arrow"
+                                                        onmousedown="toggleClienteDropdown(event)"
+                                                        title="Ver todos los clientes">
+                                                    <i class="bi bi-chevron-down"></i>
+                                                </button>
+                                                <div class="autocomplete-results" id="cliente_results_pf"></div>
+                                                <input type="hidden"
+                                                       name="cliente"
+                                                       id="cliente_id_pf"
+                                                       value="{{ proforma_edit.idcliente.idcliente|default:'' }}">
+                                            </div>
+                                            <button type="button"
+                                                    class="btn btn-success btn-lg rounded-3 px-3 shadow-sm btn-add-cliente-pf"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#modalAgregarClientePf"
+                                                    title="Agregar nuevo cliente">
+                                                <i class="bi bi-person-plus-fill"></i>
                                             </button>
-                                            <div class="autocomplete-results" id="cliente_results_pf"></div>
-                                            <input type="hidden" name="cliente" id="cliente_id_pf" value="{{ proforma_edit.idcliente.idcliente|default:'' }}">
                                         </div>
-                                        <button type="button" class="btn btn-success btn-lg rounded-3 px-3 shadow-sm btn-add-cliente-pf" 
-                                                data-bs-toggle="modal" data-bs-target="#modalAgregarClientePf" title="Agregar nuevo cliente">
-                                            <i class="bi bi-person-plus-fill"></i>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text"
+                                               id="cliente_doc_pf"
+                                               class="form-control bg-light border"
+                                               placeholder="DNI / RUC"
+                                               readonly
+                                               value="{{ proforma_edit.idcliente.numdoc|default:'' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text"
+                                               id="cliente_tel_pf"
+                                               class="form-control bg-light border"
+                                               placeholder="WhatsApp / Celular"
+                                               readonly
+                                               value="{{ proforma_edit.idcliente.telefono|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- FORMA DE PAGO Y CRÉDITO -->
+                            <div class="section-title-premium mt-4">
+                                <i class="bi bi-wallet2"></i> Método de Pago y Financiamiento
+                            </div>
+                            <div class="premium-input-group">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label text-muted mb-1" style="font-size: 11px;">Forma de Pago</label>
+                                        <select id="forma_pago"
+                                                name="forma_pago"
+                                                class="form-select bg-light border fw-bold"
+                                                onchange="toggleCreditoPf()">
+                                            {% for fp in forma_pago %}<option value="{{ fp.id_forma_pago }}">{{ fp.nombre }}</option>{% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-12" id="seccion_credito_pf" style="display: none;">
+                                        <div class="p-3 border border-dashed rounded bg-white mt-2 shadow-sm">
+                                            <div class="row g-3">
+                                                <input type="hidden"
+                                                       id="monto_inicial_venta"
+                                                       name="monto_inicial_venta"
+                                                       value="0">
+                                                <div class="col-md-3">
+                                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Inicial Vehículo</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text">S/</span>
+                                                        <input type="number"
+                                                               id="monto_inicial_vehiculo"
+                                                               class="form-control"
+                                                               value="0"
+                                                               min="0"
+                                                               step="0.01"
+                                                               oninput="montoInicialModificado()">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Inicial Repuesto</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text">S/</span>
+                                                        <input type="number"
+                                                               id="monto_inicial_repuesto"
+                                                               class="form-control"
+                                                               value="0"
+                                                               min="0"
+                                                               step="0.01"
+                                                               oninput="montoInicialModificado()">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Tipo Periodo</label>
+                                                    <select id="tipo_periodo"
+                                                            name="tipo_periodo"
+                                                            class="form-select form-select-sm"
+                                                            onchange="calcularCreditoPf()">
+                                                        <option value="dias">Días</option>
+                                                        <option value="semanal">Semanal</option>
+                                                        <option value="quincenal">Quincenal</option>
+                                                        <option value="mensual" selected>Mensual</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Cant. Cuotas</label>
+                                                    <input type="number"
+                                                           id="cantidad_cuotas_manual"
+                                                           class="form-control form-control-sm"
+                                                           value="0"
+                                                           min="1"
+                                                           step="1"
+                                                           oninput="calcularCreditoPf()">
+                                                </div>
+                                                <div class="col-12">
+                                                    <hr class="my-1 text-muted">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Ó Zona (Opcional para usar factor)</label>
+                                                    <select id="zona_credito_pf"
+                                                            class="form-select form-select-sm"
+                                                            onchange="cargarFactoresPf()">
+                                                        <option value="">Seleccione Zona...</option>
+                                                        {% for z in zonas %}<option value="{{ z.id_zona }}">{{ z.nombre }}</option>{% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Aplicar Factor</label>
+                                                    <select id="factor_credito_pf"
+                                                            class="form-select form-select-sm"
+                                                            onchange="aplicarFactorACuotas()">
+                                                        <option value="">Seleccione zona...</option>
+                                                    </select>
+                                                </div>
+                                                <input type="hidden" id="precio_total_credito_manual" value="0">
+                                                <input type="hidden"
+                                                       id="cantidad_cuotas_config"
+                                                       name="cantidad_cuotas_config"
+                                                       value="0">
+                                                <input type="hidden"
+                                                       id="tasa_interes_venta"
+                                                       name="tasa_interes_venta"
+                                                       value="0">
+                                                <input type="hidden" id="monto_cuota" name="monto_cuota" value="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="section-title-premium mt-0">
+                                <i class="bi bi-truck"></i> Logística y Venta
+                            </div>
+                            <div class="premium-input-group mb-4">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <select id="validez_pf_tipo" class="form-select bg-light border">
+                                            <option value="{{ vencimiento_default }}">
+                                                Válido hasta {{ proforma_edit.fecha_vencimiento|date:'d/m/Y'|default:vencimiento_default }}
+                                            </option>
+                                            <option value="{{ hoy|date:'Y-m-d' }}">Válido solo por hoy</option>
+                                            <option value="custom"
+                                                    {% if proforma_edit and proforma_edit.fecha_vencimiento and proforma_edit.fecha_vencimiento|date:'Y-m-d' != vencimiento_default and proforma_edit.fecha_vencimiento|date:'Y-m-d' != hoy|date:'Y-m-d' %}selected{% endif %}>
+                                                Otra fecha...
+                                            </option>
+                                        </select>
+                                        <input type="date"
+                                               name="fecha_vencimiento"
+                                               id="fecha_vencimiento_pf"
+                                               class="form-control bg-light border mt-2"
+                                               style="{% if proforma_edit and proforma_edit.fecha_vencimiento and proforma_edit.fecha_vencimiento|date:'Y-m-d' != vencimiento_default and proforma_edit.fecha_vencimiento|date:'Y-m-d' != hoy|date:'Y-m-d' %}display: block;
+                                                      {% else %}display: none;
+                                                      {% endif %}"
+                                               value="{{ proforma_edit.fecha_vencimiento|date:'Y-m-d'|default:vencimiento_default }}">
+                                    </div>
+                                    <div class="col-12">
+                                        <input type="text"
+                                               class="form-control bg-light border"
+                                               placeholder="Asesor Comercial asignado"
+                                               value="{{ request.session.nombre_usuario }}"
+                                               readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="resumen_credito_wrapper" style="display: none;" class="mb-4">
+                                <div class="section-title-premium mt-0">
+                                    <i class="bi bi-calculator"></i> Resumen de Crédito
+                                </div>
+                                <div class="alert alert-primary py-3 px-3 mb-0 text-start shadow-sm d-flex flex-column justify-content-center"
+                                     style="border-left: 4px solid #0d6efd">
+                                    <div class="row g-2">
+                                        <div class="col-6 mb-1">
+                                            <span class="text-muted" style="font-size: 12px;">Total Proforma:</span>
+                                            <br>
+                                            <span class="fw-bold" id="lbl_proforma_total" style="font-size: 15px;">S/ 0.00</span>
+                                        </div>
+                                        <div class="col-6 mb-1">
+                                            <span class="text-muted" style="font-size: 12px;">Inicial:</span>
+                                            <br>
+                                            <span class="fw-bold" id="lbl_monto_inicial" style="font-size: 15px;">S/ 0.00</span>
+                                        </div>
+                                        <div class="col-6 mb-1">
+                                            <span class="text-muted" style="font-size: 12px;">A Financiar:</span>
+                                            <br>
+                                            <span class="fw-bold text-danger"
+                                                  id="lbl_total_financiar"
+                                                  style="font-size: 15px">S/ 0.00</span>
+                                        </div>
+                                        <div class="col-6 mb-1">
+                                            <span class="text-muted" style="font-size: 12px;">Factor:</span>
+                                            <br>
+                                            <span class="fw-bold text-primary"
+                                                  id="lbl_factor_aplicado"
+                                                  style="font-size: 15px">-</span>
+                                        </div>
+                                        <div class="col-12 mb-1">
+                                            <span class="text-muted" style="font-size: 12px;">Cuotas:</span>
+                                            <br>
+                                            <span class="fw-bold" id="lbl_num_cuotas" style="font-size: 15px;">0</span>
+                                            <span class="fw-bold text-muted"
+                                                  id="lbl_tipo_periodo"
+                                                  style="font-size: 13px;
+                                                         text-transform: capitalize"></span>
+                                        </div>
+                                        <div class="col-12 mt-2 pt-2 border-top border-primary border-opacity-25">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-bold" style="font-size: 15px;">Valor por Cuota:</span>
+                                                <span class="fw-bold text-end" id="lbl_monto_cuota" style="font-size: 20px">S/ 0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ═══ DETALLE TÉCNICO DE COTIZACIÓN ═══ -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="section-title-premium mb-0">
+                            <i class="bi bi-shield-lock-fill"></i> DETALLE TÉCNICO DE COTIZACIÓN
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button"
+                                    class="btn btn-success rounded-pill btn-sm px-3"
+                                    onclick="agregarItemPf('vehiculo')">
+                                <i class="bi bi-plus-lg me-1"></i> Añadir Vehículo
+                            </button>
+                            <button type="button"
+                                    class="btn btn-primary rounded-pill btn-sm px-3"
+                                    onclick="agregarItemPf('repuesto')">
+                                <i class="bi bi-plus-lg me-1"></i> Añadir Repuesto
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table premium-table" id="tablaDetallePf">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">Tipo</th>
+                                    <th style="width: 25%;">Modelo / Descr.</th>
+                                    <th style="width: 25%;">Serie / Código</th>
+                                    <th style="width: 8%;" class="text-center">Año</th>
+                                    <th style="width: 8%;" class="text-center">Color/Categoría</th>
+                                    <th style="width: 6%;" class="text-center">Cant.</th>
+                                    <th style="width: 10%;" class="text-center">P. Base</th>
+                                    <th style="width: 10%;">P. Unit</th>
+                                    <th style="width: 10%;" class="text-end">Total</th>
+                                    <th style="width: 3%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyItemsPf">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                        <div id="no-items-msg"
+                             class="text-center py-4 text-muted border rounded-3 mb-3 bg-light">
+                            No hay ítems agregados a la cotización
+                        </div>
+                        <input type="hidden" name="items_count" id="items_count_pf" value="0">
+                    </div>
+                    <div class="row">
+                        <!-- Condiciones Comerciales -->
+                        <div class="col-md-7">
+                            <div class="commercial-conditions">
+                                <h6 class="fw-bold mb-2">
+                                    <i class="bi bi-info-circle-fill me-1"></i> CONDICIONES COMERCIALES:
+                                </h6>
+                                <div class="mb-3">{{ empresa.condiciones_comerciales|linebreaksbr }}</div>
+                                <textarea name="observaciones"
+                                          class="form-control form-control-sm mt-3 border bg-white"
+                                          placeholder="Agregar observaciones adicionales..."
+                                          rows="2">{{ proforma_edit.observaciones|default:'' }}</textarea>
+                            </div>
+                        </div>
+                        <!-- Totals Box -->
+                        <div class="col-md-5 d-flex justify-content-end align-items-start">
+                            <div class="totals-dark-box">
+                                <div class="row-total">
+                                    <span>Subtotal:</span>
+                                    <span id="subtotalPf">0.00</span>
+                                </div>
+                                <div class="row-total text-muted align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <span>IGV (</span>
+                                        <input type="number"
+                                               id="porcentaje_igv_pf"
+                                               name="porcentaje_igv"
+                                               class="form-control form-control-sm bg-transparent border-0 text-white p-0 mx-1 text-center fw-bold"
+                                               style="width: 35px;
+                                                      border-bottom: 1px solid #6b7280 !important;
+                                                      border-radius: 0;
+                                                      outline: none;
+                                                      box-shadow: none"
+                                               value="{% if proforma_edit %}{{ porcentaje_igv_edit }}{% else %}0{% endif %}"
+                                               min="0"
+                                               max="100"
+                                               oninput="actualizarGlobalesPf()">
+                                        <span>%):</span>
+                                    </div>
+                                    <span id="igvPf">0.00</span>
+                                </div>
+                                <div class="row-total final">
+                                    <span class="label">Total Final</span>
+                                    <span class="value" id="totalPf">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Action Button -->
+                    {% if proforma_edit %}
+                        <div class="d-flex justify-content-center gap-3 mt-5">
+                            <button type="button"
+                                    class="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm"
+                                    id="btnGuardarProforma">
+                                <i class="bi bi-save me-2"></i> GUARDAR CAMBIOS
+                            </button>
+                            <a href="{% url 'proformas' %}"
+                               class="btn btn-danger btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm">
+                                <i class="bi bi-x-circle me-2"></i> CANCELAR
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center mt-5">
+                            <button type="button"
+                                    class="btn btn-dark btn-lg rounded-pill px-5 py-3 fw-bold shadow"
+                                    id="btnGuardarProforma">GENERAR Y GUARDAR PROFORMA</button>
+                        </div>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+        <!-- ═══════════════════════════════════════════════════════
+         ⭐ MODAL AGREGAR CLIENTE RAPIDO
+         ═══════════════════════════════════════════════════════ -->
+        <div class="modal fade"
+             id="modalAgregarClientePf"
+             tabindex="-1"
+             data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content rounded-3 shadow-lg">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-person-plus-fill me-2"></i>Registrar Nuevo Cliente
+                        </h5>
+                        <button type="button"
+                                class="btn-close btn-close-white"
+                                data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <!-- Alertas de estado -->
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) o RUC (11 dígitos) y los datos se completarán automáticamente.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <!-- Alerta de carga -->
+                        <div class="alert alert-primary d-none" id="alertCargandoPf" role="alert">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <div>Consultando documento en RENIEC/SUNAT...</div>
+                            </div>
+                        </div>
+                        <!-- Alerta de error -->
+                        <div class="alert alert-danger d-none" id="alertErrorPf" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <span id="mensajeErrorPf"></span>
+                        </div>
+                        <!-- Alerta de éxito -->
+                        <div class="alert alert-success d-none" id="alertExitoPf" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <span id="mensajeExitoPf"></span>
+                        </div>
+                        <form id="formAddClientePf">
+                            {% csrf_token %}
+                            <div class="row g-3">
+                                <!-- Tipo Entidad y Numero Doc -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        Tipo de Cliente <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="tipoEntidadCliente"
+                                            id="tipoEntidadPf"
+                                            class="form-select rounded-pill"
+                                            required>
+                                        <option value="">Seleccione...</option>
+                                        {% for tipo in tipos_entidad %}<option value="{{ tipo.id_tipo_entidad }}">{{ tipo.tipo_entidad }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        Número de Documento <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="text"
+                                               name="numdocCliente"
+                                               id="numdocPf"
+                                               class="form-control rounded-start"
+                                               maxlength="11"
+                                               required>
+                                        <button class="btn btn-primary rounded-end" type="button" id="btnConsultarPf">
+                                            <i class="bi bi-search"></i>
                                         </button>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <input type="text" id="cliente_doc_pf" class="form-control bg-light border" placeholder="DNI / RUC" readonly value="{{ proforma_edit.idcliente.numdoc|default:'' }}">
-                                </div>
-                                <div class="col-md-6">
-                                    <input type="text" id="cliente_tel_pf" class="form-control bg-light border" placeholder="WhatsApp / Celular" readonly value="{{ proforma_edit.idcliente.telefono|default:'' }}">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- FORMA DE PAGO Y CRÉDITO -->
-                        <div class="section-title-premium mt-4">
-                            <i class="bi bi-wallet2"></i> Método de Pago y Financiamiento
-                        </div>
-                        <div class="premium-input-group">
-                            <div class="row g-3">
+                                <!-- Razon Social / Nombre Completo -->
                                 <div class="col-12">
-                                    <label class="form-label text-muted mb-1" style="font-size: 11px;">Forma de Pago</label>
-                                    <select id="forma_pago" name="forma_pago" class="form-select bg-light border fw-bold" onchange="toggleCreditoPf()">
-                                        {% for fp in forma_pago %}
-                                        <option value="{{ fp.id_forma_pago }}">{{ fp.nombre }}</option>
-                                        {% endfor %}
+                                    <label class="form-label fw-semibold">
+                                        Razón Social / Nombre Completo <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text"
+                                           name="razonsocialCliente"
+                                           id="razonPf"
+                                           class="form-control rounded-pill"
+                                           required>
+                                </div>
+                                <!-- Nombre Comercial (opcional) -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Nombre Comercial (Opcional)</label>
+                                    <input type="text"
+                                           name="nombreComercialCliente"
+                                           id="comercialPf"
+                                           class="form-control rounded-pill">
+                                </div>
+                                <!-- Telefono y Email -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Teléfono / WhatsApp</label>
+                                    <input type="text"
+                                           name="telefonoCliente"
+                                           id="telPf"
+                                           class="form-control rounded-pill">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Email</label>
+                                    <input type="email"
+                                           name="emailCliente"
+                                           id="emailPf"
+                                           class="form-control rounded-pill">
+                                </div>
+                                <!-- Direccion -->
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold">Dirección</label>
+                                    <input type="text"
+                                           name="direccionCliente"
+                                           id="dirPf"
+                                           class="form-control rounded-pill">
+                                </div>
+                                <!-- Ubigeo -->
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Departamento</label>
+                                    <select name="idRegion"
+                                            id="idRegionPf"
+                                            class="form-select rounded-pill select-region-pf">
+                                        <option value="">Seleccione...</option>
+                                        {% for region in regiones %}<option value="{{ region.id_region }}">{{ region.nombre_region }}</option>{% endfor %}
                                     </select>
                                 </div>
-
-                                <div class="col-12" id="seccion_credito_pf" style="display: none;">
-                                    <div class="p-3 border border-dashed rounded bg-white mt-2 shadow-sm">
-                                        <div class="row g-3">
-                                            <input type="hidden" id="monto_inicial_venta" name="monto_inicial_venta" value="0">
-                                            <div class="col-md-3">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Inicial Vehículo</label>
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text">S/</span>
-                                                    <input type="number" id="monto_inicial_vehiculo" class="form-control" value="0" min="0" step="0.01" oninput="montoInicialModificado()">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Inicial Repuesto</label>
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text">S/</span>
-                                                    <input type="number" id="monto_inicial_repuesto" class="form-control" value="0" min="0" step="0.01" oninput="montoInicialModificado()">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Tipo Periodo</label>
-                                                <select id="tipo_periodo" name="tipo_periodo" class="form-select form-select-sm" onchange="calcularCreditoPf()">
-                                                    <option value="dias">Días</option>
-                                                    <option value="semanal">Semanal</option>
-                                                    <option value="quincenal">Quincenal</option>
-                                                    <option value="mensual" selected>Mensual</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Cant. Cuotas</label>
-                                                <input type="number" id="cantidad_cuotas_manual" class="form-control form-control-sm" value="0" min="1" step="1" oninput="calcularCreditoPf()">
-                                            </div>
-                                            
-                                            <div class="col-12"><hr class="my-1 text-muted"></div>
-                                            
-                                            <div class="col-md-6">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Ó Zona (Opcional para usar factor)</label>
-                                                <select id="zona_credito_pf" class="form-select form-select-sm" onchange="cargarFactoresPf()">
-                                                    <option value="">Seleccione Zona...</option>
-                                                    {% for z in zonas %}
-                                                    <option value="{{ z.id_zona }}">{{ z.nombre }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label text-muted mb-1" style="font-size: 11px;">Aplicar Factor</label>
-                                                <select id="factor_credito_pf" class="form-select form-select-sm" onchange="aplicarFactorACuotas()">
-                                                    <option value="">Seleccione zona...</option>
-                                                </select>
-                                            </div>
-
-                                            <input type="hidden" id="precio_total_credito_manual" value="0">
-                                            <input type="hidden" id="cantidad_cuotas_config" name="cantidad_cuotas_config" value="0">
-                                            <input type="hidden" id="tasa_interes_venta" name="tasa_interes_venta" value="0">
-                                            <input type="hidden" id="monto_cuota" name="monto_cuota" value="0">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="section-title-premium mt-0">
-                            <i class="bi bi-truck"></i> Logística y Venta
-                        </div>
-                        <div class="premium-input-group mb-4">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <select id="validez_pf_tipo" class="form-select bg-light border">
-                                        <option value="{{ vencimiento_default }}">Válido hasta {{ proforma_edit.fecha_vencimiento|date:'d/m/Y'|default:vencimiento_default }}</option>
-                                        <option value="{{ hoy|date:'Y-m-d' }}">Válido solo por hoy</option>
-                                        <option value="custom" {% if proforma_edit and proforma_edit.fecha_vencimiento and proforma_edit.fecha_vencimiento|date:'Y-m-d' != vencimiento_default and proforma_edit.fecha_vencimiento|date:'Y-m-d' != hoy|date:'Y-m-d' %}selected{% endif %}>Otra fecha...</option>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Provincia</label>
+                                    <select name="idProvincia"
+                                            id="idProvinciaPf"
+                                            class="form-select rounded-pill select-provincia-pf">
+                                        <option value="">Seleccione...</option>
                                     </select>
-                                    <input type="date" name="fecha_vencimiento" id="fecha_vencimiento_pf" 
-                                           class="form-control bg-light border mt-2" 
-                                           style="{% if proforma_edit and proforma_edit.fecha_vencimiento and proforma_edit.fecha_vencimiento|date:'Y-m-d' != vencimiento_default and proforma_edit.fecha_vencimiento|date:'Y-m-d' != hoy|date:'Y-m-d' %}display: block;{% else %}display: none;{% endif %}" 
-                                           value="{{ proforma_edit.fecha_vencimiento|date:'Y-m-d'|default:vencimiento_default }}">
                                 </div>
-                                <div class="col-12">
-                                    <input type="text" class="form-control bg-light border" placeholder="Asesor Comercial asignado" 
-                                           value="{{ request.session.nombre_usuario }}" readonly>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Distrito</label>
+                                    <select name="idDistrito" id="idDistritoPf" class="form-select rounded-pill">
+                                        <option value="">Seleccione...</option>
+                                    </select>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div id="resumen_credito_wrapper" style="display: none;" class="mb-4">
-                            <div class="section-title-premium mt-0">
-                                <i class="bi bi-calculator"></i> Resumen de Crédito
-                            </div>
-                            <div class="alert alert-primary py-3 px-3 mb-0 text-start shadow-sm d-flex flex-column justify-content-center" style="border-left: 4px solid #0d6efd;">
-                                <div class="row g-2">
-                                    <div class="col-6 mb-1">
-                                        <span class="text-muted" style="font-size: 12px;">Total Proforma:</span><br>
-                                        <span class="fw-bold" id="lbl_proforma_total" style="font-size: 15px;">S/ 0.00</span>
-                                    </div>
-                                    <div class="col-6 mb-1">
-                                        <span class="text-muted" style="font-size: 12px;">Inicial:</span><br>
-                                        <span class="fw-bold" id="lbl_monto_inicial" style="font-size: 15px;">S/ 0.00</span>
-                                    </div>
-                                    <div class="col-6 mb-1">
-                                        <span class="text-muted" style="font-size: 12px;">A Financiar:</span><br>
-                                        <span class="fw-bold text-danger" id="lbl_total_financiar" style="font-size: 15px;">S/ 0.00</span>
-                                    </div>
-                                    <div class="col-6 mb-1">
-                                        <span class="text-muted" style="font-size: 12px;">Factor:</span><br>
-                                        <span class="fw-bold text-primary" id="lbl_factor_aplicado" style="font-size: 15px;">-</span>
-                                    </div>
-                                    <div class="col-12 mb-1">
-                                        <span class="text-muted" style="font-size: 12px;">Cuotas:</span><br>
-                                        <span class="fw-bold" id="lbl_num_cuotas" style="font-size: 15px;">0</span> 
-                                        <span class="fw-bold text-muted" id="lbl_tipo_periodo" style="font-size: 13px; text-transform: capitalize;"></span>
-                                    </div>
-                                    <div class="col-12 mt-2 pt-2 border-top border-primary border-opacity-25">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="fw-bold" style="font-size: 15px;">Valor por Cuota:</span>
-                                            <span class="fw-bold text-end" id="lbl_monto_cuota" style="font-size: 20px;">S/ 0.00</span>
-                                        </div>
+                                <!-- Cónyuge -->
+                                <div class="col-12 mt-4">
+                                    <hr class="my-0 mb-3">
+                                    <h6 class="text-muted fw-bold">
+                                        <i class="bi bi-people-fill"></i> Datos del Cónyuge (Opcional)
+                                    </h6>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="conyugeNombrePf" class="form-label fw-semibold">Nombre del Cónyuge</label>
+                                    <input type="text"
+                                           class="form-control rounded-pill"
+                                           id="conyugeNombrePf"
+                                           name="conyugeNombre">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="conyugeDniPf" class="form-label fw-semibold">DNI del Cónyuge</label>
+                                    <div class="input-group">
+                                        <input type="text"
+                                               class="form-control rounded-start"
+                                               id="conyugeDniPf"
+                                               name="conyugeDni"
+                                               maxlength="8">
+                                        <button class="btn btn-primary rounded-end btn-consultar-conyuge-pf"
+                                                type="button"
+                                                title="Consultar DNI Cónyuge">
+                                            <i class="bi bi-search"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </form>
                     </div>
-                </div>
-
-                <!-- ═══ DETALLE TÉCNICO DE COTIZACIÓN ═══ -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-title-premium mb-0">
-                        <i class="bi bi-shield-lock-fill"></i> DETALLE TÉCNICO DE COTIZACIÓN
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-success rounded-pill btn-sm px-3" onclick="agregarItemPf('vehiculo')">
-                            <i class="bi bi-plus-lg me-1"></i> Añadir Vehículo
-                        </button>
-                        <button type="button" class="btn btn-primary rounded-pill btn-sm px-3" onclick="agregarItemPf('repuesto')">
-                            <i class="bi bi-plus-lg me-1"></i> Añadir Repuesto
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="button"
+                                class="btn btn-outline-secondary rounded-pill px-4"
+                                data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button"
+                                class="btn btn-success rounded-pill px-4 shadow"
+                                id="btnSaveClientePf">
+                            <i class="bi bi-save2-fill me-2"></i>Agregar
                         </button>
                     </div>
-                </div>
-
-                <div class="table-responsive mb-4">
-                    <table class="table premium-table" id="tablaDetallePf">
-                        <thead>
-                            <tr>
-                                <th style="width: 10%;">Tipo</th>
-                                <th style="width: 25%;">Modelo / Descr.</th>
-                                <th style="width: 25%;">Serie / Código</th>
-                                <th style="width: 8%;" class="text-center">Año</th>
-                                <th style="width: 8%;" class="text-center">Color/Categoría</th>
-                                <th style="width: 6%;" class="text-center">Cant.</th>
-                                <th style="width: 10%;" class="text-center">P. Base </th>
-                                <th style="width: 10%;">P. Unit </th>
-                                <th style="width: 10%;" class="text-end">Total </th>
-                                <th style="width: 3%;"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyItemsPf">
-                            <!-- Filas dinámicas -->
-                        </tbody>
-                    </table>
-                    <div id="no-items-msg" class="text-center py-4 text-muted border rounded-3 mb-3 bg-light">
-                        No hay ítems agregados a la cotización
-                    </div>
-                    <input type="hidden" name="items_count" id="items_count_pf" value="0">
-                </div>
-
-                <div class="row">
-                    <!-- Condiciones Comerciales -->
-                    <div class="col-md-7">
-                        <div class="commercial-conditions">
-                            <h6 class="fw-bold mb-2"><i class="bi bi-info-circle-fill me-1"></i> CONDICIONES COMERCIALES:</h6>
-                            <ul>
-                                <li>Precios sujetos a cambios sin previo aviso según fluctuación del dólar.</li>
-                                <li>Garantía de vehículos: 3 años o 100,000 km (lo que ocurra primero).</li>
-                                <li>Repuestos: Devoluciones solo hasta 48h después de la entrega en empaque original.</li>
-                                <li>Entrega de vehículos supeditada a trámites de tarjeta y placa (aprox. 15-20 días).</li>
-                            </ul>
-                            <textarea name="observaciones" class="form-control form-control-sm mt-3 border bg-white" 
-                                      placeholder="Agregar observaciones adicionales..." rows="2">{{ proforma_edit.observaciones|default:'' }}</textarea>
-                        </div>
-                    </div>
-                    <!-- Totals Box -->
-                    <div class="col-md-5 d-flex justify-content-end align-items-start">
-                        <div class="totals-dark-box">
-                            <div class="row-total">
-                                <span>Subtotal:</span>
-                                <span id="subtotalPf">0.00</span>
-                            </div>
-                            <div class="row-total text-muted align-items-center">
-                                <div class="d-flex align-items-center">
-                                    <span>IGV (</span>
-                                    <input type="number" id="porcentaje_igv_pf" name="porcentaje_igv" 
-                                           class="form-control form-control-sm bg-transparent border-0 text-white p-0 mx-1 text-center fw-bold" 
-                                           style="width: 35px; border-bottom: 1px solid #6b7280 !important; border-radius: 0; outline: none; box-shadow: none;" 
-                                           value="{% if proforma_edit %}{{ porcentaje_igv_edit }}{% else %}0{% endif %}" min="0" max="100"
-                                           oninput="actualizarGlobalesPf()">
-                                    <span>%):</span>
-                                </div>
-                                <span id="igvPf">0.00</span>
-                            </div>
-                            <div class="row-total final">
-                                <span class="label">Total Final</span>
-                                <span class="value" id="totalPf">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Action Button -->
-                {% if proforma_edit %}
-                <div class="d-flex justify-content-center gap-3 mt-5">
-                    <button type="button" class="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm" id="btnGuardarProforma">
-                        <i class="bi bi-save me-2"></i> GUARDAR CAMBIOS
-                    </button>
-                    <a href="{% url 'proformas' %}" class="btn btn-danger btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm">
-                        <i class="bi bi-x-circle me-2"></i> CANCELAR
-                    </a>
-                </div>
-                {% else %}
-                <div class="text-center mt-5">
-                    <button type="button" class="btn btn-dark btn-lg rounded-pill px-5 py-3 fw-bold shadow" id="btnGuardarProforma">
-                        GENERAR Y GUARDAR PROFORMA
-                    </button>
-                </div>
-                {% endif %}
-
-            </div>
-        </form>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════════
-         ⭐ MODAL AGREGAR CLIENTE RAPIDO
-         ═══════════════════════════════════════════════════════ -->
-    <div class="modal fade" id="modalAgregarClientePf" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content rounded-3 shadow-lg">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-person-plus-fill me-2"></i>Registrar Nuevo Cliente</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <!-- Alertas de estado -->
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        <strong>Autocompletado:</strong> Ingrese el DNI (8 dígitos) o RUC (11 dígitos) y los datos se completarán automáticamente.
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-
-                    <!-- Alerta de carga -->
-                    <div class="alert alert-primary d-none" id="alertCargandoPf" role="alert">
-                        <div class="d-flex align-items-center">
-                            <div class="spinner-border spinner-border-sm me-2" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                            <div>Consultando documento en RENIEC/SUNAT...</div>
-                        </div>
-                    </div>
-
-                    <!-- Alerta de error -->
-                    <div class="alert alert-danger d-none" id="alertErrorPf" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <span id="mensajeErrorPf"></span>
-                    </div>
-
-                    <!-- Alerta de éxito -->
-                    <div class="alert alert-success d-none" id="alertExitoPf" role="alert">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        <span id="mensajeExitoPf"></span>
-                    </div>
-
-                    <form id="formAddClientePf">
-                        {% csrf_token %}
-                        <div class="row g-3">
-                            <!-- Tipo Entidad y Numero Doc -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Tipo de Cliente <span class="text-danger">*</span></label>
-                                <select name="tipoEntidadCliente" id="tipoEntidadPf" class="form-select rounded-pill" required>
-                                    <option value="">Seleccione...</option>
-                                    {% for tipo in tipos_entidad %}
-                                    <option value="{{ tipo.id_tipo_entidad }}">{{ tipo.tipo_entidad }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Número de Documento <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="text" name="numdocCliente" id="numdocPf" class="form-control rounded-start" maxlength="11" required>
-                                    <button class="btn btn-primary rounded-end" type="button" id="btnConsultarPf">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Razon Social / Nombre Completo -->
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Razón Social / Nombre Completo <span class="text-danger">*</span></label>
-                                <input type="text" name="razonsocialCliente" id="razonPf" class="form-control rounded-pill" required>
-                            </div>
-
-                            <!-- Nombre Comercial (opcional) -->
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Nombre Comercial (Opcional)</label>
-                                <input type="text" name="nombreComercialCliente" id="comercialPf" class="form-control rounded-pill">
-                            </div>
-
-                            <!-- Telefono y Email -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Teléfono / WhatsApp</label>
-                                <input type="text" name="telefonoCliente" id="telPf" class="form-control rounded-pill">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Email</label>
-                                <input type="email" name="emailCliente" id="emailPf" class="form-control rounded-pill">
-                            </div>
-
-                            <!-- Direccion -->
-                            <div class="col-md-12">
-                                <label class="form-label fw-semibold">Dirección</label>
-                                <input type="text" name="direccionCliente" id="dirPf" class="form-control rounded-pill">
-                            </div>
-
-                            <!-- Ubigeo -->
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Departamento</label>
-                                <select name="idRegion" id="idRegionPf" class="form-select rounded-pill select-region-pf">
-                                    <option value="">Seleccione...</option>
-                                    {% for region in regiones %}
-                                    <option value="{{ region.id_region }}">{{ region.nombre_region }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Provincia</label>
-                                <select name="idProvincia" id="idProvinciaPf" class="form-select rounded-pill select-provincia-pf">
-                                    <option value="">Seleccione...</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Distrito</label>
-                                <select name="idDistrito" id="idDistritoPf" class="form-select rounded-pill">
-                                    <option value="">Seleccione...</option>
-                                </select>
-                            </div>
-
-                            <!-- Cónyuge -->
-                            <div class="col-12 mt-4">
-                                <hr class="my-0 mb-3">
-                                <h6 class="text-muted fw-bold"><i class="bi bi-people-fill"></i> Datos del Cónyuge (Opcional)</h6>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="conyugeNombrePf" class="form-label fw-semibold">Nombre del Cónyuge</label>
-                                <input type="text" class="form-control rounded-pill" id="conyugeNombrePf" name="conyugeNombre">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="conyugeDniPf" class="form-label fw-semibold">DNI del Cónyuge</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control rounded-start" id="conyugeDniPf" name="conyugeDni" maxlength="8">
-                                    <button class="btn btn-primary rounded-end btn-consultar-conyuge-pf" type="button" title="Consultar DNI Cónyuge">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer border-0 p-4 pt-0">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-success rounded-pill px-4 shadow" id="btnSaveClientePf">
-                        <i class="bi bi-save2-fill me-2"></i>Agregar
-                    </button>
                 </div>
             </div>
         </div>
-    </div>
-
-</main>
-
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
+    </main>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
     // ═══════════════════════════════════════════════════════
     // DATOS E INICIALIZACIÓN
     // ═══════════════════════════════════════════════════════
@@ -1175,8 +1301,7 @@
 
         container.innerHTML = `
             <div class="autocomplete-wrapper">
-                <input type="text" id="det_search_${i}" class="form-control form-control-sm autocomplete-input" 
-                       placeholder="Buscar serie/código..." autocomplete="off" required>
+                <input type="text" id="det_search_${i}" class="form-control form-control-sm autocomplete-input" placeholder="Buscar serie/código..." autocomplete="off" required>
                 <button type="button" class="autocomplete-arrow" 
                         onclick="toggleAutocompleteResults(this, 'det_search_${i}', 'det_results_${i}', ${i}, '${tipo}', true, '${nombre.replace(/'/g, "\\'")}')">
                     <i class="bi bi-chevron-down"></i>
@@ -1437,10 +1562,8 @@
             </td>
             <td>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="prod_search_${i}" class="form-control form-control-sm autocomplete-input" 
-                           placeholder="Escriba nombre de producto..." autocomplete="off" required>
-                    <button type="button" class="autocomplete-arrow" 
-                            onclick="toggleAutocompleteResults(this, 'prod_search_${i}', 'prod_results_${i}', ${i}, '${tipo}')">
+                    <input type="text" id="prod_search_${i}" class="form-control form-control-sm autocomplete-input" placeholder="Escriba nombre de producto..." autocomplete="off" required>
+                    <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteResults(this, 'prod_search_${i}', 'prod_results_${i}', ${i}, '${tipo}')">
                         <i class="bi bi-chevron-down"></i>
                     </button>
                     <div class="autocomplete-results" id="prod_results_${i}"></div>
@@ -1449,11 +1572,8 @@
             <td>
                 <div id="detalle_container_${i}">
                     <div class="autocomplete-wrapper">
-                        <input type="text" id="det_search_${i}" class="form-control form-control-sm autocomplete-input"
-                               placeholder="Buscar serie/código..."
-                               autocomplete="off" required>
-                        <button type="button" class="autocomplete-arrow"
-                                onclick="toggleAutocompleteResults(this, 'det_search_${i}', 'det_results_${i}', ${i}, '${tipo}', true, '')"><i class="bi bi-chevron-down"></i></button>
+                        <input type="text" id="det_search_${i}" class="form-control form-control-sm autocomplete-input" placeholder="Buscar serie/código..." autocomplete="off" required>
+                        <button type="button" class="autocomplete-arrow" onclick="toggleAutocompleteResults(this, 'det_search_${i}', 'det_results_${i}', ${i}, '${tipo}', true, '')"><i class="bi bi-chevron-down"></i></button>
                         <div class="autocomplete-results" id="det_results_${i}"></div>
                     </div>
                 </div>
@@ -1468,8 +1588,7 @@
             <td id="precio_base_${i}" class="text-center text-muted align-middle" style="font-size: 0.9em;">0.00</td>
             <td>
                 <div class="input-group input-group-sm">
-                    <input type="number" name="precio_venta_contado_${i}" id="precio_${i}" step="0.01" 
-                           class="form-control form-control-sm border rounded-0" oninput="recalcularFilaPf(${i})" required>
+                    <input type="number" name="precio_venta_contado_${i}" id="precio_${i}" step="0.01" class="form-control form-control-sm border rounded-0" oninput="recalcularFilaPf(${i})" required>
                 </div>
             </td>
             <td class="fw-bold text-end" id="total_fila_${i}">0.00</td>
@@ -1636,8 +1755,7 @@
                     const container = document.getElementById(`detalle_container_${i}`);
                     container.innerHTML = `
                         <div class="autocomplete-wrapper">
-                            <input type="text" id="det_search_${i}" class="form-control form-control-sm" 
-                                   value="${det.detalle_text}" readonly>
+                            <input type="text" id="det_search_${i}" class="form-control form-control-sm" value="${det.detalle_text}" readonly>
                         </div>
                     `;
                     
@@ -1851,6 +1969,5 @@
     $(document).ready(function() {
         toggleCreditoPf();
     });
-</script>
-
+    </script>
 {% endblock %}

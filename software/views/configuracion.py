@@ -139,6 +139,9 @@ def editarEmpresa(request):
             empresa.ultramsg_token = ultramsg_token if ultramsg_token else None
             empresa.agradecimiento = request.POST.get('agradecimiento', '').strip() or None
             
+            condiciones_comerciales = request.POST.get('condiciones_comerciales', '').strip()
+            empresa.condiciones_comerciales = condiciones_comerciales if condiciones_comerciales else None
+            
             # Gmails
             gmail_1 = request.POST.get('gmail_1', '').strip()
             gmail_2 = request.POST.get('gmail_2', '').strip()

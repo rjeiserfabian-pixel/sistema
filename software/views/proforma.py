@@ -597,7 +597,7 @@ def proforma_pdf(request, idproforma):
     s_cell_right   = style('Normal', fontSize=8,  fontName='Helvetica',      textColor=TEXT_DARK, alignment=TA_RIGHT,  leading=11)
     s_total_label  = style('Normal', fontSize=9,  fontName='Helvetica',      textColor=TEXT_DARK, alignment=TA_RIGHT)
     s_total_final  = style('Normal', fontSize=13, fontName='Helvetica-Bold', textColor=GREEN, alignment=TA_RIGHT)
-    s_condicion    = style('Normal', fontSize=8,  fontName='Helvetica',      textColor=TEXT_DARK, leading=13)
+    s_condicion    = style('Normal', fontSize=10,  fontName='Helvetica',      textColor=TEXT_DARK, leading=13)
     s_nota_legal   = style('Normal', fontSize=7,  fontName='Helvetica-Oblique', textColor=TEXT_MUTED, alignment=TA_CENTER)
     s_firma_label  = style('Normal', fontSize=8,  fontName='Helvetica-Bold', textColor=TEXT_DARK, alignment=TA_CENTER)
     s_firma_sub    = style('Normal', fontSize=8,  fontName='Helvetica',      textColor=TEXT_MUTED, alignment=TA_CENTER)
@@ -884,7 +884,7 @@ def proforma_pdf(request, idproforma):
 
     cond_data = [
         [Paragraph('<b>CONDICIONES COMERCIALES</b>',
-                   ParagraphStyle('cc_hdr', fontSize=9, fontName='Helvetica-Bold',
+                   ParagraphStyle('cc_hdr', fontSize=10, fontName='Helvetica-Bold',
                                   textColor=ACCENT_BLUE)), '', ''],
         [Paragraph(f'<b>Forma de pago:</b> {proforma.forma_pago}', s_condicion),
          Paragraph(f'<b>Tiempo de entrega:</b> {proforma.tiempo_entrega}', s_condicion),
@@ -901,10 +901,16 @@ def proforma_pdf(request, idproforma):
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
     ]))
     story.append(cond_table)
+    
+    if empresa and getattr(empresa, 'condiciones_comerciales', None):
+        cond_text = empresa.condiciones_comerciales.replace('\n', '<br/>')
+        story.append(Spacer(1, 6))
+        story.append(Paragraph(cond_text, s_condicion))
 
     if proforma.observaciones:
         story.append(Spacer(1, 4))
-        story.append(Paragraph(f'<b>Observaciones:</b> {proforma.observaciones}', s_condicion))
+        obs_text = proforma.observaciones.replace('\n', '<br/>')
+        story.append(Paragraph(f'<b>Observaciones:</b><br/>{obs_text}', s_condicion))
 
     story.append(Spacer(1, 6))
     story.append(Paragraph(

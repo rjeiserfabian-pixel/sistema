@@ -230,6 +230,14 @@ class Empresa(models.Model):
         help_text='Mensaje de agradecimiento para los clientes'
     )
     
+    condiciones_comerciales = models.TextField(
+        null=True,
+        blank=True,
+        default='Precios sujetos a cambios sin previo aviso según fluctuación del dólar.',
+        verbose_name='Condiciones Comerciales',
+        help_text='Condiciones comerciales por defecto para las proformas'
+    )
+    
     # Parámetros Tributarios
     igv = models.DecimalField(
         max_digits=5,
