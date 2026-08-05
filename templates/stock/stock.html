@@ -331,11 +331,11 @@
                 <input type="number" step="0.01" name="precio_compra" class="form-control" value="0.00" required>
               </div>
               <div class="col-md-3 mb-3">
-                <label>P. x Mayor (S/.) *</label>
+                <label>P. Cash (S/.) *</label>
                 <input type="number" step="0.01" name="precio_minimo" class="form-control" required>
               </div>
               <div class="col-md-3 mb-3">
-                <label>P. x Menor (S/.) *</label>
+                <label>P. Lista (S/.) *</label>
                 <input type="number" step="0.01" name="precio_maximo" class="form-control" required>
               </div>
             </div>
@@ -390,11 +390,11 @@
                 <input type="number" step="0.01" name="precio_compra" class="form-control" value="0.00" required>
               </div>
               <div class="col-md-3 mb-3">
-                <label>P. x Mayor (S/.) *</label>
+                <label>P. Cash (S/.) *</label>
                 <input type="number" step="0.01" name="precio_minimo" class="form-control" required>
               </div>
               <div class="col-md-3 mb-3">
-                <label>P. x Menor (S/.) *</label>
+                <label>P. Lista (S/.) *</label>
                 <input type="number" step="0.01" name="precio_maximo" class="form-control" required>
               </div>
             </div>
@@ -467,11 +467,11 @@
                 <input type="number" step="0.01" name="precio_compra" id="edit_precio_compra" class="form-control" required>
               </div>
               <div class="col-md-4 mb-3">
-                <label>P. x Mayor (S/.) *</label>
+                <label>P. Cash (S/.) *</label>
                 <input type="number" step="0.01" name="precio_minimo" id="edit_precio_minimo" class="form-control" required>
               </div>
               <div class="col-md-4 mb-3">
-                <label>P. x Menor (S/.) *</label>
+                <label>P. Lista (S/.) *</label>
                 <input type="number" step="0.01" name="precio_maximo" id="edit_precio_maximo" class="form-control" required>
               </div>
             </div>
@@ -524,14 +524,14 @@
                 </div>
               </div>
               <div class="col-md-3 mb-3">
-                <label>P. x Mayor *</label>
+                <label>P. Cash *</label>
                 <div class="input-group">
                   <span class="input-group-text">S/</span>
                   <input type="number" step="0.01" name="precio_minimo" id="edit_repuesto_precio_minimo" class="form-control fw-bold text-success" required>
                 </div>
               </div>
               <div class="col-md-3 mb-3">
-                <label>P. x Menor *</label>
+                <label>P. Lista *</label>
                 <div class="input-group">
                   <span class="input-group-text">S/</span>
                   <input type="number" step="0.01" name="precio_maximo" id="edit_repuesto_precio_maximo" class="form-control fw-bold text-purple" style="color: #6f42c1;" required>
@@ -1583,8 +1583,8 @@ function renderGrupoVehiculo(grupo) {
     '<th class="text-center"><i class="fa-solid fa-location-dot me-1"></i>Situación</th>' +
     '<th><i class="fa-solid fa-triangle-exclamation me-1"></i>Imperfecciones</th>' +
     (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<th class="text-end"><i class="fa-solid fa-arrow-down me-1"></i>P. Compra</th>' : '') +
-    '<th class="text-end"><i class="fa-solid fa-arrow-up me-1"></i>P. x Mayor</th>' +
-    '<th class="text-end"><i class="fa-solid fa-arrow-up-right-dots me-1"></i>P. x Menor</th>' +
+    '<th class="text-end"><i class="fa-solid fa-arrow-up me-1"></i>P. Cash</th>' +
+    '<th class="text-end"><i class="fa-solid fa-arrow-up-right-dots me-1"></i>P. Lista</th>' +
     '<th class="text-center"><i class="fa-solid fa-hashtag me-1"></i>Cant.</th>' +
     '<th class="text-center"><i class="fa-solid fa-cogs me-1"></i>Acciones</th>' +
     '</tr></thead><tbody>' + filas + '</tbody>' +
@@ -1651,7 +1651,7 @@ function renderGrupoRepuesto(grupo) {
       '<td class="ubicacion-repuesto align-middle">' + det.ubicacion + '</td>' +
       '<td class="align-middle"><div class="small fw-semibold">' +
         (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<span>C: S/ ' + pc + '</span><br>' : '') +
-        '<span class="text-muted mt-1 d-inline-block">P. x Mayor: S/ ' + pm + ' | P. x Menor: S/ ' + px + '</span>' +
+        '<span class="text-muted mt-1 d-inline-block">P. Cash: S/ ' + pm + ' | P. Lista: S/ ' + px + '</span>' +
       '</div></td>' +
       '<td class="text-center align-middle"><span class="badge bg-primary rounded-pill fs-6 cantidad-badge">' + det.cantidad + '</span></td>' +
       '<td class="text-center align-middle">' +
