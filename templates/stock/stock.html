@@ -1532,6 +1532,7 @@ function renderGrupoVehiculo(grupo) {
       ? '<span class="text-success"><i class="fa-solid fa-check-circle me-1"></i>' + det.imperfecciones + '</span>'
       : '<span class="text-warning"><i class="fa-solid fa-exclamation-circle me-1"></i>' + det.imperfecciones + '</span>';
     var pc = parseFloat(det.precio_compra || 0).toFixed(2);
+    var pmayor = parseFloat(det.precio_por_mayor || 0).toFixed(2);
     var pm = parseFloat(det.precio_minimo || 0).toFixed(2);
     var px = parseFloat(det.precio_maximo || 0).toFixed(2);
     return '<tr class="vehiculo-row inner-row-' + groupId + ' inner-page-' + page + '" style="' + displayStyle + '">' +
@@ -1543,6 +1544,7 @@ function renderGrupoVehiculo(grupo) {
       '<td class="text-center"><span class="badge ' + sitClass + '">' + det.situacion + '</span></td>' +
       '<td>' + imperfHtml + '</td>' +
       (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<td class="text-end fw-semibold text-danger">S/ ' + pc + '</td>' : '') +
+      '<td class="text-end fw-semibold text-primary">S/ ' + pmayor + '</td>' +
       '<td class="text-end fw-semibold text-success">S/ ' + pm + '</td>' +
       '<td class="text-end fw-semibold" style="color:#6f42c1;">S/ ' + px + '</td>' +
       '<td class="text-center"><span class="badge bg-success rounded-pill fs-6 cantidad-badge">' + det.cantidad + '</span></td>' +
@@ -1583,12 +1585,13 @@ function renderGrupoVehiculo(grupo) {
     '<th class="text-center"><i class="fa-solid fa-location-dot me-1"></i>Situación</th>' +
     '<th><i class="fa-solid fa-triangle-exclamation me-1"></i>Imperfecciones</th>' +
     (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<th class="text-end"><i class="fa-solid fa-arrow-down me-1"></i>P. Compra</th>' : '') +
+    '<th class="text-end"><i class="fa-solid fa-arrow-up me-1"></i>P. X Mayor</th>' +
     '<th class="text-end"><i class="fa-solid fa-arrow-up me-1"></i>P. Cash</th>' +
     '<th class="text-end"><i class="fa-solid fa-arrow-up-right-dots me-1"></i>P. Lista</th>' +
     '<th class="text-center"><i class="fa-solid fa-hashtag me-1"></i>Cant.</th>' +
     '<th class="text-center"><i class="fa-solid fa-cogs me-1"></i>Acciones</th>' +
     '</tr></thead><tbody>' + filas + '</tbody>' +
-    '<tfoot class="table-secondary fw-bold"><tr><td colspan="' + (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? 9 : 8) + '" class="text-end">SUBTOTAL:</td><td></td>' +
+    '<tfoot class="table-secondary fw-bold"><tr><td colspan="' + (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? 10 : 9) + '" class="text-end">SUBTOTAL:</td><td></td>' +
     '<td class="text-center"><span class="badge bg-success fs-6">' + grupo.cantidad_total + '</span></td><td></td>' +
     '</tr></tfoot></table></div>' + paginationHtml + '</div></div>';
 }
@@ -1640,6 +1643,7 @@ function renderGrupoRepuesto(grupo) {
       ? '<span class="badge bg-secondary mb-1 codigo-barras"><i class="fa-solid fa-barcode me-1"></i>' + det.codigo_barras + '</span><br>'
       : '<span class="d-none codigo-barras">N/A</span>';
     var pc = parseFloat(det.precio_compra || 0).toFixed(2);
+    var pmayor = parseFloat(det.precio_por_mayor || 0).toFixed(2);
     var pm = parseFloat(det.precio_minimo || 0).toFixed(2);
     var px = parseFloat(det.precio_maximo || 0).toFixed(2);
     return '<tr class="repuesto-row inner-row-' + groupId + ' inner-page-' + page + '" style="' + displayStyle + '">' +
@@ -1651,7 +1655,7 @@ function renderGrupoRepuesto(grupo) {
       '<td class="ubicacion-repuesto align-middle">' + det.ubicacion + '</td>' +
       '<td class="align-middle"><div class="small fw-semibold">' +
         (ROL_USUARIO === 1 || ROL_USUARIO === 5 ? '<span>C: S/ ' + pc + '</span><br>' : '') +
-        '<span class="text-muted mt-1 d-inline-block">P. Cash: S/ ' + pm + ' | P. Lista: S/ ' + px + '</span>' +
+        '<span class="text-muted mt-1 d-inline-block">P. Mayor: S/ ' + pmayor + ' | P. Cash: S/ ' + pm + ' | P. Lista: S/ ' + px + '</span>' +
       '</div></td>' +
       '<td class="text-center align-middle"><span class="badge bg-primary rounded-pill fs-6 cantidad-badge">' + det.cantidad + '</span></td>' +
       '<td class="text-center align-middle">' +

@@ -1560,7 +1560,9 @@
               <td><span class="badge bg-light text-dark border">${r.marca}</span></td>
               <td><span class="badge bg-info text-dark">${r.unidad}</span></td>
               <td class="fw-semibold">S/ ${r.costo_unitario || '0.00'}</td>
-              <td class="fw-semibold text-success">S/ ${r.precio_sugerido || '0.00'}</td>
+              <td class="fw-semibold text-primary">S/ ${r.precio_por_mayor || '0.00'}</td>
+              <td class="fw-semibold text-success">S/ ${r.precio_minimo || '0.00'}</td>
+              <td class="fw-semibold text-purple" style="color: #6f42c1;">S/ ${r.precio_sugerido || '0.00'}</td>
               <td class="text-center"><span class="badge bg-secondary">${r.stock_minimo || '0'}</span></td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-primary me-1 btn-editar-rep"
@@ -1569,7 +1571,7 @@
                   data-modelo="${r.modelo_referencia || ''}" data-barras="${r.codigo_barras || ''}"
                   data-descripcion="${r.descripcion || ''}" data-compatibilidad="${r.compatibilidad || ''}"
                   data-stmin="${r.stock_minimo || 0}" data-stmax="${r.stock_maximo || 0}"
-                  data-costo="${r.costo_unitario || 0}" data-pmin="${r.precio_minimo || 0}" data-psug="${r.precio_sugerido || 0}"
+                  data-costo="${r.costo_unitario || 0}" data-pmayor="${r.precio_por_mayor || 0}" data-pmin="${r.precio_minimo || 0}" data-psug="${r.precio_sugerido || 0}"
                   data-garantia="${r.id_garantia}" data-obs="${r.observaciones || ''}" title="Editar">
                   <i class="fa-solid fa-pen-to-square"></i>
                 </button>
@@ -1654,9 +1656,11 @@
       $('#edit_rep_stmin').val($(this).data('stmin'));
       $('#edit_rep_stmax').val($(this).data('stmax'));
       var costo = String($(this).data('costo') || '0').replace(',', '.');
+      var pmayor = String($(this).data('pmayor') || '0').replace(',', '.');
       var pmin = String($(this).data('pmin') || '0').replace(',', '.');
       var psug = String($(this).data('psug') || '0').replace(',', '.');
       $('#edit_rep_costo').val(parseFloat(costo));
+      $('#edit_rep_pmayor').val(parseFloat(pmayor));
       $('#edit_rep_pmin').val(parseFloat(pmin));
       $('#edit_rep_psug').val(parseFloat(psug));
       $('#edit_rep_garantia').val($(this).data('garantia'));

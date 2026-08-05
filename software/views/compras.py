@@ -299,6 +299,7 @@ def _validar_lineas_compra(request, items_count):
         try:
             cantidad = int(request.POST.get(f"cantidad_{i}") or 0)
             precio_compra = float(request.POST.get(f"precio_compra_{i}") or 0)
+            precio_por_mayor = float(request.POST.get(f"precio_por_mayor_{i}") or 0)
             precio_minimo = float(request.POST.get(f"precio_minimo_{i}") or 0)
             precio_maximo = float(request.POST.get(f"precio_maximo_{i}") or 0)
         except (TypeError, ValueError):
@@ -306,7 +307,7 @@ def _validar_lineas_compra(request, items_count):
                 'ok': False,
                 'error': f'Ítem {i}: cantidad o precios inválidos.'
             }, status=400)
-        if cantidad <= 0 or precio_compra <= 0 or precio_minimo <= 0 or precio_maximo <= 0:
+        if cantidad <= 0 or precio_compra <= 0 or precio_por_mayor <= 0 or precio_minimo <= 0 or precio_maximo <= 0:
             return JsonResponse({
                 'ok': False,
                 'error': f'Ítem {i}: la cantidad y los precios deben ser mayores a cero.'
@@ -650,8 +651,10 @@ def nueva_compra(request):
 
                     cantidad = int(request.POST.get(f"cantidad_{i}") or 0)
                     precio_compra = float(request.POST.get(f"precio_compra_{i}") or 0)
+                    precio_por_mayor = float(request.POST.get(f"precio_por_mayor_{i}") or 0)
                     precio_minimo = float(request.POST.get(f"precio_minimo_{i}") or 0)
                     precio_maximo = float(request.POST.get(f"precio_maximo_{i}") or 0)
+                    margen_por_mayor = float(request.POST.get(f"margen_por_mayor_{i}") or 0)
                     margen_minimo = float(request.POST.get(f"margen_minimo_{i}") or 0)
                     margen_maximo = float(request.POST.get(f"margen_maximo_{i}") or 0)
                     moneda_i = request.POST.get(f"moneda_{i}", "PEN").strip()
@@ -688,8 +691,10 @@ def nueva_compra(request):
                             moneda=moneda_i,
                             precio_dolares=precio_dolares_i,
                             precio_compra=precio_compra,
+                            precio_por_mayor=precio_por_mayor,
                             precio_minimo=precio_minimo,
                             precio_maximo=precio_maximo,
+                            margen_por_mayor=margen_por_mayor,
                             margen_minimo=margen_minimo,
                             margen_maximo=margen_maximo,
                             subtotal=cantidad * precio_compra
@@ -733,6 +738,7 @@ def nueva_compra(request):
                         if not ultima_fecha or (compra.fechacompra and ultima_fecha and compra.fechacompra >= ultima_fecha):
                             Repuesto.objects.filter(id_repuesto=int(id_repuesto)).update(
                                 costo_unitario=nuevo_ppp,
+                                precio_por_mayor=precio_por_mayor,
                                 precio_minimo=precio_minimo,
                                 precio_sugerido=precio_maximo,
                             )
@@ -749,8 +755,10 @@ def nueva_compra(request):
                             moneda=moneda_i,
                             precio_dolares=precio_dolares_i,
                             precio_compra=precio_compra,
+                            precio_por_mayor=precio_por_mayor,
                             precio_minimo=precio_minimo,
                             precio_maximo=precio_maximo,
+                            margen_por_mayor=margen_por_mayor,
                             margen_minimo=margen_minimo,
                             margen_maximo=margen_maximo,
                             subtotal=cantidad * precio_compra
@@ -909,8 +917,10 @@ def obtener_compra(request, id):
                     'imperfecciones': d.id_vehiculo.imperfecciones or '',
                     'cantidad': d.cantidad,
                     'precio_compra': float(d.precio_compra),
+                    'precio_por_mayor': float(d.precio_por_mayor) if hasattr(d, 'precio_por_mayor') and d.precio_por_mayor else 0.0,
                     'precio_minimo': float(d.precio_minimo),
                     'precio_maximo': float(d.precio_maximo),
+                    'margen_por_mayor': float(d.margen_por_mayor) if hasattr(d, 'margen_por_mayor') and d.margen_por_mayor else 0.0,
                     'margen_minimo': float(d.margen_minimo),
                     'margen_maximo': float(d.margen_maximo)
                 })
@@ -925,8 +935,10 @@ def obtener_compra(request, id):
                     'descripcion': d.id_repuesto_comprado.ubicacion or '',
                     'cantidad': d.cantidad,
                     'precio_compra': float(d.precio_compra),
+                    'precio_por_mayor': float(d.precio_por_mayor) if hasattr(d, 'precio_por_mayor') and d.precio_por_mayor else 0.0,
                     'precio_minimo': float(d.precio_minimo),
                     'precio_maximo': float(d.precio_maximo),
+                    'margen_por_mayor': float(d.margen_por_mayor) if hasattr(d, 'margen_por_mayor') and d.margen_por_mayor else 0.0,
                     'margen_minimo': float(d.margen_minimo),
                     'margen_maximo': float(d.margen_maximo)
                 })
@@ -1198,8 +1210,10 @@ def actualizar_compra(request, id):
                             id_repuesto_comprado=None,
                             cantidad=cantidad,
                             precio_compra=precio_compra,
+                            precio_por_mayor=precio_por_mayor,
                             precio_minimo=precio_minimo,
                             precio_maximo=precio_maximo,
+                            margen_por_mayor=margen_por_mayor,
                             margen_minimo=margen_minimo,
                             margen_maximo=margen_maximo,
                             subtotal=cantidad * precio_compra
@@ -1257,8 +1271,10 @@ def actualizar_compra(request, id):
                             id_vehiculo=None,
                             cantidad=cantidad,
                             precio_compra=precio_compra,
+                            precio_por_mayor=precio_por_mayor,
                             precio_minimo=precio_minimo,
                             precio_maximo=precio_maximo,
+                            margen_por_mayor=margen_por_mayor,
                             margen_minimo=margen_minimo,
                             margen_maximo=margen_maximo,
                             subtotal=cantidad * precio_compra
@@ -2411,6 +2427,7 @@ def api_obtener_detalle_compra(request, id):
                 'moneda': d.moneda if d.moneda else 'PEN',
                 'precio_dolares': float(d.precio_dolares) if d.precio_dolares else 0,
                 'precio_compra': float(d.precio_compra) if d.precio_compra else 0,
+                'precio_por_mayor': float(d.precio_por_mayor) if hasattr(d, 'precio_por_mayor') and d.precio_por_mayor else 0.0,
                 'precio_minimo': float(d.precio_minimo) if d.precio_minimo else 0,
                 'precio_maximo': float(d.precio_maximo) if d.precio_maximo else 0,
                 'subtotal': float(d.subtotal) if d.subtotal else 0,
@@ -2478,4 +2495,4 @@ def api_obtener_detalle_compra(request, id):
     except Compras.DoesNotExist:
         return JsonResponse({'ok': False, 'error': 'Compra no encontrada'}, status=404)
     except Exception as e:
-        return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+        return JsonResponse({'ok': False, 'error': str(e)}, status=500)

@@ -628,6 +628,7 @@
                         <th style="width: 20%;">Producto/Repuesto</th>
                         <th style="width: 20%;">Detalle</th>
                         <th style="width: 8%;">Cant.</th>
+                        <th style="width: 10%;" class="bg-primary bg-opacity-10">PRECIO MAYOR</th>
                         <th style="width: 10%;" class="bg-info bg-opacity-10">PRECIO CASH</th>
                         <th style="width: 10%;" class="bg-purple bg-opacity-10"
                           style="background-color: rgba(111, 66, 193, 0.1);">PRECIO LISTA</th>
@@ -655,19 +656,19 @@
                     </tbody>
                     <tfoot class="table-light">
                       <tr>
-                        <td colspan="7" class="text-end fw-bold fs-6 colspan-dinamico border-bottom-0">Subtotal:</td>
+                        <td colspan="8" class="text-end fw-bold fs-6 colspan-dinamico border-bottom-0">Subtotal:</td>
                         <td class="fw-bold text-dark fs-6 border-bottom-0" id="subtotalVenta">S/ 0.00</td>
                         <td class="border-bottom-0"></td>
                         <td class="border-bottom-0"></td>
                       </tr>
                       <tr>
-                        <td colspan="7" class="text-end fw-bold fs-6 colspan-dinamico border-bottom-0">IGV:</td>
+                        <td colspan="8" class="text-end fw-bold fs-6 colspan-dinamico border-bottom-0">IGV:</td>
                         <td class="fw-bold text-warning fs-6 border-bottom-0" id="igvVenta">S/ 0.00</td>
                         <td class="border-bottom-0"></td>
                         <td class="border-bottom-0"></td>
                       </tr>
                       <tr>
-                        <td colspan="7" class="text-end fw-bold fs-5 colspan-dinamico">TOTAL VENTA:</td>
+                        <td colspan="8" class="text-end fw-bold fs-5 colspan-dinamico">TOTAL VENTA:</td>
                         <td class="fw-bold text-success fs-5" id="totalVenta">S/ 0.00</td>
                         <td class="fw-bold text-info fs-5" id="totalGanancia">S/ 0.00</td>
                         <td></td>
@@ -1724,7 +1725,7 @@
       $('.precio-credito-input').trigger('input');
 
       // ⭐ AJUSTAR COLSPAN DEL FOOTER
-      $('.colspan-dinamico').attr('colspan', '7');
+      $('.colspan-dinamico').attr('colspan', '8');
 
     } else { // contado
       // ⭐ MOSTRAR COLUMNA DESCUENTO, OCULTAR COLUMNA CRÉDITO
@@ -1738,7 +1739,7 @@
       $('.precio-servicio-input').trigger('input');
 
       // ⭐ AJUSTAR COLSPAN DEL FOOTER
-      $('.colspan-dinamico').attr('colspan', '7');
+      $('.colspan-dinamico').attr('colspan', '8');
     }
   }
 
@@ -1999,6 +2000,9 @@
       <td>
         ${cantidadHTML}
       </td>
+      <td class="bg-primary bg-opacity-10">
+        <input type="number" name="precio_venta_mayor_${itemCounter}" id="precio_venta_mayor_${itemCounter}" class="form-control form-control-sm" value="" step="0.01" readonly style="background-color: #e9ecef;">
+      </td>
       <td class="bg-info bg-opacity-10">
         <input type="number" name="precio_venta_contado_${itemCounter}" id="precio_venta_contado_${itemCounter}" class="form-control form-control-sm" value="" step="0.01" readonly style="background-color: #e9ecef;">
         <input type="hidden" name="precio_compra_${itemCounter}" id="precio_compra_${itemCounter}">
@@ -2048,12 +2052,14 @@
 
       if (selected.val()) {
         const precioCompra = parseFloat(selected.data('pc')) || 0;
+        const precioMayor = parseFloat(selected.data('pmayor')) || 0;
         const precioVenta = parseFloat(selected.data('pv')) || 0;
         const precioMaximo = parseFloat(selected.data('pmax')) || 0;
         const stock = parseInt(selected.data('stock')) || 0;
 
         // Asignar precios
         $(`#precio_compra_${item}`).val(precioCompra.toFixed(2));
+        $(`#precio_venta_mayor_${item}`).val(precioMayor.toFixed(2));
         $(`#precio_venta_contado_${item}`).val(precioVenta.toFixed(2));
         $(`#precio_maximo_${item}`).val(precioMaximo.toFixed(2));
 
@@ -2109,23 +2115,28 @@
         const precioDescuento = parseFloat($(this).val()) || 0;
 
         if (precioDescuento > 0) {
+          const precioMayor = parseFloat($(`#precio_venta_mayor_${item}`).val()) || 0;
+          const limiteInferior = precioMayor > 0 ? precioMayor : precioMinimo;
+
           if (precioDescuento > precioMaximo) {
             $(this).addClass('is-invalid');
             Swal.fire({
               icon: 'warning',
               title: 'Precio excedido',
-              text: 'El precio con descuento no puede ser mayor al P. Máximo',
+              text: 'El precio con descuento no puede ser mayor al Precio de Lista',
               toast: true,
               position: 'top-end',
               showConfirmButton: false,
               timer: 3000
             });
-          } else if (precioDescuento < precioMinimo) {
+          } else if (precioDescuento < limiteInferior) {
             $(this).addClass('is-invalid');
+            
+            const nombreLimite = precioMayor > 0 ? 'Precio por Mayor' : 'Precio Cash';
             Swal.fire({
               icon: 'warning',
               title: 'Descuento excesivo',
-              text: 'El precio no puede ser menor al P. Mínimo permitido',
+              text: `El precio no puede ser menor al ${nombreLimite}`,
               toast: true,
               position: 'top-end',
               showConfirmButton: false,
@@ -2139,26 +2150,8 @@
         }
       }
 
-      // ⭐ VALIDAR PRECIO CRÉDITO: debe ser >= P. Máximo
-      if ($(this).hasClass('precio-credito-input')) {
-        const precioMaximo = parseFloat($(`#precio_maximo_${item}`).val()) || 0;
-        const precioCredito = parseFloat($(this).val()) || 0;
+      // (Validación de precio crédito eliminada a pedido del usuario)
 
-        if (precioCredito > 0 && precioCredito < precioMaximo) {
-          $(this).addClass('is-invalid');
-          Swal.fire({
-            icon: 'warning',
-            title: 'Precio insuficiente',
-            text: 'El precio a crédito no debería ser menor al P. Máximo',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000
-          });
-        } else {
-          $(this).removeClass('is-invalid');
-        }
-      }
 
       calcularSubtotal(item);
     });
@@ -2483,7 +2476,8 @@
 
         const id = tipo === 'vehiculo' ? el.id_vehiculo : el.id_repuesto_comprado;
         const stock = el.stock_disponible || 0;
-        const precioVenta = parseFloat(el.precio_minimo) || 0;
+        const precioMayor = parseFloat(el.precio_por_mayor) || 0;
+      const precioVenta = parseFloat(el.precio_minimo) || 0;
         const precioMaximo = parseFloat(el.precio_maximo) || 0;
         const precioCompra = parseFloat(el.precio_compra) || 0;
 
@@ -2559,6 +2553,7 @@
 
           //ASIGNAR PRECIOS
           $(`#precio_compra_${itemNum}`).val(precioCompra.toFixed(2));
+          $(`#precio_venta_mayor_${itemNum}`).val(precioMayor.toFixed(2));
           $(`#precio_venta_contado_${itemNum}`).val(precioVenta.toFixed(2));
           $(`#precio_maximo_${itemNum}`).val(precioMaximo.toFixed(2));
 
@@ -2642,6 +2637,7 @@
 
       const id = tipo === 'vehiculo' ? el.id_vehiculo : el.id_repuesto_comprado;
       const stock = el.stock_disponible || 0;
+      const precioMayor = parseFloat(el.precio_por_mayor) || 0;
       const precioVenta = parseFloat(el.precio_minimo) || 0;
       const precioMaximo = parseFloat(el.precio_maximo) || 0;
       const precioCompra = parseFloat(el.precio_compra) || 0;
@@ -2903,6 +2899,7 @@
 
       const id = tipo === 'vehiculo' ? el.id_vehiculo : el.id_repuesto_comprado;
       const stock = el.stock_disponible || 0;
+      const precioMayor = parseFloat(el.precio_por_mayor) || 0;
       const precioVenta = parseFloat(el.precio_minimo) || 0;
       const precioMaximo = parseFloat(el.precio_maximo) || 0;
       const precioCompra = parseFloat(el.precio_compra) || 0;
@@ -2979,6 +2976,7 @@
         input.setAttribute('data-stock-disponible', stock);
 
         $(`#precio_compra_${itemNum}`).val(precioCompra.toFixed(2));
+        $(`#precio_venta_mayor_${itemNum}`).val(precioMayor.toFixed(2));
         $(`#precio_venta_contado_${itemNum}`).val(precioVenta.toFixed(2));
         $(`#precio_maximo_${itemNum}`).val(precioMaximo.toFixed(2));
 
@@ -3460,12 +3458,16 @@
         const precioMaximo = parseFloat($(`#precio_maximo_${itemNum}`).val()) || 0;
 
         if (precioDescuento > 0) {
+          const precioMayor = parseFloat($(`#precio_venta_mayor_${itemNum}`).val()) || 0;
+          const limiteInferior = precioMayor > 0 ? precioMayor : precioMinimo;
+
           if (precioDescuento > precioMaximo) {
             hayErrores = true;
-            mensajesError.push(`• Item ${itemNum}: El precio con descuento no puede ser mayor al P. Máximo (S/ ${precioMaximo.toFixed(2)})`);
-          } else if (precioDescuento < precioMinimo) {
+            mensajesError.push(`• Item ${itemNum}: El precio con descuento no puede ser mayor al Precio de Lista (S/ ${precioMaximo.toFixed(2)})`);
+          } else if (precioDescuento < limiteInferior) {
             hayErrores = true;
-            mensajesError.push(`• Item ${itemNum}: El descuento es demasiado alto. El precio mínimo permitido es S/ ${precioMinimo.toFixed(2)}`);
+            const nombreLimite = precioMayor > 0 ? 'Precio por Mayor' : 'Precio Cash';
+            mensajesError.push(`• Item ${itemNum}: El descuento es demasiado alto. El precio mínimo permitido es S/ ${limiteInferior.toFixed(2)} (${nombreLimite})`);
           }
         }
       }
@@ -4339,6 +4341,9 @@
                 </td>
                 <td>
                   ${cantidadHTML}
+                </td>
+                <td class="bg-primary bg-opacity-10">
+                  <input type="number" name="precio_venta_mayor_${itemCounter}" id="precio_venta_mayor_${itemCounter}" class="form-control form-control-sm" value="${precioMayor || 0}" step="0.01" readonly style="background-color: #e9ecef;">
                 </td>
                 <td class="bg-info bg-opacity-10">
                   <input type="number" name="precio_venta_contado_${itemCounter}" id="precio_venta_contado_${itemCounter}" class="form-control form-control-sm" value="${precioVenta}" step="0.01" readonly style="background-color: #e9ecef;">

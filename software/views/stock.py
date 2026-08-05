@@ -197,6 +197,7 @@ def agregar_vehiculo_stock_directo(request):
             imperfecciones = request.POST.get('imperfecciones', '').strip()
             cantidad = int(request.POST.get('cantidad', '1'))
             precio_compra = float(request.POST.get('precio_compra', '0.0'))
+            precio_por_mayor = float(request.POST.get('precio_por_mayor', '0.0'))
             precio_minimo = float(request.POST.get('precio_minimo', '0.0'))
             precio_maximo = float(request.POST.get('precio_maximo', '0.0'))
 
@@ -306,6 +307,7 @@ def agregar_vehiculo_stock_directo(request):
                 id_repuesto_comprado=None,
                 cantidad=cantidad,
                 precio_compra=precio_compra,
+                precio_por_mayor=precio_por_mayor,
                 precio_minimo=precio_minimo,
                 precio_maximo=precio_maximo,
                 margen_minimo=0,
@@ -348,6 +350,7 @@ def agregar_repuesto_stock_directo(request):
                 ubicacion = 'Sin ubicacion'
             cantidad = int(request.POST.get('cantidad', '1'))
             precio_compra = float(request.POST.get('precio_compra', '0.0'))
+            precio_por_mayor = float(request.POST.get('precio_por_mayor', '0.0'))
             precio_minimo = float(request.POST.get('precio_minimo', '0.0'))
             precio_maximo = float(request.POST.get('precio_maximo', '0.0'))
 
@@ -414,6 +417,7 @@ def agregar_repuesto_stock_directo(request):
                 id_vehiculo=None,
                 cantidad=cantidad,
                 precio_compra=precio_compra,
+                precio_por_mayor=precio_por_mayor,
                 precio_minimo=precio_minimo,
                 precio_maximo=precio_maximo,
                 margen_minimo=0,
@@ -458,6 +462,7 @@ def agregar_repuesto_stock_directo(request):
             # es el más reciente. Se actualiza el catálogo con una sola consulta.
             Repuesto.objects.filter(id_repuesto=int(id_repuesto)).update(
                 costo_unitario=nuevo_ppp,
+                precio_por_mayor=precio_por_mayor,
                 precio_minimo=precio_minimo,
                 precio_sugerido=precio_maximo,
             )
@@ -490,6 +495,7 @@ def editar_vehiculo_stock(request):
             
             # Datos de la compra (precios)
             precio_compra = float(request.POST.get('precio_compra', '0.0'))
+            precio_por_mayor = float(request.POST.get('precio_por_mayor', '0.0'))
             precio_minimo = float(request.POST.get('precio_minimo', '0.0'))
             precio_maximo = float(request.POST.get('precio_maximo', '0.0'))
             
@@ -507,6 +513,7 @@ def editar_vehiculo_stock(request):
             
             # Actualizar CompraDetalle
             detalle_compra.precio_compra = precio_compra
+            detalle_compra.precio_por_mayor = precio_por_mayor
             detalle_compra.precio_minimo = precio_minimo
             detalle_compra.precio_maximo = precio_maximo
             detalle_compra.save()
@@ -563,6 +570,7 @@ def editar_repuesto_stock(request):
             # Datos de la compra (precios) y cantidad
             cantidad = int(request.POST.get('cantidad', stock.cantidad_disponible))
             precio_compra = float(request.POST.get('precio_compra', '0.0'))
+            precio_por_mayor = float(request.POST.get('precio_por_mayor', '0.0'))
             precio_minimo = float(request.POST.get('precio_minimo', '0.0'))
             precio_maximo = float(request.POST.get('precio_maximo', '0.0'))
             
@@ -601,6 +609,7 @@ def editar_repuesto_stock(request):
                         if detalle_compra:
                             detalle_compra.id_repuesto_comprado = otro_repuesto
                             detalle_compra.precio_compra = precio_compra
+                            detalle_compra.precio_por_mayor = precio_por_mayor
                             detalle_compra.precio_minimo = precio_minimo
                             detalle_compra.precio_maximo = precio_maximo
                             detalle_compra.save()
@@ -608,7 +617,8 @@ def editar_repuesto_stock(request):
                         # Actualizar catálogo base (Repuesto) solo si es el más reciente
                         if es_el_mas_reciente and id_repuesto_base:
                             Repuesto.objects.filter(id_repuesto=id_repuesto_base).update(
-                                precio_minimo=precio_minimo,
+                                precio_por_mayor=precio_por_mayor,
+                precio_minimo=precio_minimo,
                                 precio_sugerido=precio_maximo,
                             )
 
@@ -626,6 +636,7 @@ def editar_repuesto_stock(request):
             
             if detalle_compra:
                 detalle_compra.precio_compra = precio_compra
+                detalle_compra.precio_por_mayor = precio_por_mayor
                 detalle_compra.precio_minimo = precio_minimo
                 detalle_compra.precio_maximo = precio_maximo
                 detalle_compra.save()
@@ -633,7 +644,8 @@ def editar_repuesto_stock(request):
             # Actualizar catálogo base (Repuesto) solo si es el lote más reciente
             if es_el_mas_reciente and id_repuesto_base:
                 Repuesto.objects.filter(id_repuesto=id_repuesto_base).update(
-                    precio_minimo=precio_minimo,
+                    precio_por_mayor=precio_por_mayor,
+                precio_minimo=precio_minimo,
                     precio_sugerido=precio_maximo,
                 )
             
@@ -839,6 +851,7 @@ def api_listar_vehiculos_stock(request):
             'estado': veh.idestadoproducto.nombreestadoproducto if veh.idestadoproducto else 'Sin estado',
             'imperfecciones': veh.imperfecciones or 'Ninguna',
             'precio_compra': str(det.precio_compra),
+            'precio_por_mayor': str(det.precio_por_mayor) if hasattr(det, 'precio_por_mayor') else '0.00',
             'precio_minimo': str(det.precio_minimo),
             'precio_maximo': str(det.precio_maximo),
             'cantidad': s.cantidad_disponible,
@@ -947,6 +960,7 @@ def api_listar_repuestos_stock(request):
         rep = rc.id_repuesto
 
         p_compra = rep.costo_unitario or (det.precio_compra if det else 0)
+        p_por_mayor = getattr(rep, 'precio_por_mayor', 0) or (getattr(det, 'precio_por_mayor', 0) if det else 0)
         p_minimo = rep.precio_minimo or (det.precio_minimo if det else 0)
         p_maximo = rep.precio_sugerido or (det.precio_maximo if det else 0)
 
@@ -969,6 +983,7 @@ def api_listar_repuestos_stock(request):
             'categoria': rep.id_categoria_repuesto.nomcategoria if rep.id_categoria_repuesto else 'N/A',
             'ubicacion': rc.ubicacion or 'Sin ubicacion',
             'precio_compra': str(p_compra),
+            'precio_por_mayor': str(p_por_mayor),
             'precio_minimo': str(p_minimo),
             'precio_maximo': str(p_maximo),
             'cantidad': s.cantidad_disponible,
@@ -1096,6 +1111,7 @@ def exportar_excel_stock(request):
             'imperfecciones': veh.imperfecciones or 'Ninguna',
             'p_compra': float(det.precio_compra) if det.precio_compra else 0,
             'p_mayor': float(det.precio_minimo) if det.precio_minimo else 0,
+            'p_por_mayor': float(det.precio_por_mayor) if hasattr(det, 'precio_por_mayor') and det.precio_por_mayor else 0,
             'p_menor': float(det.precio_maximo) if det.precio_maximo else 0,
             'cantidad': s.cantidad_disponible,
         })
@@ -1126,6 +1142,7 @@ def exportar_excel_stock(request):
         rep = rc.id_repuesto
         det = s.idcompradetalle or fallback_r_xls.get(rc.id_repuesto_comprado)
         p_compra = float(det.precio_compra) if det and det.precio_compra else (float(rep.costo_unitario) if rep.costo_unitario else 0)
+        p_por_mayor = float(rep.precio_por_mayor) if getattr(rep, 'precio_por_mayor', None) else (float(det.precio_por_mayor) if det and getattr(det, 'precio_por_mayor', None) else 0)
         p_mayor = float(rep.precio_minimo) if rep.precio_minimo else (float(det.precio_minimo) if det and det.precio_minimo else 0)
         p_menor = float(rep.precio_sugerido) if rep.precio_sugerido else (float(det.precio_maximo) if det and det.precio_maximo else 0)
         filas_r.append({

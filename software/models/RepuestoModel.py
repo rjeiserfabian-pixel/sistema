@@ -63,6 +63,10 @@ class Repuesto(models.Model):
         max_digits=10, decimal_places=2, default=0,
         db_column='costo_unitario', verbose_name="Costo Unitario"
     )
+    precio_por_mayor = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        db_column='precio_por_mayor', verbose_name="Precio por Mayor"
+    )
     precio_minimo = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
         db_column='precio_minimo', verbose_name="Precio Minimo"

@@ -146,6 +146,7 @@ def ventas(request):
                     'id_vehiculo': vehiculo.id_vehiculo,
                     'serie_motor': vehiculo.serie_motor,
                     'serie_chasis': vehiculo.serie_chasis,
+                    'precio_por_mayor': float(detalle_compra.precio_por_mayor) if hasattr(detalle_compra, 'precio_por_mayor') else 0,
                     'precio_minimo': float(detalle_compra.precio_minimo),
                     'precio_maximo': float(detalle_compra.precio_maximo),
                     'precio_compra': float(detalle_compra.precio_compra),
@@ -233,9 +234,11 @@ def ventas(request):
                 rep_cat = repuesto_comp.id_repuesto  # ya cargado por select_related
             
             p_compra = float(detalle_compra.precio_compra) if detalle_compra and detalle_compra.precio_compra else (float(rep_cat.costo_unitario) if rep_cat and rep_cat.costo_unitario else 0)
+            p_por_mayor = float(rep_cat.precio_por_mayor) if rep_cat and getattr(rep_cat, 'precio_por_mayor', None) else (float(detalle_compra.precio_por_mayor) if detalle_compra and getattr(detalle_compra, 'precio_por_mayor', None) else 0)
             p_mayor = float(rep_cat.precio_minimo) if rep_cat and rep_cat.precio_minimo else (float(detalle_compra.precio_minimo) if detalle_compra and detalle_compra.precio_minimo else 0)
             p_menor = float(rep_cat.precio_sugerido) if rep_cat and rep_cat.precio_sugerido else (float(detalle_compra.precio_maximo) if detalle_compra and detalle_compra.precio_maximo else 0)
             
+            precio_por_mayor_val = p_por_mayor
             precio_minimo_val = p_mayor
             precio_maximo_val = p_menor
             precio_compra_val = p_compra
@@ -248,6 +251,7 @@ def ventas(request):
                 'id_repuesto_comprado': rc_id,
                 'codigo_barras': repuesto_comp.id_repuesto.codigo_barras if repuesto_comp.id_repuesto.codigo_barras else 'N/A',
                 'ubicacion': repuesto_comp.ubicacion or 'Sin ubicación',
+                'precio_por_mayor': precio_por_mayor_val,
                 'precio_minimo': precio_minimo_val,
                 'precio_maximo': precio_maximo_val,
                 'precio_compra': precio_compra_val,
@@ -276,6 +280,7 @@ def ventas(request):
 
             # Para la vista antigua, si esperaba un solo vehículo (fallback), devolvemos el primero.
             # Idealmente la vista frontend en ventas debe soportar el array de vehículos que ya preparamos.
+            precio_por_mayor_pc = 0
             precio_minimo_pc  = 0
             precio_maximo_pc  = 0
             precio_compra_pc = 0
@@ -301,6 +306,7 @@ def ventas(request):
                     ).order_by('-idcompradetalle').first()
 
                 if detalle_compra:
+                    precio_por_mayor_pc = float(detalle_compra.precio_por_mayor) if hasattr(detalle_compra, 'precio_por_mayor') else 0
                     precio_minimo_pc  = float(detalle_compra.precio_minimo)
                     precio_maximo_pc  = float(detalle_compra.precio_maximo)
                     precio_compra_pc = float(detalle_compra.precio_compra)
@@ -317,6 +323,7 @@ def ventas(request):
                     'nombre':        v.idproducto.nomproducto if v.idproducto else None,
                     'serie_motor':   v.serie_motor,
                     'serie_chasis':  v.serie_chasis,
+                    'precio_por_mayor': precio_por_mayor_pc,
                     'precio_minimo':  precio_minimo_pc, # Por simplificación, le asignamos el del primer vehiculo si es que no buscamos uno por uno.
                     'precio_maximo':  precio_maximo_pc,
                     'precio_compra': precio_compra_pc,
@@ -717,10 +724,13 @@ def _validar_lineas_venta(request, items_count, almacen, id_venta_edicion=None):
                 return JsonResponse({'ok': False, 'error': f'Ítem {i}: debe ingresar el precio a crédito.'}, status=400)
 
         if forma_pago == "1" and precio_descuento is not None and precio_descuento > 0:
-            if precio_descuento < precio_venta_contado:
-                return JsonResponse({'ok': False, 'error': f'Ítem {i}: el precio con descuento no puede ser menor al P. Mínimo permitido.'}, status=400)
+            precio_venta_mayor = Decimal(request.POST.get(f"precio_venta_mayor_{i}") or "0")
+            precio_min_permitido = precio_venta_mayor if precio_venta_mayor > 0 else precio_venta_contado
+            if precio_descuento < precio_min_permitido:
+                nombre_limite = 'Precio por Mayor' if precio_venta_mayor > 0 else 'Precio Cash'
+                return JsonResponse({'ok': False, 'error': f'Ítem {i}: el descuento es demasiado alto. El precio mínimo permitido es S/ {precio_min_permitido:.2f} ({nombre_limite})'}, status=400)
             if precio_descuento > precio_maximo:
-                return JsonResponse({'ok': False, 'error': f'Ítem {i}: el precio con descuento no puede exceder el P. Máximo.'}, status=400)
+                return JsonResponse({'ok': False, 'error': f'Ítem {i}: el precio con descuento no puede exceder el Precio de Lista.'}, status=400)
 
         if tipo_item == "vehiculo":
             id_vehiculo = (request.POST.get(f"id_vehiculo_{i}") or "").strip()
@@ -2035,6 +2045,7 @@ def obtener_detalle_venta(request, id):
                 if not precio_maximo:
                     precio_maximo = float(d.precio_venta_contado or 0)
                 
+                precio_por_mayor = float(getattr(d, 'precio_venta_mayor', 0) or 0)
                 precio_minimo = float(d.precio_venta_contado)
                 
                 detalles_list.append({
@@ -2075,6 +2086,7 @@ def obtener_detalle_venta(request, id):
                 if not precio_maximo:
                     precio_maximo = float(d.precio_venta_contado or 0)
                 
+                precio_por_mayor = float(getattr(d, 'precio_venta_mayor', 0) or 0)
                 precio_minimo = float(d.precio_venta_contado)
 
                 detalles_list.append({
@@ -2097,6 +2109,7 @@ def obtener_detalle_venta(request, id):
                     "ubicacion": d.id_repuesto_comprado.ubicacion or "",
                 })
             elif d.tipo_item == "servicio" and d.id_servicio:
+                precio_por_mayor = float(getattr(d, 'precio_venta_mayor', 0) or 0)
                 precio_minimo = float(d.precio_venta_contado)
                 detalles_list.append({
                     "tipo": "servicio",

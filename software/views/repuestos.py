@@ -35,6 +35,7 @@ def agregar_repuesto(request):
         stock_minimo   = int(request.POST.get('stock_minimo', 0) or 0)
         stock_maximo   = int(request.POST.get('stock_maximo', 0) or 0)
         costo_unitario = float(request.POST.get('costo_unitario', 0) or 0)
+        precio_por_mayor = float(request.POST.get('precio_por_mayor', 0) or 0)
         precio_minimo  = float(request.POST.get('precio_minimo', 0) or 0)
         precio_sugerido = float(request.POST.get('precio_sugerido', 0) or 0)
     except (ValueError, TypeError):
@@ -64,6 +65,7 @@ def agregar_repuesto(request):
             stock_minimo=stock_minimo,
             stock_maximo=stock_maximo,
             costo_unitario=costo_unitario,
+            precio_por_mayor=precio_por_mayor,
             precio_minimo=precio_minimo,
             precio_sugerido=precio_sugerido,
             estado=1,
@@ -97,6 +99,7 @@ def editar_repuesto(request):
         stock_minimo   = int(request.POST.get('stock_minimo2', 0) or 0)
         stock_maximo   = int(request.POST.get('stock_maximo2', 0) or 0)
         costo_unitario = float(request.POST.get('costo_unitario2', 0) or 0)
+        precio_por_mayor = float(request.POST.get('precio_por_mayor2', 0) or 0)
         precio_minimo  = float(request.POST.get('precio_minimo2', 0) or 0)
         precio_sugerido = float(request.POST.get('precio_sugerido2', 0) or 0)
     except (ValueError, TypeError):
@@ -122,6 +125,7 @@ def editar_repuesto(request):
         repuesto.stock_minimo      = stock_minimo
         repuesto.stock_maximo      = stock_maximo
         repuesto.costo_unitario    = costo_unitario
+        repuesto.precio_por_mayor  = precio_por_mayor
         repuesto.precio_minimo     = precio_minimo
         repuesto.precio_sugerido   = precio_sugerido
         repuesto.save()

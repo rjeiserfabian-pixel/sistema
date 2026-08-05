@@ -454,11 +454,42 @@
               </div>
             </div>
             <div class="row">
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
+                <h6 class="text-primary fw-bold mb-2">
+                  <i class="fa-solid fa-circle text-primary"
+                     style="font-size: 0.5rem;
+                            vertical-align: middle"></i> PRECIO AL POR MAYOR
+                </h6>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="form-label text-muted">Margen Mayor</label>
+                    <div class="input-group">
+                      <input type="number"
+                             id="margen_por_mayor"
+                             class="form-control"
+                             step="0.01"
+                             oninput="calcularPrecioDesdeMargen('por_mayor')">
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label text-muted">Precio Mayor</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-primary text-white">S/</span>
+                      <input type="number"
+                             id="precio_por_mayor"
+                             class="form-control bg-light text-primary fw-bold"
+                             step="0.01"
+                             oninput="calcularMargenDesdePrecio('por_mayor')">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
                 <h6 class="text-success fw-bold mb-2">
                   <i class="fa-solid fa-circle text-success"
                      style="font-size: 0.5rem;
-                            vertical-align: middle"></i> CONFIGURACIÓN PRECIO AL POR MAYOR
+                            vertical-align: middle"></i> PRECIO CASH
                 </h6>
                 <div class="row">
                   <div class="col-md-6">
@@ -485,12 +516,12 @@
                   </div>
                 </div>
               </div>
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <h6 class="text-purple fw-bold mb-2" style="color: #6f42c1;">
                   <i class="fa-solid fa-circle"
                      style="font-size: 0.5rem;
                             vertical-align: middle;
-                            color: #6f42c1"></i> CONFIGURACIÓN PRECIO AL POR MENOR
+                            color: #6f42c1"></i> PRECIO LISTA
                 </h6>
                 <div class="row">
                   <div class="col-md-6">
@@ -550,7 +581,8 @@
                     <th>T.C.</th>
                     <th>Precio Compra</th>
                     <th>Precio al por mayor</th>
-                    <th>Precio al por menor</th>
+                    <th>Precio Cash</th>
+                    <th>Precio Lista</th>
                     <th>Subtotal</th>
                     <th>Acciones</th>
                   </tr>
@@ -559,7 +591,7 @@
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colspan="9" class="text-end fw-bold align-middle">TOTAL COMPRA S/</td>
+                    <td colspan="10" class="text-end fw-bold align-middle">TOTAL COMPRA S/</td>
                     <td id="totalGeneral"
                         class="text-end fw-bold align-middle fs-5 text-success">0.00</td>
                     <td></td>
@@ -2335,6 +2367,7 @@
     if (moneda === 'USD') {
         document.getElementById("span_precio_convertido").innerText = getPrecioBaseSoles().toFixed(2);
     }
+    calcularPrecioDesdeMargen('por_mayor');
     calcularPrecioDesdeMargen('minimo');
     calcularPrecioDesdeMargen('maximo');
   }
@@ -2365,8 +2398,10 @@
     const tipo = document.getElementById("tipo_item").value;
     const cantidad = parseInt(document.getElementById("cantidad").value) || 0;
     let precioCompra = parseFloat(document.getElementById("precio_compra").value) || 0;
+    const precioPorMayor = parseFloat(document.getElementById("precio_por_mayor").value) || 0;
     const precioMinimo = parseFloat(document.getElementById("precio_minimo").value) || 0;
     const precioMaximo = parseFloat(document.getElementById("precio_maximo").value) || 0;
+    const margenPorMayor = parseFloat(document.getElementById("margen_por_mayor").value) || 0;
     const margenMinimo = parseFloat(document.getElementById("margen_minimo").value) || 0;
     const margenMaximo = parseFloat(document.getElementById("margen_maximo").value) || 0;
 
@@ -2552,6 +2587,9 @@
         <input type="number" name="precio_compra_${itemIndex}" id="fila_precio_compra_${itemIndex}" class="form-control form-control-sm text-end" value="${precioCompra.toFixed(2)}" step="0.01" min="0" onchange="recalcularFilaCompra(${itemIndex})">
       </td>
       <td style="width: 130px;">
+        <input type="number" name="precio_por_mayor_${itemIndex}" id="fila_precio_por_mayor_${itemIndex}" class="form-control form-control-sm text-end" value="${precioPorMayor.toFixed(2)}" step="0.01" min="0">
+      </td>
+      <td style="width: 130px;">
         <input type="number" name="precio_minimo_${itemIndex}" id="fila_precio_minimo_${itemIndex}" class="form-control form-control-sm text-end" value="${precioMinimo.toFixed(2)}" step="0.01" min="0">
       </td>
       <td style="width: 130px;">
@@ -2566,6 +2604,7 @@
         <input type="hidden" name="tipo_item_${itemIndex}" value="${tipo}">
         <input type="hidden" name="moneda_${itemIndex}" value="${moneda}">
         <input type="hidden" name="precio_dolares_${itemIndex}" value="${precioDolares.toFixed(2)}">
+        <input type="hidden" name="margen_por_mayor_${itemIndex}" value="${margenPorMayor.toFixed(2)}">
         <input type="hidden" name="margen_minimo_${itemIndex}" value="${margenMinimo.toFixed(2)}">
         <input type="hidden" name="margen_maximo_${itemIndex}" value="${margenMaximo.toFixed(2)}">
         ${extraInputs}
@@ -2579,8 +2618,10 @@
     document.getElementById("cantidad").value = "1";
     document.getElementById("cantidad").readOnly = false;
     document.getElementById("precio_compra").value = "";
+    document.getElementById("precio_por_mayor").value = "";
     document.getElementById("precio_minimo").value = "";
     document.getElementById("precio_maximo").value = "";
+    document.getElementById("margen_por_mayor").value = "";
     document.getElementById("margen_minimo").value = "";
     document.getElementById("margen_maximo").value = "";
     document.getElementById("tipo_item").value = "";
@@ -3492,8 +3533,10 @@
             let tipo = d.tipo;
             let extraInputs = '';
             const pCompra = parseFloat(d.precio_compra) || 0;
+            const pPorMayor = parseFloat(d.precio_por_mayor) || 0;
             const pMinimo = parseFloat(d.precio_minimo) || 0;
             const pMaximo = parseFloat(d.precio_maximo) || 0;
+            const mPorMayor = parseFloat(d.margen_por_mayor) || 0;
             const mMinimo = parseFloat(d.margen_minimo) || 0;
             const mMaximo = parseFloat(d.margen_maximo) || 0;
             const subtotal = d.cantidad * pCompra;
@@ -3530,6 +3573,9 @@
                 <input type="number" name="precio_compra_${itemIndex}" id="fila_precio_compra_${itemIndex}" class="form-control form-control-sm text-end" value="${pCompra.toFixed(2)}" step="0.01" min="0" onchange="recalcularFilaCompra(${itemIndex})">
               </td>
               <td style="width: 130px;">
+                <input type="number" name="precio_por_mayor_${itemIndex}" id="fila_precio_por_mayor_${itemIndex}" class="form-control form-control-sm text-end" value="${pPorMayor.toFixed(2)}" step="0.01" min="0">
+              </td>
+              <td style="width: 130px;">
                 <input type="number" name="precio_minimo_${itemIndex}" id="fila_precio_minimo_${itemIndex}" class="form-control form-control-sm text-end" value="${pMinimo.toFixed(2)}" step="0.01" min="0">
               </td>
               <td style="width: 130px;">
@@ -3542,6 +3588,7 @@
               <td style="display:none">
                 <input type="hidden" name="idcompradetalle_${itemIndex}" value="${d.idcompradetalle || ''}">
                 <input type="hidden" name="tipo_item_${itemIndex}" value="${tipo}">
+                <input type="hidden" name="margen_por_mayor_${itemIndex}" value="${mPorMayor.toFixed(2)}">
                 <input type="hidden" name="margen_minimo_${itemIndex}" value="${mMinimo.toFixed(2)}">
                 <input type="hidden" name="margen_maximo_${itemIndex}" value="${mMaximo.toFixed(2)}">
                 ${extraInputs}
@@ -5045,8 +5092,9 @@ function abrirModalDetallesCompra(id) {
                         <th style="width: 5%;" class="text-center">Moneda</th>
                         <th style="width: 10%;" class="text-end">Precio $</th>
                         <th style="width: 10%;" class="text-end">Precio Compra</th>
-                        <th style="width: 10%;" class="text-end">Precio Mínimo</th>
-                        <th style="width: 10%;" class="text-end">Precio Máximo</th>
+                        <th style="width: 10%;" class="text-end">Precio al Por Mayor</th>
+                        <th style="width: 10%;" class="text-end">Precio Cash</th>
+                        <th style="width: 10%;" class="text-end">Precio Lista</th>
                         <th style="width: 5%;" class="text-end">Subtotal</th>
                       </tr>
                     </thead>
@@ -5092,18 +5140,19 @@ function abrirModalDetallesCompra(id) {
                         <td class="text-center fw-bold">${d.moneda}</td>
                         <td class="text-end">${d.precio_dolares > 0 ? '$ ' + d.precio_dolares.toFixed(2) : '-'}</td>
                         <td class="text-end">S/. ${d.precio_compra.toFixed(2)}</td>
+                        <td class="text-end">S/. ${d.precio_por_mayor.toFixed(2)}</td>
                         <td class="text-end">S/. ${d.precio_minimo.toFixed(2)}</td>
                         <td class="text-end">S/. ${d.precio_maximo.toFixed(2)}</td>
                         <td class="text-end fw-bold">S/. ${d.subtotal.toFixed(2)}</td>
                     </tr>`;
                 });
             } else {
-                html += `<tr><td colspan="8" class="text-center py-3">No hay detalles registrados</td></tr>`;
+                html += `<tr><td colspan="10" class="text-center py-3">No hay detalles registrados</td></tr>`;
             }
 
             html += `
                       <tr class="table-light">
-                        <td colspan="9" class="text-end fw-bold fs-5">TOTAL COMPRA:</td>
+                        <td colspan="10" class="text-end fw-bold fs-5">TOTAL COMPRA:</td>
                         <td class="text-end fw-bold text-success fs-5">S/. ${c.total_compra.toFixed(2)}</td>
                       </tr>
                     </tbody>

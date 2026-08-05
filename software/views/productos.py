@@ -294,6 +294,7 @@ def api_listar_repuestos(request):
             'stock_minimo': r.stock_minimo,
             'stock_maximo': r.stock_maximo,
             'costo_unitario': str(r.costo_unitario),
+            'precio_por_mayor': str(r.precio_por_mayor),
             'precio_minimo': str(r.precio_minimo),
             'precio_sugerido': str(r.precio_sugerido),
             'observaciones': r.observaciones or '',
