@@ -322,21 +322,27 @@
 
             <hr>
             <div class="row">
-              <div class="col-md-3 mb-3">
+              <div class="col-md-6 mb-3">
                 <label>Cantidad *</label>
                 <input type="number" name="cantidad" class="form-control" value="1" min="1" readonly required>
               </div>
-              <div class="col-md-3 mb-3">
+              <div class="col-md-6 mb-3">
                 <label>P. Compra (S/.) *</label>
-                <input type="number" step="0.01" name="precio_compra" class="form-control" value="0.00" required>
+                <input type="number" step="0.01" name="precio_compra" class="form-control validation-precio-compra" value="0.00" required>
               </div>
-              <div class="col-md-3 mb-3">
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label>P. Mayor (S/.) *</label>
+                <input type="number" step="0.01" name="precio_por_mayor" class="form-control validation-precio-venta" value="0.00" required>
+              </div>
+              <div class="col-md-4 mb-3">
                 <label>P. Cash (S/.) *</label>
-                <input type="number" step="0.01" name="precio_minimo" class="form-control" required>
+                <input type="number" step="0.01" name="precio_minimo" class="form-control validation-precio-venta" required>
               </div>
-              <div class="col-md-3 mb-3">
+              <div class="col-md-4 mb-3">
                 <label>P. Lista (S/.) *</label>
-                <input type="number" step="0.01" name="precio_maximo" class="form-control" required>
+                <input type="number" step="0.01" name="precio_maximo" class="form-control validation-precio-venta" required>
               </div>
             </div>
           </form>
@@ -381,21 +387,27 @@
 
             <hr>
             <div class="row">
-              <div class="col-md-3 mb-3">
+              <div class="col-md-6 mb-3">
                 <label>Cantidad *</label>
                 <input type="number" name="cantidad" class="form-control" value="1" min="1" required>
               </div>
-              <div class="col-md-3 mb-3">
+              <div class="col-md-6 mb-3">
                 <label>P. Compra (S/.) *</label>
-                <input type="number" step="0.01" name="precio_compra" class="form-control" value="0.00" required>
+                <input type="number" step="0.01" name="precio_compra" class="form-control validation-precio-compra" value="0.00" required>
               </div>
-              <div class="col-md-3 mb-3">
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label>P. Mayor (S/.) *</label>
+                <input type="number" step="0.01" name="precio_por_mayor" class="form-control validation-precio-venta" value="0.00" required>
+              </div>
+              <div class="col-md-4 mb-3">
                 <label>P. Cash (S/.) *</label>
-                <input type="number" step="0.01" name="precio_minimo" class="form-control" required>
+                <input type="number" step="0.01" name="precio_minimo" class="form-control validation-precio-venta" required>
               </div>
-              <div class="col-md-3 mb-3">
+              <div class="col-md-4 mb-3">
                 <label>P. Lista (S/.) *</label>
-                <input type="number" step="0.01" name="precio_maximo" class="form-control" required>
+                <input type="number" step="0.01" name="precio_maximo" class="form-control validation-precio-venta" required>
               </div>
             </div>
           </form>
@@ -462,17 +474,21 @@
 
             <hr>
             <div class="row">
-              <div class="col-md-4 mb-3">
+              <div class="col-md-3 mb-3">
                 <label>P. Compra (S/.) *</label>
-                <input type="number" step="0.01" name="precio_compra" id="edit_precio_compra" class="form-control" required>
+                <input type="number" step="0.01" name="precio_compra" id="edit_precio_compra" class="form-control validation-precio-compra" required>
               </div>
-              <div class="col-md-4 mb-3">
+              <div class="col-md-3 mb-3">
+                <label>P. Mayor (S/.) *</label>
+                <input type="number" step="0.01" name="precio_por_mayor" id="edit_precio_por_mayor" class="form-control validation-precio-venta" value="0.00" required>
+              </div>
+              <div class="col-md-3 mb-3">
                 <label>P. Cash (S/.) *</label>
-                <input type="number" step="0.01" name="precio_minimo" id="edit_precio_minimo" class="form-control" required>
+                <input type="number" step="0.01" name="precio_minimo" id="edit_precio_minimo" class="form-control validation-precio-venta" required>
               </div>
-              <div class="col-md-4 mb-3">
+              <div class="col-md-3 mb-3">
                 <label>P. Lista (S/.) *</label>
-                <input type="number" step="0.01" name="precio_maximo" id="edit_precio_maximo" class="form-control" required>
+                <input type="number" step="0.01" name="precio_maximo" id="edit_precio_maximo" class="form-control validation-precio-venta" required>
               </div>
             </div>
           </form>
@@ -509,32 +525,41 @@
 
             <h6 class="fw-bold mt-3 text-secondary border-bottom pb-2">Información de Precios y Cantidad</h6>
             <div class="row">
-              <div class="col-md-3 mb-3">
+              <div class="col-md-6 mb-3">
                 <label>Cantidad *</label>
                 <div class="input-group">
                   <span class="input-group-text"><i class="fa-solid fa-hashtag"></i></span>
                   <input type="number" name="cantidad" id="edit_repuesto_cantidad" class="form-control fw-bold" required min="0">
                 </div>
               </div>
-              <div class="col-md-3 mb-3">
+              <div class="col-md-6 mb-3">
                 <label>Precio Compra *</label>
                 <div class="input-group">
                   <span class="input-group-text">S/</span>
-                  <input type="number" step="0.01" name="precio_compra" id="edit_repuesto_precio_compra" class="form-control fw-bold text-danger" required>
+                  <input type="number" step="0.01" name="precio_compra" id="edit_repuesto_precio_compra" class="form-control fw-bold text-danger validation-precio-compra" required>
                 </div>
               </div>
-              <div class="col-md-3 mb-3">
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label>P. Mayor *</label>
+                <div class="input-group">
+                  <span class="input-group-text">S/</span>
+                  <input type="number" step="0.01" name="precio_por_mayor" id="edit_repuesto_precio_por_mayor" class="form-control fw-bold text-primary validation-precio-venta" value="0.00" required>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
                 <label>P. Cash *</label>
                 <div class="input-group">
                   <span class="input-group-text">S/</span>
-                  <input type="number" step="0.01" name="precio_minimo" id="edit_repuesto_precio_minimo" class="form-control fw-bold text-success" required>
+                  <input type="number" step="0.01" name="precio_minimo" id="edit_repuesto_precio_minimo" class="form-control fw-bold text-success validation-precio-venta" required>
                 </div>
               </div>
-              <div class="col-md-3 mb-3">
+              <div class="col-md-4 mb-3">
                 <label>P. Lista *</label>
                 <div class="input-group">
                   <span class="input-group-text">S/</span>
-                  <input type="number" step="0.01" name="precio_maximo" id="edit_repuesto_precio_maximo" class="form-control fw-bold text-purple" style="color: #6f42c1;" required>
+                  <input type="number" step="0.01" name="precio_maximo" id="edit_repuesto_precio_maximo" class="form-control fw-bold text-purple validation-precio-venta" style="color: #6f42c1;" required>
                 </div>
               </div>
             </div>
@@ -1104,6 +1129,7 @@ function abrirModalEditarVehiculo(btn) {
     var imperfecciones = btn.getAttribute('data-imperfecciones');
     var placas = btn.getAttribute('data-placas');
     var preciocompra = btn.getAttribute('data-preciocompra');
+    var preciopormayor = btn.getAttribute('data-preciopormayor');
     var preciominimo = btn.getAttribute('data-preciominimo');
     var preciomaximo = btn.getAttribute('data-preciomaximo');
 
@@ -1117,6 +1143,9 @@ function abrirModalEditarVehiculo(btn) {
     
     if (preciocompra) {
         document.getElementById('edit_precio_compra').value = parseFloat(preciocompra.replace(',', '.')).toFixed(2);
+    }
+    if (preciopormayor) {
+        document.getElementById('edit_precio_por_mayor').value = parseFloat(preciopormayor.replace(',', '.')).toFixed(2);
     }
     if (preciominimo) {
         document.getElementById('edit_precio_minimo').value = parseFloat(preciominimo.replace(',', '.')).toFixed(2);
@@ -1203,6 +1232,7 @@ function abrirModalEditarRepuesto(btn) {
     var idcompradetalle = btn.getAttribute('data-idcompradetalle');
     var ubicacion = btn.getAttribute('data-ubicacion');
     var preciocompra = btn.getAttribute('data-preciocompra');
+    var preciopormayor = btn.getAttribute('data-preciopormayor');
     var preciominimo = btn.getAttribute('data-preciominimo');
     var preciomaximo = btn.getAttribute('data-preciomaximo');
     var cantidad = btn.getAttribute('data-cantidad');
@@ -1214,6 +1244,7 @@ function abrirModalEditarRepuesto(btn) {
     
     document.getElementById('edit_repuesto_cantidad').value = cantidad;
     if (preciocompra) document.getElementById('edit_repuesto_precio_compra').value = parseFloat(preciocompra.replace(',', '.')).toFixed(2);
+    if (preciopormayor) document.getElementById('edit_repuesto_precio_por_mayor').value = parseFloat(preciopormayor.replace(',', '.')).toFixed(2);
     if (preciominimo) document.getElementById('edit_repuesto_precio_minimo').value = parseFloat(preciominimo.replace(',', '.')).toFixed(2);
     if (preciomaximo) document.getElementById('edit_repuesto_precio_maximo').value = parseFloat(preciomaximo.replace(',', '.')).toFixed(2);
     
@@ -1559,6 +1590,7 @@ function renderGrupoVehiculo(grupo) {
         ' data-imperfecciones="' + (det.imperfecciones || '') + '"' +
         ' data-placas="' + (det.placas || '') + '"' +
         ' data-preciocompra="' + pc + '"' +
+        ' data-preciopormayor="' + pmayor + '"' +
         ' data-preciominimo="' + pm + '"' +
         ' data-preciomaximo="' + px + '"' +
         ' title="Editar"><i class="fa-solid fa-pen"></i></button>' +
@@ -1673,6 +1705,7 @@ function renderGrupoRepuesto(grupo) {
         ' data-codigobarras="' + (det.codigo_barras || 'N/A') + '"' +
         ' data-ubicacion="' + (det.ubicacion || '') + '"' +
         ' data-preciocompra="' + pc + '"' +
+        ' data-preciopormayor="' + pmayor + '"' +
         ' data-preciominimo="' + pm + '"' +
         ' data-preciomaximo="' + px + '"' +
         ' data-cantidad="' + det.cantidad + '"' +
@@ -2334,6 +2367,48 @@ document.addEventListener('DOMContentLoaded', function () {
       if (el) el.remove();
     }, 6000);
   }
+
+  // Validación en tiempo real para precios de venta vs precio de compra
+  const inputsPrecioVenta = document.querySelectorAll('.validation-precio-venta');
+  inputsPrecioVenta.forEach(input => {
+    input.addEventListener('change', function() {
+      const form = this.closest('form');
+      if (form) {
+        const inputCompra = form.querySelector('.validation-precio-compra');
+        if (inputCompra) {
+          const precioCompra = parseFloat(inputCompra.value) || 0;
+          const precioVenta = parseFloat(this.value) || 0;
+          
+          if (precioVenta > 0 && precioVenta < precioCompra) {
+            Swal.fire({
+              title: 'Error',
+              text: 'El precio no puede ser menor al Precio de Compra (S/ ' + precioCompra.toFixed(2) + ').',
+              icon: 'warning',
+              confirmButtonText: 'Entendido'
+            });
+            this.value = '0.00';
+          }
+        }
+      }
+    });
+  });
+  
+  const inputsPrecioCompra = document.querySelectorAll('.validation-precio-compra');
+  inputsPrecioCompra.forEach(input => {
+    input.addEventListener('change', function() {
+      const form = this.closest('form');
+      if (form) {
+        const precioCompra = parseFloat(this.value) || 0;
+        const ventas = form.querySelectorAll('.validation-precio-venta');
+        ventas.forEach(venta => {
+          const precioVenta = parseFloat(venta.value) || 0;
+          if (precioVenta > 0 && precioVenta < precioCompra) {
+             venta.value = '0.00';
+          }
+        });
+      }
+    });
+  });
 
   // Helper: leer cookie CSRF
   function getCookie(name) {

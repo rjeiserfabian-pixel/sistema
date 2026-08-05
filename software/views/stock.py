@@ -792,9 +792,9 @@ def api_listar_vehiculos_stock(request):
             Q(id_vehiculo__serie_chasis__icontains=search) |
             Q(id_vehiculo__anio__icontains=search)
         )
-        stocks_vehiculos = (qs_base | qs_extra).distinct()
+        stocks_vehiculos = (qs_base | qs_extra).distinct().order_by('-fecha_ultima_actualizacion')
     else:
-        stocks_vehiculos = Stock.objects.filter(**filtro_v)
+        stocks_vehiculos = Stock.objects.filter(**filtro_v).order_by('-fecha_ultima_actualizacion')
 
     stocks_vehiculos = stocks_vehiculos.select_related(
         'id_vehiculo__idestadoproducto',
@@ -924,7 +924,7 @@ def api_listar_repuestos_stock(request):
         'id_repuesto_comprado__id_repuesto__idunidad',
         'id_almacen',
         'idcompradetalle',
-    )
+    ).order_by('-fecha_ultima_actualizacion')
 
     # Búsqueda en servidor
     if search:
