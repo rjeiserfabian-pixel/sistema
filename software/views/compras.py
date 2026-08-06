@@ -1347,7 +1347,8 @@ def actualizar_compra(request, id):
             from software.models.movimientoCajaModel import MovimientoCaja
             movimiento_existente = MovimientoCaja.objects.filter(idcompra=compra, tipo_movimiento='egreso').first()
             
-            if monto_egreso_caja > 0:
+            afecta_caja = request.POST.get('afecta_caja') in ['1', 'on']
+            if monto_egreso_caja > 0 and afecta_caja:
                 idusuario_session = request.session.get('idusuario')
                 id_caja_session = request.session.get('id_caja')
                 apertura = AperturaCierreCaja.objects.filter(

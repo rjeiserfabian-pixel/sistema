@@ -1207,6 +1207,8 @@ function guardarEdicionVehiculo() {
   .then(res => res.json())
   .then(data => {
     if(data.success) {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar Cambios';
       Swal.fire('Éxito', data.message, 'success').then(() => {
         try { bootstrap.Modal.getInstance(document.getElementById('modalEditarVehiculo')).hide(); } catch(e) {}
         cargarVehiculos(paginaVehiculos, busquedaVehiculos);
@@ -1285,6 +1287,8 @@ function guardarEdicionRepuesto() {
   .then(res => res.json())
   .then(data => {
     if(data.success) {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar Cambios';
       Swal.fire('Éxito', data.message, 'success').then(() => {
         try { bootstrap.Modal.getInstance(document.getElementById('modalEditarRepuesto')).hide(); } catch(e) {}
         cargarRepuestos(paginaRepuestos, busquedaRepuestos);

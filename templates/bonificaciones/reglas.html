@@ -34,10 +34,20 @@
                 </select>
               </div>
               
-              <!-- Seccin Vehiculo -->
-              <div class="mb-3" id="div_porcentaje">
-                <label>Porcentaje (%) para Vehiculos</label>
-                <input type="number" step="0.01" name="porcentaje" class="form-control" placeholder="Ej: 1.50">
+              <!-- Seccion Vehiculo (Tres Precios) -->
+              <div id="div_porcentaje">
+                <div class="mb-3">
+                  <label>% Precio Lista (Ej: 2.00)</label>
+                  <input type="number" step="0.01" name="porcentaje_lista" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label>% Precio Cash (Ej: 1.50)</label>
+                  <input type="number" step="0.01" name="porcentaje_cash" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label>% Precio por Mayor (Ej: 1.00)</label>
+                  <input type="number" step="0.01" name="porcentaje_mayor" class="form-control">
+                </div>
               </div>
 
               <!-- Seccin Repuesto Escalas -->
@@ -94,7 +104,11 @@
                   <td>{{ r.tipo_comision }}</td>
                   <td>
                     {% if r.tipo_producto == 'Vehiculo' %}
-                      <span class="text-success fw-bold">{{ r.porcentaje }}%</span>
+                      <ul class="mb-0 ps-3">
+                        <li>Lista: <strong class="text-success">{{ r.porcentaje_lista|default:'0' }}%</strong></li>
+                        <li>Cash: <strong class="text-info">{{ r.porcentaje_cash|default:'0' }}%</strong></li>
+                        <li>Mayor: <strong class="text-warning">{{ r.porcentaje_mayor|default:'0' }}%</strong></li>
+                      </ul>
                     {% else %}
                       <ul class="mb-0 ps-3">
                       {% for rango in r.rangos.all %}
@@ -115,7 +129,9 @@
                             data-id="{{ r.id_regla }}"
                             data-nombre="{{ r.nombre }}"
                             data-tipo="{{ r.tipo_producto }}"
-                            data-porcentaje="{{ r.porcentaje|default:'' }}"
+                            data-pct-lista="{{ r.porcentaje_lista|default:'' }}"
+                            data-pct-cash="{{ r.porcentaje_cash|default:'' }}"
+                            data-pct-mayor="{{ r.porcentaje_mayor|default:'' }}"
                             data-rangos='[ {% for rango in r.rangos.all %}{"min": "{{ rango.monto_minimo|stringformat:"s" }}", "max": "{{ rango.monto_maximo|stringformat:"s"|default:"" }}", "pct": "{{ rango.porcentaje|stringformat:"s" }}"}{% if not forloop.last %},{% endif %}{% endfor %} ]'
                             onclick="abrirModalEditar(this)">
                       <i class="bi bi-pencil"></i>
@@ -156,9 +172,19 @@
             <input type="text" id="tipo_producto_edit" class="form-control" style="background-color: #0f172a; color: #94a3b8; border: 1px solid #334155;" readonly disabled>
           </div>
           <!-- Sección Vehículo -->
-          <div class="mb-3 d-none" id="div_porcentaje_edit">
-            <label>Porcentaje (%) para Vehículos *</label>
-            <input type="number" step="0.01" name="porcentaje_edit" id="porcentaje_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+          <div class="d-none" id="div_porcentaje_edit">
+            <div class="mb-3">
+              <label>% Precio Lista *</label>
+              <input type="number" step="0.01" name="porcentaje_lista_edit" id="porcentaje_lista_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+            </div>
+            <div class="mb-3">
+              <label>% Precio Cash *</label>
+              <input type="number" step="0.01" name="porcentaje_cash_edit" id="porcentaje_cash_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+            </div>
+            <div class="mb-3">
+              <label>% Precio Mayor *</label>
+              <input type="number" step="0.01" name="porcentaje_mayor_edit" id="porcentaje_mayor_edit" class="form-control" style="background-color: #0f172a; color: white; border: 1px solid #334155;">
+            </div>
           </div>
 
           <!-- Sección Repuesto Escalas -->
@@ -181,16 +207,28 @@
 <script>
 function toggleForm() {
     var tipo = document.getElementById('tipo_producto').value;
+    var selectComision = document.getElementById('tipo_comision');
+    
     if(tipo === 'Vehiculo') {
         document.getElementById('div_porcentaje').classList.remove('d-none');
         document.getElementById('div_escalas').classList.add('d-none');
-        document.getElementById('tipo_comision').value = 'Porcentaje';
+        selectComision.value = 'Porcentaje';
+        Array.from(selectComision.options).forEach(function(opt) {
+            opt.style.display = opt.value === 'Porcentaje' ? '' : 'none';
+        });
     } else {
         document.getElementById('div_porcentaje').classList.add('d-none');
         document.getElementById('div_escalas').classList.remove('d-none');
-        document.getElementById('tipo_comision').value = 'Escala';
+        selectComision.value = 'Escala';
+        Array.from(selectComision.options).forEach(function(opt) {
+            opt.style.display = opt.value === 'Escala' ? '' : 'none';
+        });
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    toggleForm();
+});
 
 function addEscala() {
     var html = '<div class="row g-2 mb-2"><div class="col"><input type="number" step="0.01" name="monto_minimo[]" class="form-control" placeholder="Min"></div><div class="col"><input type="number" step="0.01" name="monto_maximo[]" class="form-control" placeholder="Max"></div><div class="col"><input type="number" step="0.01" name="rango_porcentaje[]" class="form-control" placeholder="%"></div></div>';
@@ -215,9 +253,11 @@ document.getElementById('formRegla').addEventListener('submit', function(e) {
     }
     
     if(tipo === 'Vehiculo') {
-        var pct = document.getElementsByName('porcentaje')[0].value;
-        if(!pct) {
-            Swal.fire('Error', 'Debe ingresar el porcentaje para los vehículos', 'warning');
+        var pct_l = document.getElementsByName('porcentaje_lista')[0].value;
+        var pct_c = document.getElementsByName('porcentaje_cash')[0].value;
+        var pct_m = document.getElementsByName('porcentaje_mayor')[0].value;
+        if(!pct_l || !pct_c || !pct_m) {
+            Swal.fire('Error', 'Debe ingresar los 3 porcentajes para vehículos (Lista, Cash, Mayor)', 'warning');
             return;
         }
     } else {
@@ -255,8 +295,10 @@ function abrirModalEditar(btn) {
     var id = btn.getAttribute('data-id');
     var nombre = btn.getAttribute('data-nombre');
     var tipo = btn.getAttribute('data-tipo');
-    // Reemplazar coma por punto por si Django está localizando los decimales (ej. 1,50 -> 1.50)
-    var porcentaje = btn.getAttribute('data-porcentaje').replace(',', '.');
+    // Reemplazar coma por punto por si Django está localizando los decimales
+    var pct_lista = (btn.getAttribute('data-pct-lista') || '').replace(',', '.');
+    var pct_cash = (btn.getAttribute('data-pct-cash') || '').replace(',', '.');
+    var pct_mayor = (btn.getAttribute('data-pct-mayor') || '').replace(',', '.');
     var rangos = JSON.parse(btn.getAttribute('data-rangos'));
 
     document.getElementById('id_regla_edit').value = id;
@@ -266,7 +308,9 @@ function abrirModalEditar(btn) {
     if(tipo === 'Vehiculo') {
         document.getElementById('div_porcentaje_edit').classList.remove('d-none');
         document.getElementById('div_escalas_edit').classList.add('d-none');
-        document.getElementById('porcentaje_edit').value = porcentaje;
+        document.getElementById('porcentaje_lista_edit').value = pct_lista;
+        document.getElementById('porcentaje_cash_edit').value = pct_cash;
+        document.getElementById('porcentaje_mayor_edit').value = pct_mayor;
     } else {
         document.getElementById('div_porcentaje_edit').classList.add('d-none');
         document.getElementById('div_escalas_edit').classList.remove('d-none');
@@ -295,9 +339,11 @@ function submitEditForm() {
     }
     
     if(tipo === 'Vehiculo') {
-        var pct = document.getElementById('porcentaje_edit').value;
-        if(!pct) {
-            Swal.fire('Error', 'Debe ingresar el porcentaje para los vehículos', 'warning');
+        var pct_l = document.getElementById('porcentaje_lista_edit').value;
+        var pct_c = document.getElementById('porcentaje_cash_edit').value;
+        var pct_m = document.getElementById('porcentaje_mayor_edit').value;
+        if(!pct_l || !pct_c || !pct_m) {
+            Swal.fire('Error', 'Debe ingresar los 3 porcentajes para vehículos', 'warning');
             return;
         }
     } else {

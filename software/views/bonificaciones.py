@@ -16,6 +16,51 @@ from software.models.VentasModel import Ventas
 from software.models.VentaDetalleModel import VentaDetalle
 from software.models.CreditoModel import Credito
 from software.models.CuotasVentaModel import CuotasVenta
+from software.models.compradetalleModel import CompraDetalle
+
+def calcular_comision_vehiculo(det, regla_vehiculos, subtotal):
+    """Retorna (comision_calculada, pct_aplicado)"""
+    if not regla_vehiculos:
+        return Decimal('0.00'), None
+        
+    if regla_vehiculos.porcentaje_lista is not None and regla_vehiculos.porcentaje_cash is not None and regla_vehiculos.porcentaje_mayor is not None:
+        try:
+            compra_det = CompraDetalle.objects.filter(id_vehiculo=det.id_vehiculo).first()
+            if not compra_det:
+                return Decimal('0.00'), None
+                
+            precio_lista = Decimal(str(compra_det.precio_maximo))
+            precio_cash = Decimal(str(compra_det.precio_minimo))
+            precio_mayor = Decimal(str(compra_det.precio_por_mayor))
+            precio_venta = Decimal(str(subtotal)) / Decimal(str(det.cantidad)) if det.cantidad > 0 else Decimal('0.00')
+            
+            pct_lista = Decimal(str(regla_vehiculos.porcentaje_lista))
+            pct_cash = Decimal(str(regla_vehiculos.porcentaje_cash))
+            pct_mayor = Decimal(str(regla_vehiculos.porcentaje_mayor))
+            
+            pct_final = pct_lista
+            
+            if precio_venta >= precio_lista:
+                pct_final = pct_lista
+            elif precio_venta <= precio_mayor:
+                pct_final = pct_mayor
+            elif precio_venta == precio_cash:
+                pct_final = pct_cash
+            elif precio_venta > precio_cash:
+                if (precio_lista - precio_cash) > 0:
+                    pct_final = pct_cash + ((pct_lista - pct_cash) * (precio_venta - precio_cash) / (precio_lista - precio_cash))
+            elif precio_venta < precio_cash:
+                if (precio_cash - precio_mayor) > 0:
+                    pct_final = pct_mayor + ((pct_cash - pct_mayor) * (precio_venta - precio_mayor) / (precio_cash - precio_mayor))
+                    
+            pct_final = pct_final.quantize(Decimal('0.0001'))
+            comision = (subtotal * (pct_final / Decimal('100.00'))).quantize(Decimal('0.01'))
+            return comision, pct_final
+        except Exception as e:
+            print("Error calculando comision proporcional:", e)
+            return Decimal('0.00'), None
+            
+    return Decimal('0.00'), None
 
 # -------------------------------------------------------------
 # CONFIGURACIN DE REGLAS
@@ -41,8 +86,9 @@ def guardar_regla(request):
         fecha_inicio = request.POST.get('fecha_inicio')
         
         # Para vehículos
-        porcentaje_val = request.POST.get('porcentaje')
-        porcentaje = porcentaje_val if (tipo_producto == 'Vehiculo' and porcentaje_val and porcentaje_val.strip()) else None
+        porcentaje_lista = request.POST.get('porcentaje_lista') if tipo_producto == 'Vehiculo' else None
+        porcentaje_cash = request.POST.get('porcentaje_cash') if tipo_producto == 'Vehiculo' else None
+        porcentaje_mayor = request.POST.get('porcentaje_mayor') if tipo_producto == 'Vehiculo' else None
         
         # Validar fecha_inicio para no crashear
         if not fecha_inicio:
@@ -53,7 +99,9 @@ def guardar_regla(request):
             nombre=nombre,
             tipo_producto=tipo_producto,
             tipo_comision=tipo_comision,
-            porcentaje=porcentaje,
+            porcentaje_lista=porcentaje_lista,
+            porcentaje_cash=porcentaje_cash,
+            porcentaje_mayor=porcentaje_mayor,
             fecha_inicio=fecha_inicio,
             estado=True
         )
@@ -99,8 +147,12 @@ def editar_regla(request):
         regla.nombre = request.POST.get('nombre_edit')
         
         if regla.tipo_producto == 'Vehiculo':
-            pct = request.POST.get('porcentaje_edit')
-            regla.porcentaje = pct if pct and pct.strip() else None
+            pct_lista = request.POST.get('porcentaje_lista_edit')
+            pct_cash = request.POST.get('porcentaje_cash_edit')
+            pct_mayor = request.POST.get('porcentaje_mayor_edit')
+            regla.porcentaje_lista = pct_lista if pct_lista and pct_lista.strip() else None
+            regla.porcentaje_cash = pct_cash if pct_cash and pct_cash.strip() else None
+            regla.porcentaje_mayor = pct_mayor if pct_mayor and pct_mayor.strip() else None
             
         regla.save()
         
@@ -388,10 +440,9 @@ def ejecutar_calculo(request):
                 
                 if es_vehiculo:
                     data_vendedores[vendedor.idusuario]['total_vehiculos'] += det.cantidad
-                    if regla_vehiculos and regla_vehiculos.porcentaje:
-                        comision = subtotal * (regla_vehiculos.porcentaje / Decimal('100.00'))
+                    comision, _ = calcular_comision_vehiculo(det, regla_vehiculos, subtotal)
+                    if comision > 0:
                         data_vendedores[vendedor.idusuario]['comision_vehiculos'] += comision
-                        
                 elif es_repuesto:
                     data_vendedores[vendedor.idusuario]['total_repuestos'] += subtotal
                     
@@ -566,8 +617,13 @@ def detalle_calculo(request, id_calculo):
     reglas_repuestos = ReglaBonificacion.objects.filter(tipo_producto='Repuesto', estado=True)
     nombres_repuestos = " + ".join([r.nombre for r in reglas_repuestos])
     
+    vehiculos_str = "Sin regla activa"
+    if regla_vehiculos:
+        if regla_vehiculos.porcentaje_lista is not None:
+            vehiculos_str = f"{regla_vehiculos.nombre} (L: {regla_vehiculos.porcentaje_lista}%, C: {regla_vehiculos.porcentaje_cash}%, M: {regla_vehiculos.porcentaje_mayor}%)"
+            
     reglas_info = {
-        'vehiculos': f"{regla_vehiculos.nombre} ({regla_vehiculos.porcentaje}%)" if regla_vehiculos and regla_vehiculos.porcentaje else "Sin regla activa",
+        'vehiculos': vehiculos_str,
         'repuestos': f"{nombres_repuestos} (Escala/Rangos)" if reglas_repuestos else "Sin regla activa"
     }
     
@@ -626,8 +682,10 @@ def detalle_calculo(request, id_calculo):
             if es_vehiculo:
                 unid_vehiculos += det.cantidad
                 valor_vehiculos += subtotal
-                if regla_vehiculos and regla_vehiculos.porcentaje:
-                    comision_vehiculos += subtotal * (regla_vehiculos.porcentaje / Decimal('100.00'))
+                com, pct_aplicado = calcular_comision_vehiculo(det, regla_vehiculos, subtotal)
+                if com > 0:
+                    comision_vehiculos += com
+                    pct_aplicado_ultimo = pct_aplicado  # Guardar el de la ultima unidad para mostrar
             elif es_repuesto:
                 total_repuestos += subtotal
                 
@@ -646,7 +704,7 @@ def detalle_calculo(request, id_calculo):
                 'cliente': nombre_cliente,
                 'vehiculos': unid_vehiculos,
                 'valor_vehiculos': float(valor_vehiculos),
-                'regla_porcentaje': float(regla_vehiculos.porcentaje) if regla_vehiculos and regla_vehiculos.porcentaje and unid_vehiculos > 0 else None,
+                'regla_porcentaje': float(pct_aplicado_ultimo) if 'pct_aplicado_ultimo' in locals() and pct_aplicado_ultimo else None,
                 'comision_vehiculos': float(comision_vehiculos),
                 'repuestos': float(total_repuestos)
             })
@@ -771,8 +829,8 @@ def pdf_calculo(request, id_calculo):
             if det.tipo_item == 'vehiculo' or det.id_vehiculo:
                 unid_v += det.cantidad
                 valor_v += subtotal
-                if regla_vehiculos and regla_vehiculos.porcentaje:
-                    com_v += subtotal * (regla_vehiculos.porcentaje / Decimal('100'))
+                com, _ = calcular_comision_vehiculo(det, regla_vehiculos, subtotal)
+                com_v += com
             elif det.tipo_item == 'repuesto' or det.id_repuesto_comprado:
                 tot_r += subtotal
 
@@ -941,7 +999,7 @@ def pdf_calculo(request, id_calculo):
         rules_story = [Paragraph("📋 <b>Reglas de Comisión Aplicadas</b>", style('Normal', fontSize=10, textColor=colors.HexColor('#3730a3'))), Spacer(1, 6)]
         
         if regla_vehiculos:
-            rules_story.append(Paragraph(f"🚗 <b>Vehículos:</b> {regla_vehiculos.nombre} — <b>{regla_vehiculos.porcentaje}% sobre subtotal</b>", s_cell))
+            rules_story.append(Paragraph(f"🚗 <b>Vehículos:</b> {regla_vehiculos.nombre} — <b>(Lista: {regla_vehiculos.porcentaje_lista}%, Cash: {regla_vehiculos.porcentaje_cash}%, Mayor: {regla_vehiculos.porcentaje_mayor}%)</b>", s_cell))
             rules_story.append(Spacer(1, 4))
             
         if reglas_repuestos and rangos_repuestos:
