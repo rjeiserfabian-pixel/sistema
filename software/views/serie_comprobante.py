@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from software.models.SeriecomprobanteModel import Seriecomprobante
 from software.models.TipocomprobanteModel import Tipocomprobante
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
+from software.models.sucursalesModel import Sucursales
 
 
 def _mensaje_validacion(e):
@@ -25,12 +26,14 @@ def serie_comprobante(request):
     id2 = request.session.get('idtipousuario')
     if id2:
         permisos = Detalletipousuarioxmodulos.objects.filter(idtipousuario=id2)
-        series_comprobante = Seriecomprobante.objects.filter(estado=1).select_related('idtipocomprobante').order_by('idtipocomprobante__codigo', 'serie')
+        series_comprobante = Seriecomprobante.objects.filter(estado=1).select_related('idtipocomprobante', 'id_sucursal').order_by('idtipocomprobante__codigo', 'serie')
         tipos_comprobante = Tipocomprobante.objects.filter(estado=1).order_by('codigo')
+        sucursales = Sucursales.objects.filter(estado=1)
 
         data = {
             'series_comprobante': series_comprobante,
             'tipos_comprobante': tipos_comprobante,
+            'sucursales': sucursales,
             'permisos': permisos
         }
         
@@ -58,6 +61,7 @@ def agregar_serie_comprobante(request):
         idtipocomprobante = request.POST.get('tipoComprobanteSerieComprobante', '').strip()
         serie = request.POST.get('serieSerieComprobante', '').strip().upper()
         numero_actual = request.POST.get('numeroActualSerieComprobante', '').strip()
+        id_sucursal_str = request.POST.get('sucursalSerieComprobante', '').strip()
 
         if not idtipocomprobante:
             return JsonResponse({'error': 'Debe seleccionar un tipo de comprobante'}, status=400)
@@ -86,10 +90,18 @@ def agregar_serie_comprobante(request):
         if numero_actual_int > 99999999:
             return JsonResponse({'error': 'El número actual no puede exceder 99999999 (8 dígitos)'}, status=400)
 
+        sucursal_obj = None
+        if id_sucursal_str:
+            try:
+                sucursal_obj = Sucursales.objects.get(id_sucursal=id_sucursal_str, estado=1)
+            except Sucursales.DoesNotExist:
+                return JsonResponse({'error': 'La sucursal seleccionada no existe o está inactiva'}, status=400)
+
         Seriecomprobante.objects.create(
             idtipocomprobante=tipo_comprobante,
             serie=serie,
             numero_actual=numero_actual_int,
+            id_sucursal=sucursal_obj,
             estado=1
         )
         return JsonResponse({'success': 'Serie de comprobante creada correctamente'}, status=200)
@@ -110,6 +122,7 @@ def editar_serie_comprobante(request):
         idtipocomprobante = request.POST.get('tipoComprobanteSerieComprobante', '').strip()
         serie = request.POST.get('serieSerieComprobante', '').strip().upper()
         numero_actual = request.POST.get('numeroActualSerieComprobante', '').strip()
+        id_sucursal_str = request.POST.get('sucursalSerieComprobante', '').strip()
 
         if not id:
             return JsonResponse({'error': 'ID de serie de comprobante inválido'}, status=400)
@@ -149,9 +162,17 @@ def editar_serie_comprobante(request):
         if numero_actual_int > 99999999:
             return JsonResponse({'error': 'El número actual no puede exceder 99999999 (8 dígitos)'}, status=400)
 
+        sucursal_obj = None
+        if id_sucursal_str:
+            try:
+                sucursal_obj = Sucursales.objects.get(id_sucursal=id_sucursal_str, estado=1)
+            except Sucursales.DoesNotExist:
+                return JsonResponse({'error': 'La sucursal seleccionada no existe o está inactiva'}, status=400)
+
         serie_comprobante.idtipocomprobante = tipo_comprobante
         serie_comprobante.serie = serie
         serie_comprobante.numero_actual = numero_actual_int
+        serie_comprobante.id_sucursal = sucursal_obj
         serie_comprobante.save()
         return JsonResponse({'success': 'Serie de comprobante actualizada correctamente'}, status=200)
 

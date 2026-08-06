@@ -446,11 +446,17 @@ def obtener_series(request):
             return JsonResponse({'error': 'Tipo de comprobante no especificado'}, status=400)
         
         try:
-            # Filtrar series activas por tipo de comprobante
-            series = Seriecomprobante.objects.filter(
-                idtipocomprobante=idtipocomprobante,
-                estado=1
-            ).values(
+            id_sucursal_session = request.session.get('id_sucursal')
+            
+            filters = {
+                'idtipocomprobante': idtipocomprobante,
+                'estado': 1
+            }
+            if id_sucursal_session:
+                filters['id_sucursal'] = id_sucursal_session
+
+            # Filtrar series activas por tipo de comprobante y sucursal
+            series = Seriecomprobante.objects.filter(**filters).values(
                 'idseriecomprobante',
                 'serie',
                 'numero_actual'

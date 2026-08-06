@@ -2,6 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from software.models.TipocomprobanteModel import Tipocomprobante
+from software.models.sucursalesModel import Sucursales
 
 
 class Seriecomprobante(models.Model):
@@ -13,6 +14,16 @@ class Seriecomprobante(models.Model):
         db_column='idtipocomprobante',
         related_name='seriecomprobante',
         verbose_name="Tipo de Comprobante"
+    )
+    
+    id_sucursal = models.ForeignKey(
+        Sucursales,
+        on_delete=models.CASCADE,
+        db_column='id_sucursal',
+        related_name='series_comprobante',
+        verbose_name="Sucursal",
+        null=True, 
+        blank=True
     )
     
     serie = models.CharField(

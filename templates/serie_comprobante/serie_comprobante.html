@@ -30,8 +30,9 @@
               <tr>
                 <th scope="col" style="width: 5%;">#</th>
                 <th scope="col" style="width: 20%;">Tipo de Comprobante</th>
+                <th scope="col" style="width: 15%;">Sucursal</th>
                 <th scope="col" style="width: 10%;">Código</th>
-                <th scope="col" style="width: 12%;">Serie</th>
+                <th scope="col" style="width: 10%;">Serie</th>
                 <th scope="col" style="width: 15%;">Número Actual</th>
                 <th scope="col" style="width: 18%;">Próximo Número</th>
                 <th scope="col" style="width: 10%;">Estado</th>
@@ -43,6 +44,13 @@
               <tr>
                 <td class="fw-semibold text-center">{{ forloop.counter }}</td>
                 <td>{{ serie.idtipocomprobante.nombre }}</td>
+                <td>
+                  {% if serie.id_sucursal %}
+                    {{ serie.id_sucursal.nombre_sucursal }}
+                  {% else %}
+                    <span class="badge bg-secondary">Sin Asignar</span>
+                  {% endif %}
+                </td>
                 <td><span class="badge bg-primary">{{ serie.idtipocomprobante.codigo }}</span></td>
                 <td><span class="badge bg-success fs-6">{{ serie.serie }}</span></td>
                 <td class="text-center">
@@ -98,7 +106,7 @@
             <input type="hidden" name="idSerieComprobante" value="{{ serie.idseriecomprobante }}">
             
             <div class="row">
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Tipo de Comprobante <span class="text-danger">*</span></label>
                 <select name="tipoComprobanteSerieComprobante" class="form-select rounded-pill" required>
                   <option value="">Seleccione...</option>
@@ -110,12 +118,24 @@
                 </select>
               </div>
 
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Sucursal <span class="text-danger">*</span></label>
+                <select name="sucursalSerieComprobante" class="form-select rounded-pill" required>
+                  <option value="">Seleccione...</option>
+                  {% for sucursal in sucursales %}
+                  <option value="{{ sucursal.id_sucursal }}" {% if sucursal.id_sucursal == serie.id_sucursal.id_sucursal %}selected{% endif %}>
+                    {{ sucursal.nombre_sucursal }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Serie <span class="text-danger">*</span></label>
                 <input type="text" name="serieSerieComprobante" value="{{ serie.serie }}" 
                        class="form-control rounded-pill text-uppercase" maxlength="4" minlength="4"
-                       placeholder="Ej: F001, B001" required>
-                <small class="text-muted">Exactamente 4 caracteres alfanuméricos</small>
+                       placeholder="Ej: F001" required>
+                <small class="text-muted">4 caracteres exactos</small>
               </div>
             </div>
 
@@ -181,7 +201,7 @@
             {% csrf_token %}
             
             <div class="row">
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Tipo de Comprobante <span class="text-danger">*</span></label>
                 <select name="tipoComprobanteSerieComprobante" id="tipoComprobanteSerieComprobante" class="form-select rounded-pill" required>
                   <option value="">Seleccione...</option>
@@ -191,12 +211,22 @@
                 </select>
               </div>
 
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">Sucursal <span class="text-danger">*</span></label>
+                <select name="sucursalSerieComprobante" id="sucursalSerieComprobante" class="form-select rounded-pill" required>
+                  <option value="">Seleccione...</option>
+                  {% for sucursal in sucursales %}
+                  <option value="{{ sucursal.id_sucursal }}">{{ sucursal.nombre_sucursal }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Serie <span class="text-danger">*</span></label>
                 <input type="text" name="serieSerieComprobante" id="serieSerieComprobante" 
                        class="form-control rounded-pill text-uppercase" maxlength="4" minlength="4"
-                       placeholder="Ej: F001, B001" required>
-                <small class="text-muted">Exactamente 4 caracteres alfanuméricos</small>
+                       placeholder="Ej: F001" required>
+                <small class="text-muted">4 caracteres exactos</small>
               </div>
             </div>
 
