@@ -1077,13 +1077,26 @@ def reporte_caja(request):
                 if frac_detail:
                     detalles_metodo = frac_detail
                 else:
-                    # Fallback: construir desde tipo y monto de cada pago
-                    arr = []
-                    for p in pagos_cuota:
-                        n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
-                        op = f' (Op:{p.numero_operacion})' if p.numero_operacion and p.numero_operacion.lower() != 'múltiple' else ''
-                        arr.append(f"{n}: S/ {p.monto_pago}{op}")
-                    detalles_metodo = " | ".join(arr)
+                    # Comprobar si todos los pagos de cuota tienen exactamente el mismo método y operación
+                    metodos_unicos = set(p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo' for p in pagos_cuota)
+                    ops_unicas = set(p.numero_operacion or '' for p in pagos_cuota)
+                    
+                    if len(metodos_unicos) == 1 and len(ops_unicas) == 1:
+                        metodo_pago = metodos_unicos.pop()
+                        op = ops_unicas.pop()
+                        if op and op.lower() != 'múltiple':
+                            detalles_metodo = f"Op: {op}"
+                        else:
+                            detalles_metodo = ""
+                    else:
+                        # Fallback: construir desde tipo y monto de cada pago
+                        metodo_pago = "Múltiple"
+                        arr = []
+                        for p in pagos_cuota:
+                            n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
+                            op = f' (Op:{p.numero_operacion})' if p.numero_operacion and p.numero_operacion.lower() != 'múltiple' else ''
+                            arr.append(f"{n}: S/ {p.monto_pago}{op}")
+                        detalles_metodo = " | ".join(arr)
             elif len(pagos_cuota) == 1:
                 p = pagos_cuota[0]
                 if p.id_tipo_pago:
