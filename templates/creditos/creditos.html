@@ -179,13 +179,22 @@
                                     <option value="pagado" {% if estado_filtro == 'pagado' %}selected{% endif %}>Pagados</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Búsqueda:</label>
-                                <input type="text" id="filtroBusqueda" name="busqueda" class="form-control" placeholder="Código, cliente, DNI..." value="{{ busqueda }}">
+                            <div class="col-md-2">
+                                <label class="form-label">Color Mora:</label>
+                                <select id="filtroColor" name="color_mora" class="form-select">
+                                    <option value="todos">Todos</option>
+                                    <option value="verde">Verde</option>
+                                    <option value="amarillo">Amarillo</option>
+                                    <option value="rojo">Rojo</option>
+                                </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Búsqueda:</label>
+                                <input type="text" id="filtroBusqueda" name="busqueda" class="form-control" placeholder="Búsqueda general..." value="{{ busqueda }}">
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label">Producto:</label>
-                                <input type="text" id="filtroProducto" name="producto" class="form-control" placeholder="Nombre, chasis, motor, código barras..." value="{{ producto }}">
+                                <input type="text" id="filtroProducto" name="producto" class="form-control" placeholder="Prod, chasis, motor..." value="{{ producto }}">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Desde:</label>
@@ -547,13 +556,17 @@
           </div>
 
           <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label fw-semibold">Teléfono</label>
               <input type="text" name="telefonoCliente" id="telefonoClienteDirecto" class="form-control rounded-pill" maxlength="150">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label fw-semibold">Email</label>
               <input type="email" name="emailCliente" id="emailClienteDirecto" class="form-control rounded-pill" maxlength="255">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-semibold">F. Nacimiento (Opcional)</label>
+              <input type="date" name="fechaNacimiento" id="fechaNacimientoDirecto" class="form-control rounded-pill">
             </div>
           </div>
 
@@ -1570,6 +1583,7 @@ $(document).ready(function() {
 
     function cargarCreditos(page = 1) {
         const estado = document.getElementById('filtroEstado').value;
+        const color = document.getElementById('filtroColor').value;
         const busqueda = document.getElementById('filtroBusqueda').value;
         const producto = document.getElementById('filtroProducto').value;
         const desde = document.getElementById('filtroDesde').value;
@@ -1580,6 +1594,7 @@ $(document).ready(function() {
         const queryParams = new URLSearchParams({
             page: page,
             estado: estado,
+            color_mora: color,
             busqueda: busqueda,
             producto: producto,
             fecha_desde: desde,
@@ -1619,9 +1634,14 @@ $(document).ready(function() {
             let btnImprimir = c.es_directo 
                 ? `<a href="/creditos/imprimir-cronograma-directo/${c.id_imprimir}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir"><i class="bi bi-printer"></i></a>`
                 : `<a href="/ventas/imprimir-cronograma/${c.id_imprimir}/" class="btn btn-sm btn-secondary" target="_blank" title="Imprimir"><i class="bi bi-printer"></i></a>`;
+                
+            let trStyle = '';
+            if (c.color_mora === 'verde') trStyle = 'background-color: rgba(40, 167, 69, 0.2) !important;';
+            else if (c.color_mora === 'amarillo') trStyle = 'background-color: rgba(255, 193, 7, 0.2) !important;';
+            else if (c.color_mora === 'rojo') trStyle = 'background-color: rgba(220, 53, 69, 0.2) !important;';
 
             html += `
-            <tr>
+            <tr style="${trStyle}">
                 <td><span class="badge bg-primary">${c.codigo_credito}</span></td>
                 <td>
                     <strong>${c.cliente_nombre}</strong><br>
@@ -1704,7 +1724,7 @@ $(document).ready(function() {
 
     // Eventos (Prevent Default para no recargar la página entera)
     document.getElementById('formFiltrosCredito').addEventListener('submit', function(e) { e.preventDefault(); });
-    $('#filtroEstado, #filtroDesde, #filtroHasta').on('change', () => cargarCreditos(1));
+    $('#filtroEstado, #filtroColor, #filtroDesde, #filtroHasta').on('change', () => cargarCreditos(1));
     $('#filtroBusqueda, #filtroProducto').on('input', function() {
         clearTimeout(timerBusqueda);
         timerBusqueda = setTimeout(() => cargarCreditos(1), 400);

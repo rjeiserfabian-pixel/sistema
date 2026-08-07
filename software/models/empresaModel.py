@@ -290,6 +290,18 @@ class Empresa(models.Model):
         help_text='Día en el que empieza a cobrarse el interés (ej: 4)'
     )
     
+    limite_dias_verde = models.IntegerField(
+        default=10,
+        verbose_name='Límite Días Verde',
+        help_text='Hasta cuántos días de mora se muestra el color verde'
+    )
+    
+    limite_dias_amarillo = models.IntegerField(
+        default=20,
+        verbose_name='Límite Días Amarillo',
+        help_text='Hasta cuántos días de mora se muestra el color amarillo (mayor a esto será rojo)'
+    )
+    
     # Campos de auditoría
     fecha_creacion = models.DateTimeField(
         auto_now_add=True,

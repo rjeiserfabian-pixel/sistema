@@ -1,7 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse, FileResponse
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, OuterRef, Subquery
+from django.db.models.functions import Coalesce
+from django.core.cache import cache
+from software.models.empresaModel import Empresa
 from django.utils import timezone
 from django.db import transaction
 from datetime import datetime, timedelta
@@ -1243,14 +1246,24 @@ def reportes_creditos(request):
     creditos_mora = creditos_periodo.filter(estado_credito='mora').count()
     creditos_pagados = creditos_periodo.filter(estado_credito='pagado').count()
     
-    # Cuotas vencidas en el sistema (todas, no solo del periodo)
+    # Cuotas vencidas en el sistema (Global e Inteligente)
+    ESTADOS_EXCLUIDOS = ['retenido', 'cancelado', 'reparado', 'segunda', 'pagado']
+    
     cuotas_vencidas = CuotasVenta.objects.filter(
         estado=1,
         estado_pago__in=['Pendiente', 'Parcial'],
         fecha_vencimiento__lt=hoy.date()
+    ).exclude(
+        idcredito__estado_credito__in=ESTADOS_EXCLUIDOS
+    ).exclude(
+        idcredito__estado=0
+    ).exclude(
+        idventa__credito__estado_credito__in=ESTADOS_EXCLUIDOS
+    ).exclude(
+        idventa__credito__estado=0
     ).select_related('idventa__idcliente')
     
-    monto_vencido = sum(cuota.saldo_cuota for cuota in cuotas_vencidas)
+    monto_vencido = float(cuotas_vencidas.aggregate(Sum('saldo_cuota'))['saldo_cuota__sum'] or 0)
     
     # Cuotas por vencer en los próximos 30 días
     fecha_limite = hoy.date() + timedelta(days=30)
@@ -1258,34 +1271,46 @@ def reportes_creditos(request):
         estado=1,
         estado_pago__in=['Pendiente', 'Parcial'],
         fecha_vencimiento__range=[hoy.date(), fecha_limite]
+    ).exclude(
+        idcredito__estado_credito__in=ESTADOS_EXCLUIDOS
+    ).exclude(
+        idcredito__estado=0
+    ).exclude(
+        idventa__credito__estado_credito__in=ESTADOS_EXCLUIDOS
+    ).exclude(
+        idventa__credito__estado=0
     ).select_related('idventa__idcliente').order_by('fecha_vencimiento')
     
-    monto_por_vencer = sum(cuota.saldo_cuota for cuota in cuotas_por_vencer)
+    monto_por_vencer = float(cuotas_por_vencer.aggregate(Sum('saldo_cuota'))['saldo_cuota__sum'] or 0)
     
-    # Top 10 clientes con mayor deuda
-    clientes_deuda = {}
-    creditos_activos_todos = Credito.objects.filter(
+    # Top 10 clientes con mayor deuda (Cálculo directo en Base de Datos Anti-N+1)
+    from django.db.models.functions import Coalesce
+    from software.models.ClienteModel import Cliente
+    
+    top_qs = Credito.objects.filter(
         estado=1,
         estado_credito__in=['activo', 'mora']
-    )
+    ).annotate(
+        cliente_real_id=Coalesce('idventa__idcliente', 'idcliente')
+    ).values('cliente_real_id').annotate(
+        total_deuda=Sum('saldo_pendiente'),
+        creditos_count=Count('idcredito')
+    ).order_by('-total_deuda')[:10]
     
-    for credito in creditos_activos_todos:
-        cliente = credito.idventa.idcliente if credito.idventa else credito.idcliente
-        if not cliente: continue
-        if cliente.idcliente not in clientes_deuda:
-            clientes_deuda[cliente.idcliente] = {
-                'cliente': cliente,
-                'total_deuda': Decimal('0'),
-                'creditos': 0
-            }
-        clientes_deuda[cliente.idcliente]['total_deuda'] += credito.saldo_pendiente
-        clientes_deuda[cliente.idcliente]['creditos'] += 1
-    
-    top_clientes = sorted(
-        clientes_deuda.values(),
-        key=lambda x: x['total_deuda'],
-        reverse=True
-    )[:10]
+    top_clientes = []
+    if top_qs:
+        # Extraer IDs y traer clientes de una sola vez
+        clientes_ids = [t['cliente_real_id'] for t in top_qs if t['cliente_real_id']]
+        clientes_dict = {c.idcliente: c for c in Cliente.objects.filter(idcliente__in=clientes_ids)}
+        
+        for t in top_qs:
+            cliente_id = t['cliente_real_id']
+            if cliente_id in clientes_dict:
+                top_clientes.append({
+                    'cliente': clientes_dict[cliente_id],
+                    'total_deuda': t['total_deuda'],
+                    'creditos': t['creditos_count']
+                })
     
     # Pagos recibidos en el periodo
     pagos_periodo = PagoCuota.objects.filter(
@@ -3312,12 +3337,7 @@ def obtener_notificaciones_vencidas(request):
             idventa__credito__estado=0
         )
 
-        id_suc = request.session.get('id_sucursal')
-        if id_suc:
-            cuotas_vencidas = cuotas_vencidas.filter(
-                Q(idventa__id_sucursal_id=id_suc) | 
-                Q(idcredito__id_sucursal_id=id_suc)
-            )
+        # Filtro por sucursal eliminado para que la campanita sea Global
 
         cuotas_vencidas = cuotas_vencidas.select_related(
             'idventa__idcliente',
@@ -3863,38 +3883,45 @@ def api_listar_creditos(request):
         # 1. Obtener parámetros
         page = request.GET.get('page', '1')
         estado_filtro = request.GET.get('estado', 'todos')
+        color_mora = request.GET.get('color_mora', 'todos')
         busqueda = request.GET.get('busqueda', '').strip()
         fecha_desde = request.GET.get('fecha_desde', '')
         fecha_hasta = request.GET.get('fecha_hasta', '')
         producto = request.GET.get('producto', '').strip()
 
-        # 2. Sincronizar estados de mora (SOLO para los que tienen sentido, para mayor eficiencia)
+        # 2. Sincronizar estados de mora (Una sola vez al día gracias a caché)
         hoy_date = timezone.now().date()
-        ESTADOS_PROTEGIDOS = ['retenido', 'cancelado', 'reparado', 'segunda', 'pagado']
+        cache_key = f'mora_synced_today_{hoy_date.strftime("%Y_%m_%d")}'
+        
+        if not cache.get(cache_key):
+            ESTADOS_PROTEGIDOS = ['retenido', 'cancelado', 'reparado', 'segunda', 'pagado']
 
-        cuotas_vencidas_qs = CuotasVenta.objects.filter(
-            estado=1,
-            estado_pago__in=['Pendiente', 'Parcial'],
-            fecha_vencimiento__lt=hoy_date
-        )
+            cuotas_vencidas_qs = CuotasVenta.objects.filter(
+                estado=1,
+                estado_pago__in=['Pendiente', 'Parcial'],
+                fecha_vencimiento__lt=hoy_date
+            )
 
-        Credito.objects.filter(
-            estado=1,
-            estado_credito='activo'
-        ).filter(
-            Q(idventa__cuotasventa__in=cuotas_vencidas_qs) |
-            Q(cuotas__in=cuotas_vencidas_qs)
-        ).distinct().update(estado_credito='mora')
+            Credito.objects.filter(
+                estado=1,
+                estado_credito='activo'
+            ).filter(
+                Q(idventa__cuotasventa__in=cuotas_vencidas_qs) |
+                Q(cuotas__in=cuotas_vencidas_qs)
+            ).distinct().update(estado_credito='mora')
 
-        Credito.objects.filter(
-            estado=1,
-            estado_credito='mora'
-        ).exclude(
-            Q(idventa__cuotasventa__in=cuotas_vencidas_qs) |
-            Q(cuotas__in=cuotas_vencidas_qs)
-        ).exclude(
-            estado_credito__in=ESTADOS_PROTEGIDOS
-        ).update(estado_credito='activo')
+            Credito.objects.filter(
+                estado=1,
+                estado_credito='mora'
+            ).exclude(
+                Q(idventa__cuotasventa__in=cuotas_vencidas_qs) |
+                Q(cuotas__in=cuotas_vencidas_qs)
+            ).exclude(
+                estado_credito__in=ESTADOS_PROTEGIDOS
+            ).update(estado_credito='activo')
+            
+            # Guardamos el flag en caché (expira en aprox 24h, pero la llave cambia cada día)
+            cache.set(cache_key, True, timeout=86400)
 
         # 3. Query base
         creditos_qs = Credito.objects.filter(estado=1).select_related(
@@ -3907,6 +3934,42 @@ def api_listar_creditos(request):
         # 4. Filtrar por estado
         if estado_filtro != 'todos':
             creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
+            
+        # 4.1. Anotar con Subquery para obtener la cuota vencida más antigua (optimización N+1)
+        oldest_cuota_venta_qs = CuotasVenta.objects.filter(
+            idventa=OuterRef('idventa'),
+            estado=1,
+            estado_pago__in=['Pendiente', 'Parcial']
+        ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
+
+        oldest_cuota_credito_qs = CuotasVenta.objects.filter(
+            idcredito=OuterRef('pk'),
+            estado=1,
+            estado_pago__in=['Pendiente', 'Parcial']
+        ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
+
+        creditos_qs = creditos_qs.annotate(
+            oldest_vencimiento=Coalesce(
+                Subquery(oldest_cuota_venta_qs),
+                Subquery(oldest_cuota_credito_qs)
+            )
+        )
+        
+        empresa = Empresa.objects.first()
+        limite_verde = empresa.limite_dias_verde if empresa else 10
+        limite_amarillo = empresa.limite_dias_amarillo if empresa else 20
+        
+        # 4.2. Filtrar por color de mora
+        if color_mora != 'todos':
+            fecha_verde_inicio = hoy_date - timedelta(days=limite_verde)
+            fecha_amarillo_inicio = hoy_date - timedelta(days=limite_amarillo)
+
+            if color_mora == 'verde':
+                creditos_qs = creditos_qs.filter(oldest_vencimiento__gte=fecha_verde_inicio, oldest_vencimiento__lt=hoy_date)
+            elif color_mora == 'amarillo':
+                creditos_qs = creditos_qs.filter(oldest_vencimiento__gte=fecha_amarillo_inicio, oldest_vencimiento__lt=fecha_verde_inicio)
+            elif color_mora == 'rojo':
+                creditos_qs = creditos_qs.filter(oldest_vencimiento__lt=fecha_amarillo_inicio)
 
         # 5. Filtrar por búsqueda general
         if busqueda:
@@ -3964,12 +4027,19 @@ def api_listar_creditos(request):
         # 8. Ordenar
         creditos_qs = creditos_qs.order_by('-fecha_credito')
 
-        # 9. Calcular estadísticas dinámicas
-        total_activos = creditos_qs.filter(estado_credito='activo').count()
-        total_mora = creditos_qs.filter(estado_credito='mora').count()
-        total_pagados = creditos_qs.filter(estado_credito='pagado').count()
-        monto_total_creditos = float(creditos_qs.aggregate(Sum('monto_total'))['monto_total__sum'] or 0)
-        saldo_total_pendiente = float(creditos_qs.aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0)
+        # 9. Calcular estadísticas dinámicas (Unificado en una sola consulta)
+        stats = creditos_qs.aggregate(
+            t_activos=Count('idcredito', filter=Q(estado_credito='activo')),
+            t_mora=Count('idcredito', filter=Q(estado_credito='mora')),
+            t_pagados=Count('idcredito', filter=Q(estado_credito='pagado')),
+            m_total=Sum('monto_total'),
+            s_total=Sum('saldo_pendiente')
+        )
+        total_activos = stats['t_activos'] or 0
+        total_mora = stats['t_mora'] or 0
+        total_pagados = stats['t_pagados'] or 0
+        monto_total_creditos = float(stats['m_total'] or 0)
+        saldo_total_pendiente = float(stats['s_total'] or 0)
 
         # 10. Paginar
         paginator = Paginator(creditos_qs, 10)
@@ -4008,6 +4078,17 @@ def api_listar_creditos(request):
             else:
                 cliente_nombre_truncado = "Sin Cliente"
 
+            # Calcular color mora usando la anotación (sin consultas extra)
+            color_mora_calculado = None
+            if c.oldest_vencimiento and c.oldest_vencimiento < hoy_date:
+                dias_mora = (hoy_date - c.oldest_vencimiento).days
+                if dias_mora <= limite_verde:
+                    color_mora_calculado = 'verde'
+                elif dias_mora <= limite_amarillo:
+                    color_mora_calculado = 'amarillo'
+                else:
+                    color_mora_calculado = 'rojo'
+
             creditos_serializados.append({
                 'idcredito': c.idcredito,
                 'id_imprimir': id_imprimir,
@@ -4021,7 +4102,8 @@ def api_listar_creditos(request):
                 'monto_adelanto': float(c.monto_adelanto) if c.monto_adelanto else 0,
                 'saldo_pendiente': float(c.saldo_pendiente) if c.saldo_pendiente else 0,
                 'cuotas': c.cantidad_cuotas,
-                'estado': (c.estado_credito or 'desconocido').upper()
+                'estado': (c.estado_credito or 'desconocido').upper(),
+                'color_mora': color_mora_calculado
             })
 
         return JsonResponse({

@@ -114,6 +114,7 @@ def api_listar_clientes(request):
                 data-nombre-comercial="{escape(cliente.nombre_comercial_cliente or '')}"
                 data-telefono="{escape(cliente.telefono or '')}"
                 data-email="{escape(cliente.email or '')}"
+                data-fecha-nacimiento="{cliente.fecha_nacimiento.strftime('%Y-%m-%d') if cliente.fecha_nacimiento else ''}"
                 data-direccion="{escape(cliente.direccion or '')}"
                 data-region="{cliente.id_region_id or ''}"
                 data-provincia="{cliente.id_provincia_id or ''}"
@@ -164,6 +165,7 @@ def agregar_cliente(request):
         telefono = request.POST.get('telefonoCliente', '').strip()
         nombre_comercial = request.POST.get('nombreComercialCliente', '').strip()
         email = request.POST.get('emailCliente', '').strip()
+        fecha_nacimiento = request.POST.get('fechaNacimiento', '').strip()
         id_tipo_entidad = request.POST.get('tipoEntidadCliente', '').strip()
         
         conyuge_nombre = request.POST.get('conyugeNombre', '').strip()
@@ -229,6 +231,7 @@ def agregar_cliente(request):
             direccion=direccion if direccion else '',
             telefono=telefono if telefono else '',
             email=email if email else None,
+            fecha_nacimiento=fecha_nacimiento if fecha_nacimiento else None,
             nombre_comercial_cliente=nombre_comercial if nombre_comercial else '',
             conyuge_nombre=conyuge_nombre if conyuge_nombre else None,
             conyuge_dni=conyuge_dni if conyuge_dni else None,
@@ -250,6 +253,7 @@ def agregar_cliente(request):
             'direccion': cliente.direccion or '',
             'telefono': cliente.telefono or '',
             'email': cliente.email or '',
+            'fecha_nacimiento': fecha_nacimiento if fecha_nacimiento else '',
             'tipo_entidad_nombre': tipo_entidad.tipo_entidad,
             'id_tipo_entidad': tipo_entidad.id_tipo_entidad,
             'id_region': cliente.id_region_id or '',
@@ -273,6 +277,7 @@ def editar_cliente(request):
         direccion = request.POST.get('direccionCliente', '').strip()
         telefono = request.POST.get('telefonoCliente', '').strip()
         email = request.POST.get('emailCliente', '').strip()
+        fecha_nacimiento = request.POST.get('fechaNacimiento', '').strip()
         nombre_comercial = request.POST.get('nombreComercialCliente', '').strip()
         id_tipo_entidad = request.POST.get('tipoEntidadCliente', '').strip()
         
@@ -349,6 +354,7 @@ def editar_cliente(request):
         cliente.direccion = direccion if direccion else ''
         cliente.telefono = telefono if telefono else ''
         cliente.email = email if email else None
+        cliente.fecha_nacimiento = fecha_nacimiento if fecha_nacimiento else None
         cliente.nombre_comercial_cliente = nombre_comercial if nombre_comercial else ''
         cliente.conyuge_nombre = conyuge_nombre if conyuge_nombre else None
         cliente.conyuge_dni = conyuge_dni if conyuge_dni else None

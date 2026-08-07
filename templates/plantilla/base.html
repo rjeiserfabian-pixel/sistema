@@ -177,9 +177,14 @@
             <span class="badge bg-danger badge-number d-none" id="notification-badge">0</span>
           </a>
           <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications" id="notification-list">
-            <li class="dropdown-header">
-              Tienes <span id="notification-count">0</span> cuotas vencidas
-              <a href="{% url 'creditos' %}" class="badge rounded-pill bg-primary p-2 ms-2">Ver todo</a>
+            <li class="dropdown-header d-flex justify-content-between align-items-center">
+              <div>
+                Tienes <span id="notification-count">0</span> cuotas vencidas
+                <a href="{% url 'creditos' %}" class="badge rounded-pill bg-primary p-2 ms-2">Ver todo</a>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary border-0 p-1 ms-2" id="btn-refresh-notifications" title="Actualizar notificaciones" onclick="refreshNotifications(event, this)">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
             </li>
             <li><hr class="dropdown-divider"></li>
             
@@ -433,6 +438,37 @@
               })
               .catch(err => console.error('Notificaciones error:', err));
       }
+
+      // ── Refresh Manual ─────────────────────────────────────────
+      window.refreshNotifications = function(e, btn) {
+          if (e) {
+              e.preventDefault();
+              e.stopPropagation();
+          }
+          
+          const icon = btn.querySelector('i');
+          if (icon) {
+              if (!document.getElementById('spin-style-notif')) {
+                  const style = document.createElement('style');
+                  style.id = 'spin-style-notif';
+                  style.textContent = '@keyframes notif-spin { 100% { transform: rotate(360deg); } }';
+                  document.head.appendChild(style);
+              }
+              icon.style.animation = "notif-spin 1s linear infinite";
+          }
+          
+          fetch('/api/notificaciones/vencidas/')
+              .then(r => r.json())
+              .then(data => {
+                  if (!data.ok) return;
+                  saveCache(data);       
+                  applyData(data, false); // false para no sonar campana manual
+              })
+              .catch(err => console.error('Notificaciones error:', err))
+              .finally(() => {
+                  if (icon) icon.style.animation = "";
+              });
+      };
 
       // ── Render ─────────────────────────────────────────────────
       function renderNotifications(list) {

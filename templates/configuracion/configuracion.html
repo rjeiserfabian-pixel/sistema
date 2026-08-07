@@ -363,6 +363,19 @@
             </div>
 
             <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-success"><i class="bi bi-circle-fill text-success me-1"></i>Límite Días Verde (Mora)</label>
+                <input type="number" name="limiteDiasVerde" class="form-control border-success-subtle" value="{{ empresa.limite_dias_verde|default:10 }}" required min="1">
+                <small class="text-muted">Créditos con mora hasta estos días se verán verdes.</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-warning"><i class="bi bi-circle-fill text-warning me-1"></i>Límite Días Amarillo (Mora)</label>
+                <input type="number" name="limiteDiasAmarillo" class="form-control border-warning-subtle" value="{{ empresa.limite_dias_amarillo|default:20 }}" required min="1">
+                <small class="text-muted">Créditos con mora hasta estos días se verán amarillos. Mayor a esto se verán rojos.</small>
+              </div>
+            </div>
+
+            <div class="row mb-3">
               <div class="col-md-12">
                 <label class="form-label fw-semibold">Nombre Comercial <span class="text-danger">*</span></label>
                 <input type="text" name="nombreComercia" class="form-control" value="{{ empresa.nombrecomercial }}" required>

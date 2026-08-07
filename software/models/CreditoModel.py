@@ -120,3 +120,44 @@ class Credito(models.Model):
             self.saldo_pendiente = self.calcular_saldo_pendiente()
         
         self.save()
+
+    def obtener_color_mora(self):
+        """
+        Determina el color (verde, amarillo, rojo) según los días de mora
+        de la cuota vencida más antigua. Retorna None si no hay mora.
+        """
+        from software.models.CuotasVentaModel import CuotasVenta
+        from software.models.empresaModel import Empresa
+        from django.utils import timezone
+
+        if self.idventa:
+            cuotas = CuotasVenta.objects.filter(idventa=self.idventa, estado=1)
+        else:
+            cuotas = CuotasVenta.objects.filter(idcredito=self, estado=1)
+
+        # Buscar la cuota vencida más antigua que no esté pagada
+        cuota_vencida = cuotas.filter(
+            estado_pago__in=['Pendiente', 'Parcial'],
+            fecha_vencimiento__lt=timezone.now().date()
+        ).order_by('fecha_vencimiento').first()
+
+        if not cuota_vencida:
+            return None
+
+        # Calcular días de mora
+        dias_mora = (timezone.now().date() - cuota_vencida.fecha_vencimiento).days
+
+        # Obtener configuración de empresa
+        empresa = Empresa.objects.first()
+        if not empresa:
+            return 'rojo' # Fallback si no hay configuración
+            
+        limite_verde = empresa.limite_dias_verde
+        limite_amarillo = empresa.limite_dias_amarillo
+
+        if dias_mora <= limite_verde:
+            return 'verde'
+        elif dias_mora <= limite_amarillo:
+            return 'amarillo'
+        else:
+            return 'rojo'

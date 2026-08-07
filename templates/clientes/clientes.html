@@ -98,14 +98,19 @@
             </div>
 
             <div class="row">
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Teléfono</label>
                 <input type="text" name="telefonoCliente" id="editTelefonoCliente" class="form-control rounded-pill" maxlength="150">
               </div>
 
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Email</label>
                 <input type="email" name="emailCliente" id="editEmailCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">F. Nacimiento (Opcional)</label>
+                <input type="date" name="fechaNacimiento" id="editFechaNacimiento" class="form-control rounded-pill">
               </div>
             </div>
 
@@ -262,14 +267,19 @@
             </div>
 
             <div class="row">
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Teléfono</label>
                 <input type="text" name="telefonoCliente" id="telefonoCliente" class="form-control rounded-pill" maxlength="150">
               </div>
 
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-label fw-semibold">Email</label>
                 <input type="email" name="emailCliente" id="emailCliente" class="form-control rounded-pill" maxlength="255">
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">F. Nacimiento (Opcional)</label>
+                <input type="date" name="fechaNacimiento" id="fechaNacimiento" class="form-control rounded-pill">
               </div>
             </div>
 
@@ -672,6 +682,7 @@ $(function(){
     modal.find('#editNombreComercialCliente').val(btn.data('nombre-comercial') === '-' ? '' : btn.data('nombre-comercial'));
     modal.find('#editTelefonoCliente').val(btn.data('telefono') === '-' ? '' : btn.data('telefono'));
     modal.find('#editEmailCliente').val(btn.data('email') === '-' ? '' : btn.data('email'));
+    modal.find('#editFechaNacimiento').val(btn.data('fecha-nacimiento'));
     modal.find('#editDireccionCliente').val(btn.data('direccion') === '-' ? '' : btn.data('direccion'));
     modal.find('#editConyugeNombre').val(btn.data('conyuge-nombre'));
     modal.find('#editConyugeDni').val(btn.data('conyuge-dni'));
@@ -781,7 +792,6 @@ $(function(){
     var nombreComercial = ($form.find('input[name="nombreComercialCliente"]').val() || '').trim();
 
     if (!tipoEntidad) {
-      Swal.fire({ title: 'Campo requerido', text: 'Debe seleccionar un tipo de entidad', icon: 'warning', confirmButtonText: 'OK' });
       return false;
     }
     if (!numdoc) {

@@ -198,6 +198,14 @@ def editarEmpresa(request):
             dias_mora_inicio = request.POST.get('diasMoraInicio')
             if dias_mora_inicio:
                 empresa.dias_mora_inicio = int(dias_mora_inicio)
+                
+            limite_dias_verde = request.POST.get('limiteDiasVerde')
+            if limite_dias_verde:
+                empresa.limite_dias_verde = int(limite_dias_verde)
+                
+            limite_dias_amarillo = request.POST.get('limiteDiasAmarillo')
+            if limite_dias_amarillo:
+                empresa.limite_dias_amarillo = int(limite_dias_amarillo)
             
             # Manejo de archivo de logo
             if 'logo' in request.FILES:

@@ -17,6 +17,7 @@ class Cliente(models.Model):
     )
     telefono = models.CharField(max_length=150, blank=True, null=True, verbose_name="Teléfono")
     email = models.CharField(max_length=255, blank=True, null=True, verbose_name="Email")
+    fecha_nacimiento = models.DateField(blank=True, null=True, verbose_name="Fecha de Nacimiento")
     
     # Ubicación
     id_region = models.ForeignKey('Region', on_delete=models.DO_NOTHING, db_column='id_region', blank=True, null=True, verbose_name="Departamento")
