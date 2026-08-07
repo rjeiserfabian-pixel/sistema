@@ -1148,9 +1148,13 @@ def reporte_caja(request):
                 m.monto
             ])
             
+        total_monto = sum(float(m.monto) if str(m.tipo_movimiento).lower() == 'ingreso' else -float(m.monto) for m in movimientos_qs)
+            
         if export_fmt == 'excel':
+            data.append(["", "", "", "", "", "TOTAL RECAUDADO:", f"S/ {total_monto:.2f}"])
             return export_to_excel(headers, data, f'Reporte_Caja_{fi_str}_{ff_str}')
         elif export_fmt == 'pdf':
+            data.append(["", "", "", "", "", '<b><font size="10">TOTAL RECAUDADO:</font></b>', f'<b><font size="10">S/ {total_monto:.2f}</font></b>'])
             title = f"Reporte de Caja ({fi_str} al {ff_str})"
             return export_to_pdf(headers, data, title, f'Reporte_Caja_{fi_str}_{ff_str}')
 

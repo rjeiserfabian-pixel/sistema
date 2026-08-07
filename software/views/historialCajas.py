@@ -784,6 +784,9 @@ def exportar_caja_pdf(request, id_movimiento):
             monto_str
         ])
         
+    total_monto = sum(float(mov['monto']) if str(mov['tipo']).lower() == 'ingreso' else -float(mov['monto']) for mov in data.get('movimientos', []))
+    rows.append(["", "", "", "", "", '<b><font size="10">TOTAL RECAUDADO:</font></b>', f'<b><font size="10">S/ {total_monto:.2f}</font></b>'])
+        
     # 4. Generar título y exportar
     caja_nombre = info.get('caja', '')
     usuario = info.get('usuario', '')

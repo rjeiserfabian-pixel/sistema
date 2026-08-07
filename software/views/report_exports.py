@@ -106,8 +106,10 @@ def export_to_pdf(headers, data_rows, title, filename):
             text = str(item) if item is not None else ""
             # Escape HTML to prevent ReportLab XML parser from breaking on < or &
             text = html.escape(text)
-            # Restore our explicit <br/> tags that we added manually
+            # Restore our explicit tags that we added manually
             text = text.replace('&lt;br/&gt;', '<br/>')
+            text = text.replace('&lt;b&gt;', '<b>').replace('&lt;/b&gt;', '</b>')
+            text = text.replace('&lt;font size=&quot;10&quot;&gt;', '<font size="10">').replace('&lt;/font&gt;', '</font>')
             # DEBUG
             if len(text) > 50 or '<br/>' in text:
                 pass # don't spam
