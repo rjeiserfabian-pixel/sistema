@@ -2518,7 +2518,7 @@ def obtener_notificaciones_compras_vencidas(request):
     data = []
     for c in cuotas_vencidas[:50]:
         proveedor = c.idcompra.idproveedor.razonsocial if c.idcompra and c.idcompra.idproveedor else 'Proveedor Desconocido'
-        url = f'/cuentas_por_pagar/compra/{c.idcompra.idcompra}/' if c.idcompra else '#'
+        url = f'/cuentas-por-pagar/detalle/{c.idcompra.idcompra}/' if c.idcompra else '#'
         data.append({
             'proveedor': proveedor,
             'numero_cuota': c.numero_cuota,
