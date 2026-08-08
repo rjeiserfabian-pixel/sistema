@@ -10,7 +10,7 @@ from software.models.ProvinciaModel import Provincia
 from software.models.DistritoModel import Distrito
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
 
-# Importar la función de TokenPeru
+# Importar la funciÃ³n de TokenPeru
 from software.tokenperu_api import consultar_documento
 
 
@@ -32,7 +32,7 @@ def clientes(request):
         
         return render(request, 'clientes/clientes.html', data)
     else:
-        return HttpResponse("<h1>No tiene acceso señor</h1>")
+        return HttpResponse("<h1>No tiene acceso seÃ±or</h1>")
 
 def api_listar_clientes(request):
     """API para proveer datos a DataTables mediante Server-Side Processing"""
@@ -40,7 +40,7 @@ def api_listar_clientes(request):
     if not id2:
         return JsonResponse({'error': 'No autorizado'}, status=401)
 
-    # Parámetros de DataTables
+    # ParÃ¡metros de DataTables
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
     length = int(request.GET.get('length', 10))
@@ -51,7 +51,7 @@ def api_listar_clientes(request):
     
     total_records = queryset.count()
 
-    # Búsqueda
+    # BÃºsqueda
     if search_value:
         queryset = queryset.filter(
             Q(numdoc__icontains=search_value) |
@@ -63,8 +63,8 @@ def api_listar_clientes(request):
     
     filtered_records = queryset.count()
 
-    # Ordenamiento (DataTables envía order[0][column] y order[0][dir])
-    # Mapeo de columnas según el frontend (índices)
+    # Ordenamiento (DataTables envÃ­a order[0][column] y order[0][dir])
+    # Mapeo de columnas segÃºn el frontend (Ã­ndices)
     # 0: index (no se ordena en db usualmente), 1: tipo doc, 2: num doc, 3: razon social, 4: nombre comercial, 5: telefono, 6: direccion, 7: tipo entidad
     order_column_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
@@ -83,10 +83,10 @@ def api_listar_clientes(request):
             order_field = '-' + order_field
         queryset = queryset.order_by(order_field)
     else:
-        # Orden predeterminado (más recientes primero o id)
+        # Orden predeterminado (mÃ¡s recientes primero o id)
         queryset = queryset.order_by('-idcliente')
 
-    # Paginación
+    # PaginaciÃ³n
     if length != -1:
         clientes_page = queryset[start:start + length]
     else:
@@ -94,7 +94,7 @@ def api_listar_clientes(request):
 
     # Construir data
     data = []
-    # Usaremos start para calcular el índice real
+    # Usaremos start para calcular el Ã­ndice real
     for idx, cliente in enumerate(clientes_page, start=start+1):
         # Determinar badge para tipo de entidad
         if cliente.id_tipo_entidad.id_tipo_entidad == 6:
@@ -151,7 +151,7 @@ def api_listar_clientes(request):
 
 
 def eliminar_cliente(request, id):
-    """Eliminación lógica del cliente (cambia estado a 0)"""
+    """EliminaciÃ³n lÃ³gica del cliente (cambia estado a 0)"""
     Cliente.objects.filter(idcliente=id).update(estado=0)
     return redirect('clientes')
 
@@ -184,45 +184,45 @@ def agregar_cliente(request):
         except TipoEntidad.DoesNotExist:
             return JsonResponse({'ok': False, 'error': 'El tipo de entidad seleccionado no existe'}, status=400)
         
-        # 2. Validar número de documento
+        # 2. Validar nÃºmero de documento
         if not numdoc:
-            return JsonResponse({'ok': False, 'error': 'El número de documento es obligatorio'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El nÃºmero de documento es obligatorio'}, status=400)
         if not numdoc.isdigit():
-            return JsonResponse({'ok': False, 'error': 'El número de documento debe contener solo números'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El nÃºmero de documento debe contener solo nÃºmeros'}, status=400)
 
-        # Validación estricta por tipo (según TokenPeru en este proyecto)
+        # ValidaciÃ³n estricta por tipo (segÃºn TokenPeru en este proyecto)
         if str(id_tipo_entidad) == '1' and len(numdoc) not in (7, 8):
-            return JsonResponse({'ok': False, 'error': 'Para DNI el número debe tener 7 u 8 dígitos'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'Para DNI el nÃºmero debe tener 7 u 8 dÃ­gitos'}, status=400)
         if str(id_tipo_entidad) == '6' and len(numdoc) != 11:
-            return JsonResponse({'ok': False, 'error': 'Para RUC el número debe tener exactamente 11 dígitos'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'Para RUC el nÃºmero debe tener exactamente 11 dÃ­gitos'}, status=400)
         if str(id_tipo_entidad) not in ('1', '6') and (len(numdoc) < 7 or len(numdoc) > 11):
-            return JsonResponse({'ok': False, 'error': 'El número de documento debe tener entre 7 y 11 dígitos'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El nÃºmero de documento debe tener entre 7 y 11 dÃ­gitos'}, status=400)
         
-        # 3. Validar que el documento no esté duplicado
+        # 3. Validar que el documento no estÃ© duplicado
         if Cliente.objects.filter(numdoc=numdoc, estado=1).exists():
             return JsonResponse({'ok': False, 'error': f'Ya existe un cliente con el documento {numdoc}'}, status=400)
         
-        # 4. Validar razón social
+        # 4. Validar razÃ³n social
         if not razonsocial:
-            return JsonResponse({'ok': False, 'error': 'La razón social / nombre completo es obligatorio'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La razÃ³n social / nombre completo es obligatorio'}, status=400)
         
         if len(razonsocial) < 3:
-            return JsonResponse({'ok': False, 'error': 'La razón social debe tener al menos 3 caracteres'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La razÃ³n social debe tener al menos 3 caracteres'}, status=400)
         
-        # 5. Validar teléfono (si se proporciona)
+        # 5. Validar telÃ©fono (si se proporciona)
         if telefono:
             if len(telefono) > 150:
-                return JsonResponse({'ok': False, 'error': 'El teléfono no puede exceder los 150 caracteres'}, status=400)
+                return JsonResponse({'ok': False, 'error': 'El telÃ©fono no puede exceder los 150 caracteres'}, status=400)
         
-        # 6. Validar longitudes máximas
+        # 6. Validar longitudes mÃ¡ximas
         if len(razonsocial) > 255:
-            return JsonResponse({'ok': False, 'error': 'La razón social no puede exceder 255 caracteres'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La razÃ³n social no puede exceder 255 caracteres'}, status=400)
         
         if nombre_comercial and len(nombre_comercial) > 255:
             return JsonResponse({'ok': False, 'error': 'El nombre comercial no puede exceder 255 caracteres'}, status=400)
         
         if direccion and len(direccion) > 255:
-            return JsonResponse({'ok': False, 'error': 'La dirección no puede exceder 255 caracteres'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La direcciÃ³n no puede exceder 255 caracteres'}, status=400)
         
         # ========== CREAR CLIENTE ==========
         cliente = Cliente.objects.create(
@@ -292,7 +292,7 @@ def editar_cliente(request):
         
         # 1. Validar ID del cliente
         if not id:
-            return JsonResponse({'ok': False, 'error': 'ID de cliente inválido'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'ID de cliente invÃ¡lido'}, status=400)
         
         try:
             cliente = Cliente.objects.get(idcliente=id)
@@ -308,45 +308,45 @@ def editar_cliente(request):
         except TipoEntidad.DoesNotExist:
             return JsonResponse({'ok': False, 'error': 'El tipo de entidad seleccionado no existe'}, status=400)
         
-        # 3. Validar número de documento
+        # 3. Validar nÃºmero de documento
         if not numdoc:
-            return JsonResponse({'ok': False, 'error': 'El número de documento es obligatorio'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El nÃºmero de documento es obligatorio'}, status=400)
         
         if not numdoc.isdigit():
-            return JsonResponse({'ok': False, 'error': 'El número de documento debe contener solo números'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El nÃºmero de documento debe contener solo nÃºmeros'}, status=400)
 
         if str(id_tipo_entidad) == '1' and len(numdoc) not in (7, 8):
-            return JsonResponse({'ok': False, 'error': 'Para DNI el número debe tener 7 u 8 dígitos'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'Para DNI el nÃºmero debe tener 7 u 8 dÃ­gitos'}, status=400)
         if str(id_tipo_entidad) == '6' and len(numdoc) != 11:
-            return JsonResponse({'ok': False, 'error': 'Para RUC el número debe tener exactamente 11 dígitos'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'Para RUC el nÃºmero debe tener exactamente 11 dÃ­gitos'}, status=400)
         if str(id_tipo_entidad) not in ('1', '6') and (len(numdoc) < 7 or len(numdoc) > 11):
-            return JsonResponse({'ok': False, 'error': 'El número de documento debe tener entre 7 y 11 dígitos'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El nÃºmero de documento debe tener entre 7 y 11 dÃ­gitos'}, status=400)
         
-        # 4. Validar que el documento no esté duplicado (excepto el cliente actual)
+        # 4. Validar que el documento no estÃ© duplicado (excepto el cliente actual)
         if Cliente.objects.filter(numdoc=numdoc, estado=1).exclude(idcliente=id).exists():
             return JsonResponse({'ok': False, 'error': f'Ya existe otro cliente con el documento {numdoc}'}, status=400)
         
-        # 5. Validar razón social
+        # 5. Validar razÃ³n social
         if not razonsocial:
-            return JsonResponse({'ok': False, 'error': 'La razón social / nombre completo es obligatorio'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La razÃ³n social / nombre completo es obligatorio'}, status=400)
         
         if len(razonsocial) < 3:
-            return JsonResponse({'ok': False, 'error': 'La razón social debe tener al menos 3 caracteres'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La razÃ³n social debe tener al menos 3 caracteres'}, status=400)
         
-        # 6. Validar teléfono (si se proporciona)
+        # 6. Validar telÃ©fono (si se proporciona)
         if telefono:
             if len(telefono) > 150:
-                return JsonResponse({'ok': False, 'error': 'El teléfono no puede exceder los 150 caracteres'}, status=400)
+                return JsonResponse({'ok': False, 'error': 'El telÃ©fono no puede exceder los 150 caracteres'}, status=400)
         
-        # 7. Validar longitudes máximas
+        # 7. Validar longitudes mÃ¡ximas
         if len(razonsocial) > 255:
-            return JsonResponse({'ok': False, 'error': 'La razón social no puede exceder 255 caracteres'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La razÃ³n social no puede exceder 255 caracteres'}, status=400)
         
         if nombre_comercial and len(nombre_comercial) > 255:
             return JsonResponse({'ok': False, 'error': 'El nombre comercial no puede exceder 255 caracteres'}, status=400)
         
         if direccion and len(direccion) > 255:
-            return JsonResponse({'ok': False, 'error': 'La dirección no puede exceder 255 caracteres'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'La direcciÃ³n no puede exceder 255 caracteres'}, status=400)
         
         # ========== ACTUALIZAR CLIENTE ==========
         cliente.numdoc = numdoc
@@ -392,7 +392,7 @@ def editar_cliente(request):
         return JsonResponse({'ok': False, 'error': f'Error al editar el cliente: {str(e)}'}, status=500)
 
 
-# ==================== NUEVA FUNCIÓN TOKENPERU ====================
+# ==================== NUEVA FUNCIÃN TOKENPERU ====================
 @csrf_exempt
 def autocompletar_cliente(request):
     """Vista AJAX para autocompletar datos de cliente desde APIs.net.pe"""
@@ -401,16 +401,16 @@ def autocompletar_cliente(request):
     if not numero:
         return JsonResponse({
             'success': False,
-            'error': 'Se requiere el número de documento'
+            'error': 'Se requiere el nÃºmero de documento'
         })
     
     try:
         # Consultar APIs.net.pe
         resultado = consultar_documento(numero)
         
-        # Formatear respuesta según tipo de documento
+        # Formatear respuesta segÃºn tipo de documento
         if resultado['tipo_documento'] == 'DNI':
-            # Para DNI: Razón Social y Nombre Comercial son iguales
+            # Para DNI: RazÃ³n Social y Nombre Comercial son iguales
             nombre_completo = resultado.get('nombre_completo', '')
             
             response_data = {
@@ -424,7 +424,7 @@ def autocompletar_cliente(request):
                 'telefono': ''
             }
         else:  # RUC
-            # Para RUC: Razón Social y Nombre Comercial son diferentes
+            # Para RUC: RazÃ³n Social y Nombre Comercial son diferentes
             response_data = {
                 'success': True,
                 'tipo': 'RUC',
@@ -448,3 +448,30 @@ def autocompletar_cliente(request):
         return JsonResponse({'success': False, 'error': str(e)})
     except Exception as e:
         return JsonResponse({'success': False, 'error': f'Error: {str(e)}'})
+def obtener_notificaciones_cumpleanos(request):
+    import datetime
+    from django.http import JsonResponse
+    from software.models.ClienteModel import Cliente
+
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return JsonResponse({'ok': False, 'error': 'No autenticado'}, status=401)
+
+    hoy = datetime.date.today()
+    # Buscar clientes cuyo cumpleanos sea hoy
+    cumpleaneros = Cliente.objects.filter(
+        fecha_nacimiento__month=hoy.month,
+        fecha_nacimiento__day=hoy.day,
+        estado=1
+    ).only('idcliente', 'razonsocial', 'telefono', 'direccion')
+
+    data = []
+    for c in cumpleaneros[:50]:
+        data.append({
+            'nombre': c.razonsocial,
+            'telefono': c.telefono if c.telefono else 'Sin teléfono',
+            'direccion': c.direccion if c.direccion else 'Sin dirección',
+            'url': '/clientes/'
+        })
+
+    return JsonResponse({'ok': True, 'count': cumpleaneros.count(), 'notificaciones': data})

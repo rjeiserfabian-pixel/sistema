@@ -2497,3 +2497,35 @@ def api_obtener_detalle_compra(request, id):
         return JsonResponse({'ok': False, 'error': 'Compra no encontrada'}, status=404)
     except Exception as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+def obtener_notificaciones_compras_vencidas(request):
+    import datetime
+    from django.http import JsonResponse
+    from software.models.cuotaModel import Cuota
+
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return JsonResponse({'ok': False, 'error': 'No autenticado'}, status=401)
+
+    hoy = datetime.date.today()
+    # Buscar cuotas de compras (Cuentas por pagar) vencidas
+    cuotas_vencidas = Cuota.objects.filter(
+        fecha_vencimiento__lt=hoy,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        estado=1,
+        idcompra__estado=1
+    ).select_related('idcompra', 'idcompra__idproveedor').order_by('fecha_vencimiento')
+
+    data = []
+    for c in cuotas_vencidas[:50]:
+        proveedor = c.idcompra.idproveedor.razonsocial if c.idcompra and c.idcompra.idproveedor else 'Proveedor Desconocido'
+        url = f'/cuentas_por_pagar/compra/{c.idcompra.idcompra}/' if c.idcompra else '#'
+        data.append({
+            'proveedor': proveedor,
+            'numero_cuota': c.numero_cuota,
+            'monto': float(c.monto),
+            'saldo': float(c.saldo_cuota),
+            'fecha_vencimiento': c.fecha_vencimiento.strftime("%d/%m/%Y"),
+            'url': url
+        })
+
+    return JsonResponse({'ok': True, 'count': cuotas_vencidas.count(), 'notificaciones': data})

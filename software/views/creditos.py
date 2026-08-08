@@ -3351,9 +3351,9 @@ def obtener_notificaciones_vencidas(request):
         
         total_count = cuotas_vencidas.count()
         
-        # Lista para el dropdown (últimas 30)
+        # Lista para el dropdown (últimas 50)
         lista_notificaciones = []
-        for cuota in cuotas_vencidas[:30]:
+        for cuota in cuotas_vencidas[:50]:
             cliente = "Cliente Desconocido"
             id_credito_final = None
             

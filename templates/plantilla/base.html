@@ -170,7 +170,57 @@
           </a>
         </li>
 
-        <!-- Icono de Notificaciones -->
+        <!-- Icono de Notificaciones Compras Vencidas -->
+        <li class="nav-item dropdown me-2">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown" title="Compras Vencidas">
+            <i class="bi bi-wallet2"></i>
+            <span class="badge bg-warning badge-number d-none" id="notif-compras-badge">0</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications" id="notif-compras-list">
+            <li class="dropdown-header d-flex justify-content-between align-items-center">
+              <div>
+                Tienes <span id="notif-compras-count">0</span> compras en mora
+                <a href="{% url 'cuentas_por_pagar' %}" class="badge rounded-pill bg-primary p-2 ms-2">Ver todo</a>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary border-0 p-1 ms-2" onclick="fetchComprasVencidas(event)" title="Actualizar">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <div id="notif-compras-items" style="max-height: 350px; overflow-y: auto;">
+              <li class="notification-item p-3 text-center">
+                <p class="text-muted mb-0">Cargando...</p>
+              </li>
+            </div>
+          </ul>
+        </li>
+
+        <!-- Icono de Notificaciones Cumpleaños -->
+        <li class="nav-item dropdown me-2">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown" title="Cumpleaños de Hoy">
+            <i class="bi bi-gift"></i>
+            <span class="badge bg-info badge-number d-none" id="notif-cumples-badge">0</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications" id="notif-cumples-list">
+            <li class="dropdown-header d-flex justify-content-between align-items-center">
+              <div>
+                Hoy hay <span id="notif-cumples-count">0</span> cumpleaños
+                <a href="{% url 'clientes' %}" class="badge rounded-pill bg-primary p-2 ms-2">Ver clientes</a>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary border-0 p-1 ms-2" onclick="fetchCumpleanos(event)" title="Actualizar">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <div id="notif-cumples-items" style="max-height: 350px; overflow-y: auto;">
+              <li class="notification-item p-3 text-center">
+                <p class="text-muted mb-0">Cargando...</p>
+              </li>
+            </div>
+          </ul>
+        </li>
+
+        <!-- Icono de Notificaciones Ventas (Original) -->
         <li class="nav-item dropdown me-3">
           <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown" title="Notificaciones">
             <i class="bi bi-bell"></i>
@@ -596,6 +646,91 @@
               itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">Sin datos disponibles</p></li>';
           }
       }
+
+      // ── JS Para Notificaciones Nuevas (Sin caché ni sonido) ──
+      window.fetchComprasVencidas = function(e) {
+          if(e) e.stopPropagation();
+          fetch('/api/notificaciones/compras_vencidas/')
+              .then(r => r.json())
+              .then(data => {
+                  if(!data.ok) return;
+                  const count = data.count;
+                  const items = data.notificaciones;
+                  const badge = document.getElementById('notif-compras-badge');
+                  const countEl = document.getElementById('notif-compras-count');
+                  const itemsContainer = document.getElementById('notif-compras-items');
+                  
+                  badge.textContent = count;
+                  if(count > 0) badge.classList.remove('d-none');
+                  else badge.classList.add('d-none');
+                  
+                  countEl.textContent = count;
+                  
+                  if(count === 0) {
+                      itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No hay compras en mora</p></li>';
+                  } else {
+                      itemsContainer.innerHTML = items.map(item => `
+                          <li class="notification-item p-2">
+                              <a href="${item.url}" class="text-decoration-none">
+                                  <div class="d-flex align-items-center">
+                                      <i class="bi bi-exclamation-circle text-warning me-2 fs-5"></i>
+                                      <div>
+                                          <h4 class="mb-0 fs-6 text-dark">${item.proveedor}</h4>
+                                          <p class="mb-0 text-muted small">Cuota ${item.numero_cuota}: S/ ${item.monto.toFixed(2)}</p>
+                                          <p class="mb-0 text-danger small">Venció: ${item.fecha_vencimiento}</p>
+                                      </div>
+                                  </div>
+                              </a>
+                          </li>
+                          <li><hr class="dropdown-divider"></li>
+                      `).join('');
+                  }
+              }).catch(err => console.error('Error compras vencidas:', err));
+      };
+
+      window.fetchCumpleanos = function(e) {
+          if(e) e.stopPropagation();
+          fetch('/api/notificaciones/cumpleanos/')
+              .then(r => r.json())
+              .then(data => {
+                  if(!data.ok) return;
+                  const count = data.count;
+                  const items = data.notificaciones;
+                  const badge = document.getElementById('notif-cumples-badge');
+                  const countEl = document.getElementById('notif-cumples-count');
+                  const itemsContainer = document.getElementById('notif-cumples-items');
+                  
+                  badge.textContent = count;
+                  if(count > 0) badge.classList.remove('d-none');
+                  else badge.classList.add('d-none');
+                  
+                  countEl.textContent = count;
+                  
+                  if(count === 0) {
+                      itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No hay cumpleaños hoy</p></li>';
+                  } else {
+                      itemsContainer.innerHTML = items.map(item => `
+                          <li class="notification-item p-2">
+                              <a href="${item.url}" class="text-decoration-none">
+                                  <div class="d-flex align-items-center">
+                                      <i class="bi bi-person-hearts text-info me-2 fs-5"></i>
+                                      <div>
+                                          <h4 class="mb-0 fs-6 text-dark">${item.nombre}</h4>
+                                          <p class="mb-0 text-muted small"><i class="bi bi-telephone"></i> ${item.telefono}</p>
+                                          <p class="mb-0 text-muted small"><i class="bi bi-geo-alt"></i> ${item.direccion}</p>
+                                      </div>
+                                  </div>
+                              </a>
+                          </li>
+                          <li><hr class="dropdown-divider"></li>
+                      `).join('');
+                  }
+              }).catch(err => console.error('Error cumpleanos:', err));
+      };
+
+      // Cargar al inicio (solo 1 vez por pagina, o dejar que el usuario las abra, pero mejor precargar el badge)
+      fetchComprasVencidas();
+      fetchCumpleanos();
 
   });
   </script>

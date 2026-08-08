@@ -308,6 +308,8 @@ urlpatterns = [
     
     # APIs DE NOTIFICACIONES
     path('api/notificaciones/vencidas/', creditos.obtener_notificaciones_vencidas, name='obtener_notificaciones_vencidas'),
+    path('api/notificaciones/compras_vencidas/', compras.obtener_notificaciones_compras_vencidas, name='obtener_notificaciones_compras_vencidas'),
+    path('api/notificaciones/cumpleanos/', clientes.obtener_notificaciones_cumpleanos, name='obtener_notificaciones_cumpleanos'),
     path('api/notificaciones/config-sonido/', creditos.actualizar_preferencia_sonido, name='actualizar_preferencia_sonido'),
     path('api/notificaciones/subir-sonido/', creditos.subir_sonido_notificacion, name='subir_sonido_notificacion'),
 
