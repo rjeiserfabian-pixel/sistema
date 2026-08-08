@@ -39,6 +39,7 @@ class Credito(models.Model):
     monto_adelanto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     saldo_pendiente = models.DecimalField(max_digits=10, decimal_places=2)
     cantidad_cuotas = models.IntegerField()
+    frecuencia_pago = models.CharField(max_length=20, default='Personalizado', db_index=True)
     fecha_credito = models.DateTimeField(default=timezone.now, db_index=True)
 
     estado_credito = models.CharField(

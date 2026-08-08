@@ -68,6 +68,17 @@
             </select>
           </div>
           <div class="col-md-2">
+            <label class="form-label">Tipo de Periodo</label>
+            <select name="frecuencia" class="form-select">
+              <option value="todos" {% if frecuencia_filtro == 'todos' %}selected{% endif %}>Todos</option>
+              <option value="Diario" {% if frecuencia_filtro == 'Diario' %}selected{% endif %}>Diario</option>
+              <option value="Semanal" {% if frecuencia_filtro == 'Semanal' %}selected{% endif %}>Semanal</option>
+              <option value="Quincenal" {% if frecuencia_filtro == 'Quincenal' %}selected{% endif %}>Quincenal</option>
+              <option value="Mensual" {% if frecuencia_filtro == 'Mensual' %}selected{% endif %}>Mensual</option>
+              <option value="Personalizado" {% if frecuencia_filtro == 'Personalizado' %}selected{% endif %}>Personalizado</option>
+            </select>
+          </div>
+          <div class="col-md-2">
             <label class="form-label">Buscar por Código</label>
             <input type="text" name="codigo" class="form-control" placeholder="Ej: CR-001" value="{{ codigo_filtro }}">
           </div>
@@ -335,7 +346,8 @@ $(document).ready(function() {
             estado: $('select[name="estado"]').val(),
             codigo: $('input[name="codigo"]').val(),
             cliente_id: $('#cliente_id').val(),
-            sucursal: $('select[name="sucursal"]').val()
+            sucursal: $('select[name="sucursal"]').val(),
+            frecuencia: $('select[name="frecuencia"]').val()
         };
     };
 
@@ -353,6 +365,7 @@ $(document).ready(function() {
                 d.codigo = f.codigo;
                 d.cliente_id = f.cliente_id;
                 d.sucursal = f.sucursal;
+                d.frecuencia = f.frecuencia;
             }
         },
         columns: [
@@ -413,6 +426,7 @@ $(document).ready(function() {
             data: function(d) {
                 var f = getFiltros();
                 d.cliente_id = f.cliente_id;
+                d.frecuencia = f.frecuencia;
             }
         },
         columns: [
@@ -467,7 +481,7 @@ $(document).ready(function() {
         }
     });
 
-    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="estado"], select[name="sucursal"], input[name="codigo"]').on('change keyup', function() {
+    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="estado"], select[name="sucursal"], input[name="codigo"], select[name="frecuencia"]').on('change keyup', function() {
         tablaCreditos.ajax.reload();
         tablaMoras.ajax.reload();
     });
@@ -482,6 +496,7 @@ function exportarReporte(fmt) {
         sucursal: $('select[name="sucursal"]').val(),
         codigo: $('input[name="codigo"]').val(),
         cliente_id: $('#cliente_id').val(),
+        frecuencia: $('select[name="frecuencia"]').val(),
         search: $('.dataTables_filter input:visible').first().val() || ''
     });
     window.location.href = "{% url 'reporte_creditos' %}?" + urlParams.toString();

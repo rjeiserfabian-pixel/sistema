@@ -789,6 +789,8 @@ def reporte_inventario(request):
         'total_unidades': stock_qs.aggregate(t=Sum('cantidad_disponible'))['t'] or 0,
         'sucursales': Sucursales.objects.all(),
         'sucursal_filtro': sucursal_filtro,
+        'frecuencia_filtro': frecuencia_filtro,
+        'total_deuda': "{:.2f}".format(total_deuda),
         'almacenes': Almacenes.objects.filter(estado=1),
         'almacen_filtro': almacen_filtro,
     })
@@ -1379,6 +1381,7 @@ def reporte_creditos(request):
     codigo_filtro = request.GET.get('codigo', '').strip()
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
+    frecuencia_filtro = request.GET.get('frecuencia', 'todos').strip()
     id_suc = request.session.get('id_sucursal')
     
     creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
@@ -1397,6 +1400,8 @@ def reporte_creditos(request):
             Q(idventa__id_sucursal_id=sucursal_filtro) | 
             Q(id_sucursal_id=sucursal_filtro)
         )
+    if frecuencia_filtro and frecuencia_filtro != 'todos':
+        creditos_qs = creditos_qs.filter(frecuencia_pago=frecuencia_filtro)
         
     search_value = request.GET.get('search', '').strip()
     if search_value:
@@ -1444,6 +1449,21 @@ def reporte_creditos(request):
             Q(idcredito__idventa__idcliente_id=cliente_id) |
             Q(idventa__idcliente_id=cliente_id)
         )
+    if frecuencia_filtro and frecuencia_filtro != 'todos':
+        cuotas_vencidas = cuotas_vencidas.filter(
+            Q(idcredito__frecuencia_pago=frecuencia_filtro) |
+            Q(idventa__credito__frecuencia_pago=frecuencia_filtro)
+        )
+    if search_value:
+        cuotas_vencidas = cuotas_vencidas.filter(
+            Q(idcredito__codigo_credito__icontains=search_value) |
+            Q(idventa__credito__codigo_credito__icontains=search_value) |
+            Q(idcredito__idcliente__razonsocial__icontains=search_value) |
+            Q(idcredito__idventa__idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__numero_comprobante__icontains=search_value)
+        )
+        
     cuotas_vencidas = cuotas_vencidas.select_related(
         'idventa__idcliente', 
         'idventa__credito',
@@ -1570,6 +1590,7 @@ def api_listar_reporte_creditos(request):
     codigo_filtro = request.GET.get('codigo', '').strip()
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
+    frecuencia_filtro = request.GET.get('frecuencia', 'todos').strip()
     id_suc = request.session.get('id_sucursal')
     
     creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
@@ -1588,6 +1609,8 @@ def api_listar_reporte_creditos(request):
             Q(idventa__id_sucursal_id=sucursal_filtro) | 
             Q(id_sucursal_id=sucursal_filtro)
         )
+    if frecuencia_filtro and frecuencia_filtro != 'todos':
+        creditos_qs = creditos_qs.filter(frecuencia_pago=frecuencia_filtro)
     creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
 
     records_total = creditos_qs.count()
@@ -1679,6 +1702,7 @@ def api_listar_reporte_moras(request):
         
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
+    frecuencia_filtro = request.GET.get('frecuencia', 'todos').strip()
     id_suc = request.session.get('id_sucursal')
     
     ESTADOS_EXCLUIDOS = ['retenido', 'cancelado', 'reparado', 'segunda']
@@ -1705,6 +1729,11 @@ def api_listar_reporte_moras(request):
             Q(idcredito__idcliente_id=cliente_id) |
             Q(idcredito__idventa__idcliente_id=cliente_id) |
             Q(idventa__idcliente_id=cliente_id)
+        )
+    if frecuencia_filtro and frecuencia_filtro != 'todos':
+        cuotas_vencidas = cuotas_vencidas.filter(
+            Q(idcredito__frecuencia_pago=frecuencia_filtro) |
+            Q(idventa__credito__frecuencia_pago=frecuencia_filtro)
         )
     cuotas_vencidas = cuotas_vencidas.select_related(
         'idventa__idcliente', 

@@ -991,10 +991,13 @@
               <small class="text-muted">Se registra como Cuota 0 del crédito</small>
             </div>
             <div class="col-md-3">
-              <label class="form-label">Tipo de Periodo</label>
-              <select id="tipo_periodo_venta" class="form-select">
-                <option value="dias">Días</option>
-                <option value="meses">Meses</option>
+              <label class="form-label">Frecuencia de Pago</label>
+              <select id="tipo_periodo_venta" class="form-select" onchange="cambiarFrecuenciaPagoVenta(this.value)">
+                <option value="Personalizado">Personalizado</option>
+                <option value="Mensual">Mensual (Mes a mes)</option>
+                <option value="Quincenal">Quincenal (15 días)</option>
+                <option value="Semanal">Semanal (7 días)</option>
+                <option value="Diario">Diario (1 día)</option>
               </select>
             </div>
           </div>
@@ -5318,6 +5321,10 @@
     `);
     }
 
+    // ⭐ GUARDAR FRECUENCIA DE PAGO
+    $('#frecuencia_pago_hidden').remove();
+    $('#formNuevaVenta').append(`<input type="hidden" id="frecuencia_pago_hidden" class="cuota-hidden" name="frecuencia_pago" value="${tipoPeriodo}">`);
+
     // ⭐ ARRAY PARA PAGINACIÓN
     window.filasCuotasGeneradas = [];
 
@@ -5366,7 +5373,7 @@
     `);
 
       // ⭐ CALCULAR SIGUIENTE FECHA
-      if (tipoPeriodo === 'meses') {
+      if (tipoPeriodo === 'Mensual') {
         let currentMonth = fechaActual.getMonth();
         let currentYear = fechaActual.getFullYear();
         let nextMonth = currentMonth + 1;
@@ -5415,6 +5422,26 @@
   // ========================================
   // ⭐ FUNCIONES DE PAGINACIÓN DE CUOTAS
   // ========================================
+  function cambiarFrecuenciaPagoVenta(val) {
+    const inputDias = document.getElementById('dias_cuotas_venta');
+    if (!inputDias) return;
+    if (val === 'Mensual') {
+      inputDias.value = 30;
+      inputDias.readOnly = true;
+    } else if (val === 'Quincenal') {
+      inputDias.value = 15;
+      inputDias.readOnly = true;
+    } else if (val === 'Semanal') {
+      inputDias.value = 7;
+      inputDias.readOnly = true;
+    } else if (val === 'Diario') {
+      inputDias.value = 1;
+      inputDias.readOnly = true;
+    } else {
+      inputDias.readOnly = false;
+    }
+  }
+
   function renderizarPaginaCuotas(pagina) {
     const inicio = (pagina - 1) * window.cuotasPorPagina;
     const fin = inicio + window.cuotasPorPagina;

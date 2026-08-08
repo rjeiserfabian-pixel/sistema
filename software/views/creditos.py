@@ -347,6 +347,8 @@ def registrar_credito_directo(request):
                     break
                 _intento_d += 1
             
+            frecuencia_pago = request.POST.get('frecuencia_pago', 'Personalizado')
+            
             # 1. Crear el Crédito
             credito = Credito.objects.create(
                 codigo_credito=codigo_credito,
@@ -361,6 +363,7 @@ def registrar_credito_directo(request):
                 id_almacen=almacen,
                 idusuario_id=idusuario,
                 fecha_credito=fecha_credito,
+                frecuencia_pago=frecuencia_pago,
                 estado_credito='activo'
             )
             

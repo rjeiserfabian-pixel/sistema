@@ -1416,6 +1416,7 @@ def nueva_venta(request):
                         tasa_interes = Decimal(tasa_interes_str) if tasa_interes_str else Decimal('0')
                         
                         tipo_periodo = request.POST.get("tipo_periodo", "dias")
+                        frecuencia_pago = request.POST.get("frecuencia_pago", "Personalizado")
                         
                         # ✅ CALCULAR SALDO A FINANCIAR
                         saldo_financiar = total - monto_adelanto
@@ -1450,6 +1451,7 @@ def nueva_venta(request):
                             saldo_pendiente=saldo_financiar,  # ⭐ SALDO A FINANCIAR (cuotas 1..N)
                             cantidad_cuotas=cantidad_cuotas,  # Cantidad de cuotas regulares (sin contar cuota 0)
                             fecha_credito=venta.fecha_venta,
+                            frecuencia_pago=frecuencia_pago,
                             estado_credito='activo',
                             estado=1
                         )
@@ -2617,6 +2619,7 @@ def actualizar_venta(request, id):
 
                 tasa_interes_str = request.POST.get("tasa_interes")
                 tasa_interes = Decimal(tasa_interes_str) if tasa_interes_str else Decimal('0')
+                frecuencia_pago = request.POST.get("frecuencia_pago", "Personalizado")
 
                 saldo_financiar = total_calculado - monto_adelanto
 
@@ -2631,6 +2634,7 @@ def actualizar_venta(request, id):
                     credito.fecha_credito = venta.fecha_venta
                     credito.idusuario = venta.idusuario
                     credito.idcliente = venta.idcliente
+                    credito.frecuencia_pago = frecuencia_pago
                     credito.save()
                     print(f"✅ CRÉDITO ACTUALIZADO - ID: {credito.idcredito}")
                 else:
@@ -2655,6 +2659,7 @@ def actualizar_venta(request, id):
                         cantidad_cuotas=cantidad_cuotas,
                         fecha_credito=venta.fecha_venta,
                         estado_credito='activo',
+                        frecuencia_pago=frecuencia_pago,
                         estado=1
                     )
                     print(f"✅ CRÉDITO CREADO (nuevo) - ID: {credito.idcredito}")

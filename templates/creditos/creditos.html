@@ -381,10 +381,13 @@
                                             <small class="text-muted" style="font-size: 0.75rem;">Se registra como Cuota 0 del crédito</small>
                                         </div>
                                         <div class="col-md-3">
-                                            <label class="form-label fw-bold">Tipo de Periodo</label>
-                                            <select id="tipo_periodo_directo" class="form-select">
-                                                <option value="dias" selected>Días</option>
-                                                <option value="meses">Meses</option>
+                                            <label class="form-label fw-bold">Frecuencia de Pago</label>
+                                            <select id="tipo_periodo_directo" name="frecuencia_pago" class="form-select">
+                                                <option value="Personalizado" selected>Personalizado</option>
+                                                <option value="Mensual">Mensual (Mes a mes)</option>
+                                                <option value="Quincenal">Quincenal (15 días)</option>
+                                                <option value="Semanal">Semanal (7 días)</option>
+                                                <option value="Diario">Diario (1 día)</option>
                                             </select>
                                         </div>
                                     </div>
@@ -1151,10 +1154,18 @@ $(document).ready(function() {
     $("#credito_dia_mes_directo").val(diaInitCredito);
 
     $("#tipo_periodo_directo").change(function() {
-        if ($(this).val() === 'meses') {
-            $("#container_dias_directo").addClass('d-none');
+        const val = $(this).val();
+        const inputDias = $("#dias_cuotas_directo");
+        if (val === 'Mensual') {
+            inputDias.val(30).prop('readonly', true);
+        } else if (val === 'Quincenal') {
+            inputDias.val(15).prop('readonly', true);
+        } else if (val === 'Semanal') {
+            inputDias.val(7).prop('readonly', true);
+        } else if (val === 'Diario') {
+            inputDias.val(1).prop('readonly', true);
         } else {
-            $("#container_dias_directo").removeClass('d-none');
+            inputDias.prop('readonly', false);
         }
     });
 
@@ -1217,7 +1228,7 @@ $(document).ready(function() {
             });
 
             // ADVANCE DATE FOR NEXT ITERATION
-            if (tipoPeriodo === 'meses') {
+            if (tipoPeriodo === 'Mensual') {
                 let currentMonth = fechaActual.getMonth();
                 let currentYear = fechaActual.getFullYear();
                 let nextMonth = currentMonth + 1;
