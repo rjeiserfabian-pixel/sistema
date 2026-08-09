@@ -199,13 +199,38 @@ def editarEmpresa(request):
             if dias_mora_inicio:
                 empresa.dias_mora_inicio = int(dias_mora_inicio)
                 
-            limite_dias_verde = request.POST.get('limiteDiasVerde')
-            if limite_dias_verde:
-                empresa.limite_dias_verde = int(limite_dias_verde)
-                
-            limite_dias_amarillo = request.POST.get('limiteDiasAmarillo')
-            if limite_dias_amarillo:
-                empresa.limite_dias_amarillo = int(limite_dias_amarillo)
+            # ── Límites de mora por frecuencia ────────────────────────────────
+            limite_verde_diario = request.POST.get('limiteDiasVerdeDiario')
+            if limite_verde_diario:
+                empresa.limite_dias_verde_diario = int(limite_verde_diario)
+
+            limite_amarillo_diario = request.POST.get('limiteDiasAmarilloDiario')
+            if limite_amarillo_diario:
+                empresa.limite_dias_amarillo_diario = int(limite_amarillo_diario)
+
+            limite_verde_semanal = request.POST.get('limiteDiasVerdeSemanal')
+            if limite_verde_semanal:
+                empresa.limite_dias_verde_semanal = int(limite_verde_semanal)
+
+            limite_amarillo_semanal = request.POST.get('limiteDiasAmarilloSemanal')
+            if limite_amarillo_semanal:
+                empresa.limite_dias_amarillo_semanal = int(limite_amarillo_semanal)
+
+            limite_verde_quincenal = request.POST.get('limiteDiasVerdeQuincenal')
+            if limite_verde_quincenal:
+                empresa.limite_dias_verde_quincenal = int(limite_verde_quincenal)
+
+            limite_amarillo_quincenal = request.POST.get('limiteDiasAmarilloQuincenal')
+            if limite_amarillo_quincenal:
+                empresa.limite_dias_amarillo_quincenal = int(limite_amarillo_quincenal)
+
+            limite_cuotas_verde_mensual = request.POST.get('limiteCuotasVerdeMensual')
+            if limite_cuotas_verde_mensual:
+                empresa.limite_cuotas_verde_mensual = int(limite_cuotas_verde_mensual)
+
+            limite_cuotas_amarillo_mensual = request.POST.get('limiteCuotasAmarilloMensual')
+            if limite_cuotas_amarillo_mensual:
+                empresa.limite_cuotas_amarillo_mensual = int(limite_cuotas_amarillo_mensual)
             
             # Manejo de archivo de logo
             if 'logo' in request.FILES:

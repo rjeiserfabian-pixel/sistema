@@ -124,8 +124,10 @@ class Credito(models.Model):
 
     def obtener_color_mora(self):
         """
-        Determina el color (verde, amarillo, rojo) según los días de mora
-        de la cuota vencida más antigua. Retorna None si no hay mora.
+        Determina el color (verde, amarillo, rojo) según la frecuencia de pago del crédito:
+        - Mensual: usa cantidad de cuotas vencidas vs. límites configurados en Empresa.
+        - Diario/Semanal/Quincenal/Personalizado: usa días de mora de la cuota vencida más antigua.
+        Retorna None si no hay mora.
         """
         from software.models.CuotasVentaModel import CuotasVenta
         from software.models.empresaModel import Empresa
@@ -136,29 +138,56 @@ class Credito(models.Model):
         else:
             cuotas = CuotasVenta.objects.filter(idcredito=self, estado=1)
 
-        # Buscar la cuota vencida más antigua que no esté pagada
-        cuota_vencida = cuotas.filter(
+        # Cuotas pendientes/parciales con fecha vencida
+        cuotas_vencidas = cuotas.filter(
             estado_pago__in=['Pendiente', 'Parcial'],
             fecha_vencimiento__lt=timezone.now().date()
-        ).order_by('fecha_vencimiento').first()
+        )
 
-        if not cuota_vencida:
+        if not cuotas_vencidas.exists():
             return None
-
-        # Calcular días de mora
-        dias_mora = (timezone.now().date() - cuota_vencida.fecha_vencimiento).days
 
         # Obtener configuración de empresa
         empresa = Empresa.objects.first()
-        if not empresa:
-            return 'rojo' # Fallback si no hay configuración
-            
-        limite_verde = empresa.limite_dias_verde
-        limite_amarillo = empresa.limite_dias_amarillo
 
-        if dias_mora <= limite_verde:
-            return 'verde'
-        elif dias_mora <= limite_amarillo:
-            return 'amarillo'
+        freq = (self.frecuencia_pago or 'default').lower()
+
+        if freq == 'mensual':
+            # Lógica por cuotas vencidas
+            cnt = cuotas_vencidas.count()
+            limite_verde    = empresa.limite_cuotas_verde_mensual    if empresa else 1
+            limite_amarillo = empresa.limite_cuotas_amarillo_mensual if empresa else 2
+            if cnt <= limite_verde:
+                return 'verde'
+            elif cnt <= limite_amarillo:
+                return 'amarillo'
+            else:
+                return 'rojo'
         else:
-            return 'rojo'
+            # Lógica por días — cuota vencida más antigua
+            cuota_vencida = cuotas_vencidas.order_by('fecha_vencimiento').first()
+            if not cuota_vencida:
+                return None
+
+            dias_mora = (timezone.now().date() - cuota_vencida.fecha_vencimiento).days
+
+            if freq == 'diario':
+                limite_verde    = empresa.limite_dias_verde_diario    if empresa else 5
+                limite_amarillo = empresa.limite_dias_amarillo_diario if empresa else 10
+            elif freq == 'semanal':
+                limite_verde    = empresa.limite_dias_verde_semanal    if empresa else 20
+                limite_amarillo = empresa.limite_dias_amarillo_semanal if empresa else 30
+            elif freq == 'quincenal':
+                limite_verde    = empresa.limite_dias_verde_quincenal    if empresa else 30
+                limite_amarillo = empresa.limite_dias_amarillo_quincenal if empresa else 45
+            else:
+                # Personalizado y cualquier otro: fallback a los campos originales
+                limite_verde    = empresa.limite_dias_verde    if empresa else 10
+                limite_amarillo = empresa.limite_dias_amarillo if empresa else 20
+
+            if dias_mora <= limite_verde:
+                return 'verde'
+            elif dias_mora <= limite_amarillo:
+                return 'amarillo'
+            else:
+                return 'rojo'

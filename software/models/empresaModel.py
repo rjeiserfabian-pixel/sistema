@@ -301,6 +301,52 @@ class Empresa(models.Model):
         verbose_name='Límite Días Amarillo',
         help_text='Hasta cuántos días de mora se muestra el color amarillo (mayor a esto será rojo)'
     )
+
+    # ── Límites de mora por frecuencia de pago ────────────────────────────────
+    # Diario
+    limite_dias_verde_diario = models.IntegerField(
+        default=5,
+        verbose_name='Límite Verde (Diario)',
+        help_text='Días de mora para color verde en créditos diarios'
+    )
+    limite_dias_amarillo_diario = models.IntegerField(
+        default=10,
+        verbose_name='Límite Amarillo (Diario)',
+        help_text='Días de mora para color amarillo en créditos diarios (más es rojo)'
+    )
+    # Semanal
+    limite_dias_verde_semanal = models.IntegerField(
+        default=20,
+        verbose_name='Límite Verde (Semanal)',
+        help_text='Días de mora para color verde en créditos semanales'
+    )
+    limite_dias_amarillo_semanal = models.IntegerField(
+        default=30,
+        verbose_name='Límite Amarillo (Semanal)',
+        help_text='Días de mora para color amarillo en créditos semanales (más es rojo)'
+    )
+    # Quincenal
+    limite_dias_verde_quincenal = models.IntegerField(
+        default=30,
+        verbose_name='Límite Verde (Quincenal)',
+        help_text='Días de mora para color verde en créditos quincenales'
+    )
+    limite_dias_amarillo_quincenal = models.IntegerField(
+        default=45,
+        verbose_name='Límite Amarillo (Quincenal)',
+        help_text='Días de mora para color amarillo en créditos quincenales (más es rojo)'
+    )
+    # Mensual (se usan cuotas vencidas, no días)
+    limite_cuotas_verde_mensual = models.IntegerField(
+        default=1,
+        verbose_name='Límite Verde (Mensual - Cuotas)',
+        help_text='Número de cuotas vencidas para color verde en créditos mensuales'
+    )
+    limite_cuotas_amarillo_mensual = models.IntegerField(
+        default=2,
+        verbose_name='Límite Amarillo (Mensual - Cuotas)',
+        help_text='Número de cuotas vencidas para color amarillo en créditos mensuales (más es rojo)'
+    )
     
     # Campos de auditoría
     fecha_creacion = models.DateTimeField(

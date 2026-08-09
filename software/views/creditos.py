@@ -3887,6 +3887,7 @@ def api_listar_creditos(request):
         page = request.GET.get('page', '1')
         estado_filtro = request.GET.get('estado', 'todos')
         color_mora = request.GET.get('color_mora', 'todos')
+        frecuencia = request.GET.get('frecuencia', 'todos')
         busqueda = request.GET.get('busqueda', '').strip()
         fecha_desde = request.GET.get('fecha_desde', '')
         fecha_hasta = request.GET.get('fecha_hasta', '')
@@ -3938,6 +3939,10 @@ def api_listar_creditos(request):
         if estado_filtro != 'todos':
             creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
             
+        # Filtrar por Tipo de Periodo (Frecuencia)
+        if frecuencia != 'todos':
+            creditos_qs = creditos_qs.filter(frecuencia_pago__iexact=frecuencia)
+            
         # 4.1. Anotar con Subquery para obtener la cuota vencida más antigua (optimización N+1)
         oldest_cuota_venta_qs = CuotasVenta.objects.filter(
             idventa=OuterRef('idventa'),
@@ -3951,28 +3956,119 @@ def api_listar_creditos(request):
             estado_pago__in=['Pendiente', 'Parcial']
         ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
 
+        # Subquery para contar cuotas vencidas (usado para frecuencia Mensual)
+        cuotas_vencidas_venta_qs = CuotasVenta.objects.filter(
+            idventa=OuterRef('idventa'),
+            estado=1,
+            estado_pago__in=['Pendiente', 'Parcial'],
+            fecha_vencimiento__lt=hoy_date
+        ).values('idventa').annotate(cnt=Count('idcuotaventa')).values('cnt')[:1]
+
+        cuotas_vencidas_credito_qs = CuotasVenta.objects.filter(
+            idcredito=OuterRef('pk'),
+            estado=1,
+            estado_pago__in=['Pendiente', 'Parcial'],
+            fecha_vencimiento__lt=hoy_date
+        ).values('idcredito').annotate(cnt=Count('idcuotaventa')).values('cnt')[:1]
+
         creditos_qs = creditos_qs.annotate(
             oldest_vencimiento=Coalesce(
                 Subquery(oldest_cuota_venta_qs),
                 Subquery(oldest_cuota_credito_qs)
+            ),
+            cuotas_vencidas_count=Coalesce(
+                Subquery(cuotas_vencidas_venta_qs),
+                Subquery(cuotas_vencidas_credito_qs),
+                0
             )
         )
-        
-        empresa = Empresa.objects.first()
-        limite_verde = empresa.limite_dias_verde if empresa else 10
-        limite_amarillo = empresa.limite_dias_amarillo if empresa else 20
-        
-        # 4.2. Filtrar por color de mora
-        if color_mora != 'todos':
-            fecha_verde_inicio = hoy_date - timedelta(days=limite_verde)
-            fecha_amarillo_inicio = hoy_date - timedelta(days=limite_amarillo)
 
+        empresa = Empresa.objects.first()
+
+        # ── Límites por frecuencia (leídos de la empresa) ──────────────────────
+        lim = {
+            'diario': {
+                'verde':    empresa.limite_dias_verde_diario    if empresa else 5,
+                'amarillo': empresa.limite_dias_amarillo_diario if empresa else 10,
+            },
+            'semanal': {
+                'verde':    empresa.limite_dias_verde_semanal    if empresa else 20,
+                'amarillo': empresa.limite_dias_amarillo_semanal if empresa else 30,
+            },
+            'quincenal': {
+                'verde':    empresa.limite_dias_verde_quincenal    if empresa else 30,
+                'amarillo': empresa.limite_dias_amarillo_quincenal if empresa else 45,
+            },
+            'mensual': {
+                'verde':    empresa.limite_cuotas_verde_mensual    if empresa else 1,
+                'amarillo': empresa.limite_cuotas_amarillo_mensual if empresa else 2,
+            },
+            # Personalizado y cualquier otro: usa los campos heredados o fallback
+            'default': {
+                'verde':    empresa.limite_dias_verde    if empresa else 10,
+                'amarillo': empresa.limite_dias_amarillo if empresa else 20,
+            },
+        }
+
+        # 4.2. Filtrar por color de mora (combinando todas las frecuencias con Q objects)
+        if color_mora != 'todos':
+            # Construir filtro para creditos NO mensuales (basados en días)
+            def _q_dias(freq_key, color):
+                """Retorna un Q-filter de días para una frecuencia específica."""
+                l = lim[freq_key]
+                fecha_verde_ini    = hoy_date - timedelta(days=l['verde'])
+                fecha_amarillo_ini = hoy_date - timedelta(days=l['amarillo'])
+                if color == 'verde':
+                    return Q(frecuencia_pago__iexact=freq_key) & Q(
+                        oldest_vencimiento__gte=fecha_verde_ini,
+                        oldest_vencimiento__lt=hoy_date
+                    )
+                elif color == 'amarillo':
+                    return Q(frecuencia_pago__iexact=freq_key) & Q(
+                        oldest_vencimiento__gte=fecha_amarillo_ini,
+                        oldest_vencimiento__lt=fecha_verde_ini
+                    )
+                else:  # rojo
+                    return Q(frecuencia_pago__iexact=freq_key) & Q(
+                        oldest_vencimiento__lt=fecha_amarillo_ini
+                    )
+
+            # Filtro para creditos Mensuales (basado en cuotas vencidas)
+            lm = lim['mensual']
             if color_mora == 'verde':
-                creditos_qs = creditos_qs.filter(oldest_vencimiento__gte=fecha_verde_inicio, oldest_vencimiento__lt=hoy_date)
+                q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                    cuotas_vencidas_count__gte=1,
+                    cuotas_vencidas_count__lte=lm['verde']
+                )
+                q_no_mensual = (
+                    _q_dias('diario', 'verde') |
+                    _q_dias('semanal', 'verde') |
+                    _q_dias('quincenal', 'verde') |
+                    _q_dias('default', 'verde')
+                )
             elif color_mora == 'amarillo':
-                creditos_qs = creditos_qs.filter(oldest_vencimiento__gte=fecha_amarillo_inicio, oldest_vencimiento__lt=fecha_verde_inicio)
-            elif color_mora == 'rojo':
-                creditos_qs = creditos_qs.filter(oldest_vencimiento__lt=fecha_amarillo_inicio)
+                q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                    cuotas_vencidas_count__gt=lm['verde'],
+                    cuotas_vencidas_count__lte=lm['amarillo']
+                )
+                q_no_mensual = (
+                    _q_dias('diario', 'amarillo') |
+                    _q_dias('semanal', 'amarillo') |
+                    _q_dias('quincenal', 'amarillo') |
+                    _q_dias('default', 'amarillo')
+                )
+            else:  # rojo
+                q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                    cuotas_vencidas_count__gt=lm['amarillo']
+                )
+                q_no_mensual = (
+                    _q_dias('diario', 'rojo') |
+                    _q_dias('semanal', 'rojo') |
+                    _q_dias('quincenal', 'rojo') |
+                    _q_dias('default', 'rojo')
+                )
+
+            creditos_qs = creditos_qs.filter(q_mensual | q_no_mensual)
 
         # 5. Filtrar por búsqueda general
         if busqueda:
@@ -4081,16 +4177,31 @@ def api_listar_creditos(request):
             else:
                 cliente_nombre_truncado = "Sin Cliente"
 
-            # Calcular color mora usando la anotación (sin consultas extra)
+            # ── Calcular color mora por frecuencia (sin consultas extra) ──────
             color_mora_calculado = None
-            if c.oldest_vencimiento and c.oldest_vencimiento < hoy_date:
-                dias_mora = (hoy_date - c.oldest_vencimiento).days
-                if dias_mora <= limite_verde:
-                    color_mora_calculado = 'verde'
-                elif dias_mora <= limite_amarillo:
-                    color_mora_calculado = 'amarillo'
-                else:
-                    color_mora_calculado = 'rojo'
+            freq = (c.frecuencia_pago or 'default').lower()
+            limits_freq = lim.get(freq, lim['default'])
+
+            if freq == 'mensual':
+                # Para mensuales: usar cuotas vencidas
+                cnt = c.cuotas_vencidas_count or 0
+                if cnt >= 1:
+                    if cnt <= limits_freq['verde']:
+                        color_mora_calculado = 'verde'
+                    elif cnt <= limits_freq['amarillo']:
+                        color_mora_calculado = 'amarillo'
+                    else:
+                        color_mora_calculado = 'rojo'
+            else:
+                # Para todas las demás frecuencias: usar días de mora
+                if c.oldest_vencimiento and c.oldest_vencimiento < hoy_date:
+                    dias_mora = (hoy_date - c.oldest_vencimiento).days
+                    if dias_mora <= limits_freq['verde']:
+                        color_mora_calculado = 'verde'
+                    elif dias_mora <= limits_freq['amarillo']:
+                        color_mora_calculado = 'amarillo'
+                    else:
+                        color_mora_calculado = 'rojo'
 
             creditos_serializados.append({
                 'idcredito': c.idcredito,

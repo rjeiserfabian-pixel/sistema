@@ -363,17 +363,86 @@
             </div>
 
             <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold text-success"><i class="bi bi-circle-fill text-success me-1"></i>Límite Días Verde (Mora)</label>
-                <input type="number" name="limiteDiasVerde" class="form-control border-success-subtle" value="{{ empresa.limite_dias_verde|default:10 }}" required min="1">
-                <small class="text-muted">Créditos con mora hasta estos días se verán verdes.</small>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold text-warning"><i class="bi bi-circle-fill text-warning me-1"></i>Límite Días Amarillo (Mora)</label>
-                <input type="number" name="limiteDiasAmarillo" class="form-control border-warning-subtle" value="{{ empresa.limite_dias_amarillo|default:20 }}" required min="1">
-                <small class="text-muted">Créditos con mora hasta estos días se verán amarillos. Mayor a esto se verán rojos.</small>
+              <div class="col-md-12">
+                <label class="form-label fw-bold text-secondary"><i class="bi bi-grid-3x3-gap-fill me-1"></i>Límites de Color de Mora por Frecuencia de Pago</label>
+                <p class="text-muted small mb-2">Configura cuántos días (o cuotas, en el caso mensual) deben haber vencido para que un crédito cambie de color verde → amarillo → rojo.</p>
               </div>
             </div>
+
+            {# Fila 1: Diario y Semanal #}
+            <div class="row mb-3">
+              {# Diario #}
+              <div class="col-md-6 border-end">
+                <div class="d-flex align-items-center mb-2">
+                  <span class="badge bg-secondary"><i class="bi bi-calendar-day me-1"></i>Diario</span>
+                </div>
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label text-success mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Verde (días)</label>
+                    <input type="number" name="limiteDiasVerdeDiario" class="form-control form-control-sm border-success-subtle" value="{{ empresa.limite_dias_verde_diario|default:5 }}" required min="1">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-warning mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Amar. (días)</label>
+                    <input type="number" name="limiteDiasAmarilloDiario" class="form-control form-control-sm border-warning-subtle" value="{{ empresa.limite_dias_amarillo_diario|default:10 }}" required min="1">
+                  </div>
+                </div>
+              </div>
+              
+              {# Semanal #}
+              <div class="col-md-6">
+                <div class="d-flex align-items-center mb-2">
+                  <span class="badge bg-secondary"><i class="bi bi-calendar-week me-1"></i>Semanal</span>
+                </div>
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label text-success mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Verde (días)</label>
+                    <input type="number" name="limiteDiasVerdeSemanal" class="form-control form-control-sm border-success-subtle" value="{{ empresa.limite_dias_verde_semanal|default:20 }}" required min="1">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-warning mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Amar. (días)</label>
+                    <input type="number" name="limiteDiasAmarilloSemanal" class="form-control form-control-sm border-warning-subtle" value="{{ empresa.limite_dias_amarillo_semanal|default:30 }}" required min="1">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {# Fila 2: Quincenal y Mensual #}
+            <div class="row mb-3">
+              {# Quincenal #}
+              <div class="col-md-6 border-end">
+                <div class="d-flex align-items-center mb-2">
+                  <span class="badge bg-secondary"><i class="bi bi-calendar2-week me-1"></i>Quincenal</span>
+                </div>
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label text-success mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Verde (días)</label>
+                    <input type="number" name="limiteDiasVerdeQuincenal" class="form-control form-control-sm border-success-subtle" value="{{ empresa.limite_dias_verde_quincenal|default:30 }}" required min="1">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-warning mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Amar. (días)</label>
+                    <input type="number" name="limiteDiasAmarilloQuincenal" class="form-control form-control-sm border-warning-subtle" value="{{ empresa.limite_dias_amarillo_quincenal|default:45 }}" required min="1">
+                  </div>
+                </div>
+              </div>
+
+              {# Mensual #}
+              <div class="col-md-6">
+                <div class="d-flex align-items-center mb-2">
+                  <span class="badge bg-secondary"><i class="bi bi-calendar3 me-1"></i>Mensual</span>
+                </div>
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label text-success mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Verde (cuotas)</label>
+                    <input type="number" name="limiteCuotasVerdeMensual" class="form-control form-control-sm border-success-subtle" value="{{ empresa.limite_cuotas_verde_mensual|default:1 }}" required min="1">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-warning mb-1" style="font-size: 0.8rem;"><i class="bi bi-circle-fill me-1"></i>Amar. (cuotas)</label>
+                    <input type="number" name="limiteCuotasAmarilloMensual" class="form-control form-control-sm border-warning-subtle" value="{{ empresa.limite_cuotas_amarillo_mensual|default:2 }}" required min="1">
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
             <div class="row mb-3">
               <div class="col-md-12">
