@@ -57,6 +57,14 @@
           <i class="fa-solid fa-magnifying-glass-location me-2 text-info"></i>Buscar en Otras Sucursales
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold px-4 py-2" id="tab-historial-btn"
+          data-bs-toggle="tab" data-bs-target="#tab-historial" type="button" role="tab"
+          aria-controls="tab-historial" aria-selected="false"
+          style="border-radius: 10px 10px 0 0; border: 1.5px solid #dee2e6; border-bottom: none;">
+          <i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i>Historial Vehicular
+        </button>
+      </li>
     </ul>
 
     <div class="tab-content" id="stockTabsContent">
@@ -200,6 +208,62 @@
         <div id="globalSearchResults" class="d-none"></div>
 
       </div><!-- /tab-pane BUSCAR EN OTRAS SUCURSALES -->
+
+      <!-- ══ PESTAÑA 3: HISTORIAL VEHICULAR ══════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-historial" role="tabpanel" aria-labelledby="tab-historial-btn">
+
+        <!-- Header informativo -->
+        <div class="card shadow-sm border-0 mb-4" style="background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 16px; border: 1.5px solid rgba(255,210,0,0.3) !important;">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <div style="background: linear-gradient(135deg, #f7971e, #ffd200); border-radius: 12px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fa-solid fa-clock-rotate-left text-dark fs-5"></i>
+              </div>
+              <div>
+                <h5 class="mb-0 fw-bold" style="color:#ffd200;">Historial de Recaudación Vehicular</h5>
+                <small class="text-white-50">Busca cualquier vehículo (vendido, disponible, retenido) y consulta cuánto ha generado para la empresa.</small>
+              </div>
+            </div>
+            <!-- Buscador universal de vehículos -->
+            <div class="row g-2 align-items-end">
+              <div class="col-md-12">
+                <label class="form-label fw-semibold mb-1" style="color:#ffd200;">
+                  <i class="fa-solid fa-search me-1"></i>Buscar vehículo por nombre, motor o chasis
+                </label>
+                <div class="input-group shadow-sm">
+                  <span class="input-group-text border-end-0" style="background:rgba(255,255,255,0.1); border-color:rgba(255,210,0,0.4); border-radius: 10px 0 0 10px;">
+                    <i class="fa-solid fa-search" style="color:#ffd200;"></i>
+                  </span>
+                  <input type="text" id="historialSearchInput" class="form-control border-start-0 shadow-none"
+                    placeholder="Ej: TRIMOTO, motor WX150, chasis LDAPAK..."
+                    autocomplete="off"
+                    style="background:rgba(255,255,255,0.08); color:#fff; border-color:rgba(255,210,0,0.4); border-radius: 0 10px 10px 0; font-size: 0.95rem;"
+                    oninput="buscarVehiculosHistorial(this.value, 1)">
+                </div>
+                <div class="form-text" style="color:rgba(255,255,255,0.5);">Busca en todos los vehículos del sistema sin importar su estado. Si se deja en blanco, se muestran los más recientes.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spinner -->
+        <div id="historialSearchSpinner" class="text-center py-4 d-none">
+          <div class="spinner-border" style="color:#ffd200; width: 3rem; height: 3rem;" role="status"></div>
+          <p class="mt-3 fw-semibold" style="color:rgba(255,255,255,0.6);">Buscando vehículos...</p>
+        </div>
+
+        <!-- Estado vacío inicial -->
+        <div id="historialSearchEmpty" class="text-center py-5">
+          <div style="font-size: 4rem; opacity: 0.25; margin-bottom: 1rem; color: #ffd200;">
+            <i class="fa-solid fa-motorcycle"></i>
+          </div>
+          <p style="color:rgba(255,255,255,0.5);" class="fs-6">Ingrese el nombre, motor o chasis del vehículo para buscar su historial.</p>
+        </div>
+
+        <!-- Resultados -->
+        <div id="historialSearchResults" class="d-none"></div>
+
+      </div><!-- /tab-pane HISTORIAL VEHICULAR -->
 
     </div><!-- /tab-content -->
 
@@ -611,6 +675,104 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-info text-white fw-bold" id="btnGuardarMover" onclick="guardarMoverStock()">Mover Stock</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL HISTORIAL DE RECAUDACIÓN POR VEHÍCULO ══════════════════════ -->
+  <script>
+    // Mover el modal al body para evitar que el backdrop oscuro lo tape
+    document.addEventListener("DOMContentLoaded", function() {
+      var mod = document.getElementById("modalRecaudacion");
+      if (mod) {
+        document.body.appendChild(mod);
+      }
+    });
+  </script>
+  <div class="modal fade" id="modalRecaudacion" tabindex="-1" aria-labelledby="modalRecaudacionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 90%;">
+      <div class="modal-content border-0" style="background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); color: #fff; border-radius: 20px; overflow: hidden;">
+        <!-- Header -->
+        <div class="modal-header border-0 pb-0" style="background: rgba(255,255,255,0.05);">
+          <div class="d-flex align-items-center gap-3">
+            <div style="background: linear-gradient(135deg, #f7971e, #ffd200); border-radius: 14px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+              <i class="fa-solid fa-coins fa-lg text-dark"></i>
+            </div>
+            <div>
+              <h5 class="modal-title mb-0 fw-bold" id="modalRecaudacionLabel" style="font-size:1.2rem;">Historial de Recaudación</h5>
+              <small class="text-white-50" id="recaudacion-vehiculo-nombre">Cargando vehículo...</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <!-- Body -->
+        <div class="modal-body px-4 py-3">
+          <!-- Loading spinner -->
+          <div id="recaudacion-loading" class="text-center py-5">
+            <div class="spinner-border text-warning" style="width:3rem;height:3rem;" role="status"></div>
+            <p class="mt-3 text-white-50">Calculando recaudación...</p>
+          </div>
+
+          <!-- Content (hidden until loaded) -->
+          <div id="recaudacion-content" style="display:none;">
+
+            <!-- Ficha del vehículo -->
+            <div class="row g-3 mb-4" id="recaudacion-vehiculo-info"></div>
+
+            <!-- Tarjeta TOTAL RECAUDADO -->
+            <div class="card border-0 mb-4" style="background: linear-gradient(135deg, #f7971e, #ffd200); border-radius: 16px;">
+              <div class="card-body d-flex justify-content-between align-items-center py-3 px-4">
+                <div>
+                  <div class="text-dark opacity-75 fw-semibold small text-uppercase">💰 Total Recaudado por este vehículo</div>
+                  <div class="fw-bold text-dark" style="font-size: 2.2rem;" id="recaudacion-total">S/ 0.00</div>
+                  <div class="text-dark opacity-70 small" id="recaudacion-total-ventas">0 ventas registradas</div>
+                </div>
+                <i class="fa-solid fa-sack-dollar fa-3x text-dark opacity-30"></i>
+              </div>
+            </div>
+
+            <!-- Tabla historial de ventas -->
+            <div class="card border-0" style="background: rgba(255,255,255,0.07); border-radius: 16px; overflow: hidden;">
+              <div class="card-header border-0 py-2 px-4" style="background: rgba(255,255,255,0.1);">
+                <h6 class="mb-0 fw-bold text-white"><i class="fa-solid fa-timeline me-2 text-warning"></i>Línea de Tiempo de Ventas</h6>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle" style="color: #fff;">
+                  <thead style="background: rgba(255,255,255,0.12);">
+                    <tr>
+                      <th class="ps-4">#</th>
+                      <th><i class="fa-regular fa-calendar me-1"></i>Fecha</th>
+                      <th>Comprobante</th>
+                      <th>Cliente</th>
+                      <th class="text-center">Tipo</th>
+                      <th class="text-center">Estado Crédito</th>
+                      <th class="text-end">Inicial</th>
+                      <th class="text-end">Cuotas Cobradas</th>
+                      <th class="text-end pe-4">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recaudacion-tabla-body">
+                  </tbody>
+                  <tfoot id="recaudacion-tabla-foot" style="background: rgba(247,151,30,0.15); font-weight: 700; color: #ffd200;">
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+          </div><!-- /recaudacion-content -->
+
+          <!-- Error state -->
+          <div id="recaudacion-error" style="display:none;" class="text-center py-5">
+            <i class="fa-solid fa-triangle-exclamation fa-3x text-danger mb-3"></i>
+            <p class="text-white-50">No se pudo cargar la información. Intente de nuevo.</p>
+          </div>
+
+        </div><!-- /modal-body -->
+
+        <div class="modal-footer border-0" style="background: rgba(255,255,255,0.05);">
+          <button type="button" class="btn btn-outline-light rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>
@@ -2421,5 +2583,246 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
 });
+
+// ══ HISTORIAL DE RECAUDACIÓN POR VEHÍCULO ══════════════════════════════════
+// Pestaña 3 - Buscar vehículos para historial
+
+var historialDebounce = null;
+var currentHistorialQuery = '';
+var currentHistorialPage = 1;
+
+// Escuchar cuando se abre la pestaña para cargar la lista inicial
+document.addEventListener('DOMContentLoaded', function() {
+  var tabHistorial = document.getElementById('tab-historial-btn');
+  if (tabHistorial) {
+    tabHistorial.addEventListener('shown.bs.tab', function (e) {
+      // Si está vacío, cargar la página 1 inicial
+      if (document.getElementById('historialSearchResults').innerHTML.trim() === '') {
+        _ejecutarBusquedaHistorial('', 1);
+      }
+    });
+  }
+});
+
+function buscarVehiculosHistorial(valor, page) {
+  clearTimeout(historialDebounce);
+  historialDebounce = setTimeout(function() {
+    _ejecutarBusquedaHistorial(valor, page || 1);
+  }, 350);
+}
+
+function cambiarPaginaHistorial(page) {
+    _ejecutarBusquedaHistorial(currentHistorialQuery, page);
+}
+
+function _ejecutarBusquedaHistorial(query, page) {
+  currentHistorialQuery = (query === undefined || query === null) ? '' : query.trim();
+  currentHistorialPage = page || 1;
+  
+  var spinner  = document.getElementById('historialSearchSpinner');
+  var empty    = document.getElementById('historialSearchEmpty');
+  var results  = document.getElementById('historialSearchResults');
+
+  spinner.classList.remove('d-none');
+  empty.classList.add('d-none');
+  results.classList.add('d-none');
+
+  var url = '/stock/api/historial/buscar/?page=' + currentHistorialPage;
+  if (currentHistorialQuery) {
+      url += '&q=' + encodeURIComponent(currentHistorialQuery);
+  }
+
+  fetch(url)
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      spinner.classList.add('d-none');
+
+      if (!data.vehiculos || data.vehiculos.length === 0) {
+        results.classList.add('d-none');
+        empty.classList.remove('d-none');
+        empty.innerHTML =
+          '<div style="font-size:4rem;opacity:0.25;margin-bottom:1rem;color:#ffd200;"><i class="fa-solid fa-motorcycle"></i></div>' +
+          '<p style="color:rgba(255,255,255,0.5);" class="fs-6">No se encontraron vehículos.</p>';
+        return;
+      }
+
+      empty.classList.add('d-none');
+      results.classList.remove('d-none');
+
+      var html = '<div class="d-flex justify-content-between align-items-center mb-3">';
+      html += '<p style="color:rgba(255,255,255,0.5);" class="mb-0 small"><i class="fa-solid fa-check-circle text-warning me-1"></i>Mostrando ' + data.vehiculos.length + ' de ' + data.total + ' vehículo(s)</p>';
+      html += '</div>';
+      
+      html += '<div class="row g-3 mb-4">';
+
+      data.vehiculos.forEach(function(v) {
+        // Badge de estado
+        var enStockBadge = v.en_stock
+          ? '<span class="badge bg-success ms-1">En Stock</span>'
+          : '<span class="badge bg-secondary ms-1">Sin Stock</span>';
+          
+        var vendidoBadge = '';
+        if (v.fue_vendido) {
+            var tipoText = v.tipo_venta ? ' (' + v.tipo_venta + ')' : '';
+            vendidoBadge = '<span class="badge ms-1" style="background:#3b82f6;">Vendido' + tipoText + '</span>';
+        }
+
+        html +=
+          '<div class="col-md-6 col-xl-4">' +
+          '<div class="card border-0 h-100" style="background:rgba(255,255,255,0.07);border-radius:14px;border:1px solid rgba(255,210,0,0.15)!important;transition:transform 0.15s;" ' +
+          'onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'\'"> ' +
+          '<div class="card-body d-flex flex-column gap-2">' +
+          '<div class="fw-bold" style="color:#ffd200;font-size:0.95rem;">' + v.nombre + '</div>' +
+          '<div class="d-flex flex-wrap gap-1">' + enStockBadge + vendidoBadge + '</div>' +
+          '<div class="small" style="color:rgba(255,255,255,0.6);">' +
+            '<i class="fa-solid fa-gear me-1 text-warning opacity-75"></i>Motor: <code style="color:#7dd3fc; background:transparent!important; padding:0;">' + v.serie_motor + '</code>' +
+          '</div>' +
+          '<div class="small" style="color:rgba(255,255,255,0.6);">' +
+            '<i class="fa-solid fa-car me-1 text-warning opacity-75"></i>Chasis: <code style="color:#7dd3fc; background:transparent!important; padding:0;">' + v.serie_chasis + '</code>' +
+          '</div>' +
+          '<div class="small" style="color:rgba(255,255,255,0.6);">' +
+            '<i class="fa-solid fa-calendar me-1 text-warning opacity-75"></i>Año: ' + v.anio + ' &nbsp;|&nbsp; ' +
+            '<i class="fa-solid fa-circle-info me-1 text-warning opacity-75"></i>' + v.estado_producto +
+          '</div>' +
+          '<div class="mt-auto pt-2">' +
+            '<button class="btn btn-sm fw-bold w-100" ' +
+              'onclick="abrirModalRecaudacion(' + v.id_vehiculo + ')" ' +
+              'style="background:linear-gradient(135deg,#f7971e,#ffd200);color:#000;border:none;border-radius:10px;">' +
+              '<i class="fa-solid fa-coins me-2"></i>Ver Recaudación' +
+            '</button>' +
+          '</div>' +
+          '</div></div></div>';
+      });
+      html += '</div>';
+
+      // Añadir paginación si hay más de 1 página
+      if (data.total_pages > 1) {
+        var onClickFnStr = 'cambiarPaginaHistorial(__PAGE__)';
+        // GenerarHTMLPaginacion asume un entorno Bootstrap con ciertas clases, pero como estamos en un contenedor dark,
+        // envolveremos en un div para aislarlo o usaremos el HTML paginador existente.
+        html += '<div class="d-flex justify-content-center bg-white rounded-3 p-2 d-inline-block mx-auto mb-3" style="width:fit-content;">' + 
+                 generarHtmlPaginacion(data.page, data.total_pages, onClickFnStr) + 
+                '</div>';
+      }
+
+      results.innerHTML = html;
+    })
+    .catch(function(err) {
+      spinner.classList.add('d-none');
+      empty.classList.remove('d-none');
+      empty.innerHTML = '<i class="fa-solid fa-triangle-exclamation fa-2x text-danger mb-2"></i><br><span style="color:rgba(255,255,255,0.5);">Error al buscar. Intente de nuevo.</span>';
+      console.error('Error en buscarVehiculosHistorial:', err);
+    });
+}
+
+function abrirModalRecaudacion(idVehiculo) {
+  // Reset estado del modal
+  document.getElementById('recaudacion-loading').style.display = 'block';
+  document.getElementById('recaudacion-content').style.display = 'none';
+  document.getElementById('recaudacion-error').style.display = 'none';
+  document.getElementById('recaudacion-vehiculo-nombre').textContent = 'Cargando...';
+
+  var modalEl = document.getElementById('modalRecaudacion');
+  _mostrarModalRecaudacion(idVehiculo, modalEl);
+}
+
+function _mostrarModalRecaudacion(idVehiculo, modalEl) {
+  // Destruir cualquier instancia anterior para evitar el bug del backdrop duplicado
+  var instanciaAnterior = bootstrap.Modal.getInstance(modalEl);
+  if (instanciaAnterior) {
+    instanciaAnterior.dispose();
+  }
+  
+  // Limpiar clases residuales de Bootstrap que bloquean la reapertura
+  modalEl.classList.remove('show');
+  document.body.classList.remove('modal-open');
+  var backdrops = document.querySelectorAll('.modal-backdrop');
+  backdrops.forEach(function(bd) { bd.remove(); });
+  
+  // Crear instancia nueva y mostrarla
+  var modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  // Fetch API de recaudación
+  fetch('/stock/api/recaudacion/' + idVehiculo + '/')
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('Error ' + resp.status);
+      return resp.json();
+    })
+    .then(function(data) {
+      var v = data.vehiculo;
+      document.getElementById('recaudacion-vehiculo-nombre').textContent = v.nombre;
+
+      // Ficha del vehículo
+      document.getElementById('recaudacion-vehiculo-info').innerHTML =
+        '<div class="col-md-3">' +
+          '<div class="p-3 rounded-3" style="background:rgba(255,255,255,0.08);">' +
+          '<div class="text-white-50 small">Motor</div><div class="fw-bold">' + v.serie_motor + '</div>' +
+          '</div></div>' +
+        '<div class="col-md-3">' +
+          '<div class="p-3 rounded-3" style="background:rgba(255,255,255,0.08);">' +
+          '<div class="text-white-50 small">Chasis</div><div class="fw-bold">' + v.serie_chasis + '</div>' +
+          '</div></div>' +
+        '<div class="col-md-3">' +
+          '<div class="p-3 rounded-3" style="background:rgba(255,255,255,0.08);">' +
+          '<div class="text-white-50 small">Año</div><div class="fw-bold">' + v.anio + '</div>' +
+          '</div></div>' +
+        '<div class="col-md-3">' +
+          '<div class="p-3 rounded-3" style="background:rgba(255,255,255,0.08);">' +
+          '<div class="text-white-50 small">Estado</div><div class="fw-bold">' + v.estado + '</div>' +
+          '</div></div>';
+
+      // Total
+      document.getElementById('recaudacion-total').textContent = 'S/ ' + parseFloat(data.total_recaudado).toFixed(2);
+      document.getElementById('recaudacion-total-ventas').textContent = data.total_ventas + ' venta(s) registrada(s)';
+
+      // Tabla
+      var filas = '';
+      data.ventas.forEach(function(venta, idx) {
+        var tipoBadge = venta.tipo === 'Crédito'
+          ? '<span class="badge rounded-pill" style="background:#3b82f6;">Crédito</span>'
+          : '<span class="badge rounded-pill bg-success">Contado</span>';
+
+        var estadoBadge = '-';
+        if (venta.estado_credito) {
+          var ec = venta.estado_credito.toLowerCase();
+          if (ec === 'mora') estadoBadge = '<span class="badge bg-danger">' + venta.estado_credito + '</span>';
+          else if (ec === 'pagado') estadoBadge = '<span class="badge bg-success">' + venta.estado_credito + '</span>';
+          else if (ec === 'cancelado') estadoBadge = '<span class="badge bg-warning text-dark">' + venta.estado_credito + '</span>';
+          else if (ec === 'anulado') estadoBadge = '<span class="badge bg-secondary">' + venta.estado_credito + '</span>';
+          else estadoBadge = '<span class="badge" style="background:rgba(255,255,255,0.2);">' + venta.estado_credito + '</span>';
+        }
+
+        filas +=
+          '<tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">' +
+          '<td class="ps-4 text-white-50">' + (idx + 1) + '</td>' +
+          '<td>' + venta.fecha_venta + '</td>' +
+          '<td><code style="color:#7dd3fc; background:transparent!important; padding:0; font-weight:bold; font-size:0.95rem;">' + venta.comprobante + '</code></td>' +
+          '<td>' + venta.cliente + '</td>' +
+          '<td class="text-center">' + tipoBadge + '</td>' +
+          '<td class="text-center">' + estadoBadge + '</td>' +
+          '<td class="text-end text-white-50">S/ ' + parseFloat(venta.inicial).toFixed(2) + '</td>' +
+          '<td class="text-end text-white-50">S/ ' + parseFloat(venta.cuotas_pagadas).toFixed(2) + '</td>' +
+          '<td class="text-end pe-4 fw-bold" style="color:#ffd200;">S/ ' + parseFloat(venta.recaudado).toFixed(2) + '</td>' +
+          '</tr>';
+      });
+
+      document.getElementById('recaudacion-tabla-body').innerHTML = filas ||
+        '<tr><td colspan="9" class="text-center text-white-50 py-4">Este vehículo aún no tiene ventas registradas.</td></tr>';
+
+      document.getElementById('recaudacion-tabla-foot').innerHTML =
+        '<tr><td colspan="8" class="text-end pe-3">TOTAL RECAUDADO:</td>' +
+        '<td class="text-end pe-4" style="font-size:1.1rem;">S/ ' + parseFloat(data.total_recaudado).toFixed(2) + '</td></tr>';
+
+      document.getElementById('recaudacion-loading').style.display = 'none';
+      document.getElementById('recaudacion-content').style.display = 'block';
+    })
+    .catch(function(err) {
+      document.getElementById('recaudacion-loading').style.display = 'none';
+      document.getElementById('recaudacion-error').style.display = 'block';
+      console.error('Error al cargar recaudacion:', err);
+    });
+}
+
 </script>
 {% endblock %}

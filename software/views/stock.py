@@ -1429,3 +1429,222 @@ def api_solicitar_traslado_desde_stock(request):
             transferencia.id_transferencia
         ),
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API: Historial de Recaudación por Vehículo
+# ─────────────────────────────────────────────────────────────────────────────
+def api_historial_recaudacion_vehiculo(request, id_vehiculo):
+    """
+    Calcula y retorna el historial completo de recaudación de un vehículo
+    a lo largo de toda su vida en el sistema (múltiples ventas / re-ventas).
+    """
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return JsonResponse({'error': 'No autenticado'}, status=401)
+
+    from software.models.VentaDetalleModel import VentaDetalle
+    from software.models.CreditoModel import Credito
+    from software.models.PagoCuotaModel import PagoCuota
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+    from decimal import Decimal
+
+    try:
+        vehiculo = Vehiculo.objects.select_related(
+            'idproducto__idmarca', 'idproducto__idmodelo', 'idproducto__idcolor',
+            'idproducto__idcilindrada', 'idestadoproducto', 'id_situacion'
+        ).get(id_vehiculo=id_vehiculo)
+    except Vehiculo.DoesNotExist:
+        return JsonResponse({'error': 'Vehículo no encontrado'}, status=404)
+
+    # Buscar todos los detalles de venta donde se vendió este vehículo
+    detalles = VentaDetalle.objects.filter(
+        id_vehiculo=vehiculo
+    ).select_related(
+        'idventa__idcliente',
+        'idventa__id_forma_pago',
+    ).order_by('idventa__fecha_venta')
+
+    ventas_historial = []
+    total_recaudado = Decimal('0.00')
+
+    for detalle in detalles:
+        venta = detalle.idventa
+        if not venta:
+            continue
+
+        # Datos base de la venta
+        cliente_obj = venta.idcliente
+        nombre_cliente = cliente_obj.razonsocial if cliente_obj else 'Sin cliente'
+        fecha_venta = venta.fecha_venta.strftime('%d/%m/%Y') if venta.fecha_venta else '-'
+        comprobante = venta.numero_comprobante or '-'
+        forma_pago = venta.id_forma_pago.nombre if venta.id_forma_pago else '-'
+        estado_venta = venta.estado_cobro or venta.estado or 0
+
+        # Verificar si esta venta tiene crédito asociado
+        credito = Credito.objects.filter(idventa=venta).first()
+
+        recaudado_venta = Decimal('0.00')
+        tipo = 'Contado'
+        inicial = Decimal('0.00')
+        cuotas_pagadas = Decimal('0.00')
+        estado_credito = None
+
+        if credito:
+            tipo = 'Crédito'
+            estado_credito = credito.estado_credito
+            inicial = credito.monto_adelanto or Decimal('0.00')
+
+            # Sumar todos los pagos de cuotas registrados para este crédito
+            pagos_agg = PagoCuota.objects.filter(
+                idcuotaventa__idcredito=credito,
+                estado=1
+            ).aggregate(total=Coalesce(Sum('monto_pago'), Decimal('0.00')))
+            cuotas_pagadas = pagos_agg['total']
+
+            recaudado_venta = inicial + cuotas_pagadas
+        else:
+            # Venta al contado: el subtotal es lo recaudado por este vehículo
+            tipo = 'Contado'
+            recaudado_venta = detalle.subtotal or Decimal('0.00')
+
+        total_recaudado += recaudado_venta
+
+        ventas_historial.append({
+            'comprobante': comprobante,
+            'fecha_venta': fecha_venta,
+            'cliente': nombre_cliente,
+            'forma_pago': forma_pago,
+            'tipo': tipo,
+            'estado_credito': estado_credito,
+            'inicial': float(inicial),
+            'cuotas_pagadas': float(cuotas_pagadas),
+            'recaudado': float(recaudado_venta),
+        })
+
+    # Datos del vehículo para mostrar en el modal
+    prod = vehiculo.idproducto
+    vehiculo_info = {
+        'nombre': prod.nomproducto if prod else '-',
+        'marca': prod.idmarca.nombremarca if prod and prod.idmarca else '-',
+        'modelo': prod.idmodelo.nombremodelo if prod and prod.idmodelo else '-',
+        'color': prod.idcolor.nombrecolor if prod and prod.idcolor else '-',
+        'serie_motor': vehiculo.serie_motor or '-',
+        'serie_chasis': vehiculo.serie_chasis or '-',
+        'anio': vehiculo.anio or '-',
+        'estado': vehiculo.idestadoproducto.nombreestadoproducto if vehiculo.idestadoproducto else '-',
+    }
+
+    return JsonResponse({
+        'vehiculo': vehiculo_info,
+        'ventas': ventas_historial,
+        'total_recaudado': float(total_recaudado),
+        'total_ventas': len(ventas_historial),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API: Buscar vehículos para el Historial Vehicular (busca en TODOS sin filtro de stock)
+# ─────────────────────────────────────────────────────────────────────────────
+def api_buscar_vehiculos_historial(request):
+    """
+    Busca vehículos en toda la base de datos (vendidos, en stock, retenidos, etc.)
+    para la pestaña "Historial Vehicular". Devuelve una lista simplificada de vehículos
+    que el usuario puede seleccionar para ver su historial de recaudación.
+    """
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return JsonResponse({'error': 'No autenticado'}, status=401)
+
+    query = request.GET.get('q', '').strip()
+    try:
+        page = int(request.GET.get('page', 1))
+    except ValueError:
+        page = 1
+        
+    page_size = 20
+
+    from django.core.paginator import Paginator
+    from software.models.VentaDetalleModel import VentaDetalle
+
+    vehiculos_qs = Vehiculo.objects.select_related(
+        'idproducto__idmarca', 'idproducto__idmodelo', 'idproducto__idcolor',
+        'idestadoproducto', 'id_situacion'
+    ).order_by('-id_vehiculo')
+
+    if not query:
+        # Solo mostrar los 20 más recientes sin paginar toda la base de datos
+        object_list = vehiculos_qs[:20]
+        total = 20
+        page_num = 1
+        total_pages = 1
+    else:
+        vehiculos_qs = vehiculos_qs.filter(
+            Q(idproducto__nomproducto__icontains=query) |
+            Q(serie_motor__icontains=query) |
+            Q(serie_chasis__icontains=query) |
+            Q(placas__icontains=query)
+        )
+        paginator = Paginator(vehiculos_qs, page_size)
+        try:
+            vehiculos_page = paginator.page(page)
+        except:
+            vehiculos_page = paginator.page(1)
+            
+        object_list = vehiculos_page.object_list
+        total = paginator.count
+        page_num = vehiculos_page.number
+        total_pages = paginator.num_pages
+
+    resultado = []
+    
+    # Optimizar consultas: obtener los IDs de los vehículos en esta página
+    vehiculo_ids = [v.id_vehiculo for v in object_list]
+    
+    # Comprobar si están en stock (en lote)
+    stock_ids = set(Stock.objects.filter(id_vehiculo_id__in=vehiculo_ids, estado=1, cantidad_disponible__gt=0).values_list('id_vehiculo_id', flat=True))
+
+    # Comprobar la última venta de cada vehículo para saber si fue al crédito o contado
+    from software.models.CreditoModel import Credito
+    ventas = VentaDetalle.objects.filter(id_vehiculo_id__in=vehiculo_ids).select_related('idventa').order_by('-idventa__fecha_venta', '-idventadetalle')
+    
+    ventas_por_vehiculo = {}
+    for vd in ventas:
+        if vd.id_vehiculo_id and vd.id_vehiculo_id not in ventas_por_vehiculo:
+            ventas_por_vehiculo[vd.id_vehiculo_id] = vd.idventa_id
+            
+    # De esas últimas ventas, ver cuáles tienen crédito
+    latest_venta_ids = [vid for vid in ventas_por_vehiculo.values() if vid]
+    creditos_ids = set(Credito.objects.filter(idventa_id__in=latest_venta_ids).values_list('idventa_id', flat=True))
+
+    for v in object_list:
+        prod = v.idproducto
+        en_stock = v.id_vehiculo in stock_ids
+        fue_vendido = v.id_vehiculo in ventas_por_vehiculo
+        
+        tipo_venta = None
+        if fue_vendido:
+            ultima_venta_id = ventas_por_vehiculo[v.id_vehiculo]
+            tipo_venta = 'Crédito' if ultima_venta_id in creditos_ids else 'Contado'
+
+        resultado.append({
+            'id_vehiculo': v.id_vehiculo,
+            'nombre': prod.nomproducto if prod else '-',
+            'serie_motor': v.serie_motor or '-',
+            'serie_chasis': v.serie_chasis or '-',
+            'anio': v.anio or '-',
+            'placas': v.placas or '-',
+            'estado_producto': v.idestadoproducto.nombreestadoproducto if v.idestadoproducto else '-',
+            'situacion': v.id_situacion.nombre_situacion if v.id_situacion else '-',
+            'en_stock': en_stock,
+            'fue_vendido': fue_vendido,
+            'tipo_venta': tipo_venta,
+        })
+
+    return JsonResponse({
+        'vehiculos': resultado, 
+        'total': total,
+        'page': page_num,
+        'total_pages': total_pages
+    })
