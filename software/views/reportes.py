@@ -1,3 +1,190 @@
+
+def _get_creditos_filtrados(request, fi, ff):
+    from django.utils import timezone
+    from datetime import timedelta
+    from software.models.empresaModel import Empresa
+    from django.db.models import Q, OuterRef, Subquery, Count
+    from django.db.models.functions import Coalesce
+    from software.models.CuotasVentaModel import CuotasVenta
+    from software.models.CreditoModel import Credito
+
+    estado_filtro = request.GET.get('estado', 'todos').strip().lower()
+    color_mora = request.GET.get('color_mora', 'todos').strip().lower()
+    codigo_filtro = request.GET.get('codigo', '').strip()
+    cliente_id = request.GET.get('cliente_id', '').strip()
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    frecuencia_filtro = request.GET.get('frecuencia', 'todos').strip()
+    
+    creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
+    
+    if estado_filtro in ['cancelado', 'anulado']:
+        creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
+    else:
+        creditos_qs = creditos_qs.filter(estado=1)
+        if estado_filtro != 'todos':
+            creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
+            
+    if codigo_filtro:
+        creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
+    if cliente_id:
+        creditos_qs = creditos_qs.filter(
+            Q(idcliente_id=cliente_id) |
+            Q(idventa__idcliente_id=cliente_id)
+        )
+        
+    if sucursal_filtro:
+        creditos_qs = creditos_qs.filter(
+            Q(idventa__id_sucursal_id=sucursal_filtro) | 
+            Q(id_sucursal_id=sucursal_filtro)
+        )
+    if frecuencia_filtro and frecuencia_filtro != 'todos':
+        creditos_qs = creditos_qs.filter(frecuencia_pago=frecuencia_filtro)
+
+    hoy_date = timezone.now().date()
+    
+    oldest_cuota_venta_qs = CuotasVenta.objects.filter(
+        idventa=OuterRef('idventa'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
+
+    oldest_cuota_credito_qs = CuotasVenta.objects.filter(
+        idcredito=OuterRef('pk'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
+
+    cuotas_vencidas_venta_qs = CuotasVenta.objects.filter(
+        idventa=OuterRef('idventa'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).values('idventa').annotate(cnt=Count('idcuotaventa')).values('cnt')[:1]
+
+    cuotas_vencidas_credito_qs = CuotasVenta.objects.filter(
+        idcredito=OuterRef('pk'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).values('idcredito').annotate(cnt=Count('idcuotaventa')).values('cnt')[:1]
+
+    creditos_qs = creditos_qs.annotate(
+        oldest_vencimiento=Coalesce(
+            Subquery(oldest_cuota_venta_qs),
+            Subquery(oldest_cuota_credito_qs)
+        ),
+        cuotas_vencidas_count=Coalesce(
+            Subquery(cuotas_vencidas_venta_qs),
+            Subquery(cuotas_vencidas_credito_qs),
+            0
+        )
+    )
+
+    empresa = Empresa.objects.first()
+
+    lim = {
+        'diario': {
+            'verde':    empresa.limite_dias_verde_diario    if empresa else 5,
+            'amarillo': empresa.limite_dias_amarillo_diario if empresa else 10,
+        },
+        'semanal': {
+            'verde':    empresa.limite_dias_verde_semanal    if empresa else 20,
+            'amarillo': empresa.limite_dias_amarillo_semanal if empresa else 30,
+        },
+        'quincenal': {
+            'verde':    empresa.limite_dias_verde_quincenal    if empresa else 30,
+            'amarillo': empresa.limite_dias_amarillo_quincenal if empresa else 45,
+        },
+        'mensual': {
+            'verde':    empresa.limite_cuotas_verde_mensual    if empresa else 1,
+            'amarillo': empresa.limite_cuotas_amarillo_mensual if empresa else 2,
+        },
+        'default': {
+            'verde':    empresa.limite_dias_verde    if empresa else 10,
+            'amarillo': empresa.limite_dias_amarillo if empresa else 20,
+        },
+    }
+
+    if color_mora != 'todos':
+        def _q_dias(freq_key, color):
+            l = lim[freq_key]
+            fecha_verde_ini    = hoy_date - timedelta(days=l['verde'])
+            fecha_amarillo_ini = hoy_date - timedelta(days=l['amarillo'])
+            if color == 'verde':
+                return Q(frecuencia_pago__iexact=freq_key) & Q(
+                    oldest_vencimiento__gte=fecha_verde_ini,
+                    oldest_vencimiento__lt=hoy_date
+                )
+            elif color == 'amarillo':
+                return Q(frecuencia_pago__iexact=freq_key) & Q(
+                    oldest_vencimiento__gte=fecha_amarillo_ini,
+                    oldest_vencimiento__lt=fecha_verde_ini
+                )
+            else:
+                return Q(frecuencia_pago__iexact=freq_key) & Q(
+                    oldest_vencimiento__lt=fecha_amarillo_ini
+                )
+
+        lm = lim['mensual']
+        if color_mora == 'verde':
+            q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                cuotas_vencidas_count__gte=1,
+                cuotas_vencidas_count__lte=lm['verde']
+            )
+            q_no_mensual = (
+                _q_dias('diario', 'verde') |
+                _q_dias('semanal', 'verde') |
+                _q_dias('quincenal', 'verde') |
+                _q_dias('default', 'verde')
+            )
+        elif color_mora == 'amarillo':
+            q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                cuotas_vencidas_count__gt=lm['verde'],
+                cuotas_vencidas_count__lte=lm['amarillo']
+            )
+            q_no_mensual = (
+                _q_dias('diario', 'amarillo') |
+                _q_dias('semanal', 'amarillo') |
+                _q_dias('quincenal', 'amarillo') |
+                _q_dias('default', 'amarillo')
+            )
+        else:
+            q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                cuotas_vencidas_count__gt=lm['amarillo']
+            )
+            q_no_mensual = (
+                _q_dias('diario', 'rojo') |
+                _q_dias('semanal', 'rojo') |
+                _q_dias('quincenal', 'rojo') |
+                _q_dias('default', 'rojo')
+            )
+
+        creditos_qs = creditos_qs.filter(q_mensual | q_no_mensual)
+
+    search_value = request.GET.get('search[value]', request.GET.get('search', '')).strip()
+    if search_value:
+        creditos_qs = creditos_qs.filter(
+            Q(codigo_credito__icontains=search_value) |
+            Q(idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__numero_comprobante__icontains=search_value) |
+            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(id_vehiculo__serie_motor__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(idventa__ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
+            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
+        ).distinct()
+
+    creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
+    return creditos_qs, search_value, lim
+
 """
 Vistas del módulo de Reportes.
 Todos los reportes centralizados bajo /reportes/.
@@ -1377,52 +1564,14 @@ def reporte_creditos(request):
         return redirect('iniciar_sesion')
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
-    estado_filtro = request.GET.get('estado', 'todos').strip()
+    creditos_qs, search_value, lim = _get_creditos_filtrados(request, fi, ff)
+
+    # Re-read filter values for use in cuotas/export sections below
+    estado_filtro = request.GET.get('estado', 'todos').strip().lower()
     codigo_filtro = request.GET.get('codigo', '').strip()
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
     frecuencia_filtro = request.GET.get('frecuencia', 'todos').strip()
-    id_suc = request.session.get('id_sucursal')
-    
-    creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
-    if estado_filtro != 'todos':
-        creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
-    if codigo_filtro:
-        creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
-    if cliente_id:
-        creditos_qs = creditos_qs.filter(
-            Q(idcliente_id=cliente_id) |
-            Q(idventa__idcliente_id=cliente_id)
-        )
-        
-    if sucursal_filtro:
-        creditos_qs = creditos_qs.filter(
-            Q(idventa__id_sucursal_id=sucursal_filtro) | 
-            Q(id_sucursal_id=sucursal_filtro)
-        )
-    if frecuencia_filtro and frecuencia_filtro != 'todos':
-        creditos_qs = creditos_qs.filter(frecuencia_pago=frecuencia_filtro)
-        
-    search_value = request.GET.get('search', '').strip()
-    if search_value:
-        creditos_qs = creditos_qs.filter(
-            Q(codigo_credito__icontains=search_value) |
-            Q(idcliente__razonsocial__icontains=search_value) |
-            Q(idventa__idcliente__razonsocial__icontains=search_value) |
-            Q(idventa__numero_comprobante__icontains=search_value) |
-            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
-            Q(id_vehiculo__serie_chasis__icontains=search_value) |
-            Q(id_vehiculo__serie_motor__icontains=search_value) |
-            Q(idventa__ventadetalle__id_vehiculo__idproducto__nomproducto__icontains=search_value) |
-            Q(idventa__ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
-            Q(idventa__ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
-            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
-            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
-            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
-            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
-        ).distinct()
-        
-    creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
 
     ESTADOS_EXCLUIDOS = ['retenido', 'cancelado', 'reparado', 'segunda']
     cuotas_vencidas = CuotasVenta.objects.filter(
@@ -1581,12 +1730,17 @@ def reporte_creditos(request):
         pass
 
 def api_listar_reporte_creditos(request):
+    from django.utils import timezone
+    from datetime import timedelta
+    from software.models.empresaModel import Empresa
+
     idusuario = request.session.get('idusuario')
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
         
     fi, ff, fi_str, ff_str = _parse_fechas(request)
     estado_filtro = request.GET.get('estado', 'todos').strip()
+    color_mora = request.GET.get('color_mora', 'todos').strip()
     codigo_filtro = request.GET.get('codigo', '').strip()
     cliente_id = request.GET.get('cliente_id', '').strip()
     sucursal_filtro = request.GET.get('sucursal', '').strip()
@@ -1594,8 +1748,13 @@ def api_listar_reporte_creditos(request):
     id_suc = request.session.get('id_sucursal')
     
     creditos_qs = Credito.objects.filter(fecha_credito__date__range=[fi, ff])
-    if estado_filtro != 'todos':
+    
+    if estado_filtro in ['cancelado', 'anulado']:
         creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
+    else:
+        creditos_qs = creditos_qs.filter(estado=1)
+        if estado_filtro != 'todos':
+            creditos_qs = creditos_qs.filter(estado_credito=estado_filtro)
     if codigo_filtro:
         creditos_qs = creditos_qs.filter(codigo_credito__icontains=codigo_filtro)
     if cliente_id:
@@ -1611,6 +1770,138 @@ def api_listar_reporte_creditos(request):
         )
     if frecuencia_filtro and frecuencia_filtro != 'todos':
         creditos_qs = creditos_qs.filter(frecuencia_pago=frecuencia_filtro)
+
+    hoy_date = timezone.now().date()
+    
+    # 1. Anotar con Subquery para obtener la cuota vencida más antigua (optimización N+1)
+    # Solo cuotas VENCIDAS (fecha_vencimiento < hoy)
+    oldest_cuota_venta_qs = CuotasVenta.objects.filter(
+        idventa=OuterRef('idventa'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
+
+    oldest_cuota_credito_qs = CuotasVenta.objects.filter(
+        idcredito=OuterRef('pk'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).order_by('fecha_vencimiento').values('fecha_vencimiento')[:1]
+
+    # Subquery para contar cuotas vencidas (usado para frecuencia Mensual)
+    cuotas_vencidas_venta_qs = CuotasVenta.objects.filter(
+        idventa=OuterRef('idventa'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).values('idventa').annotate(cnt=Count('idcuotaventa')).values('cnt')[:1]
+
+    cuotas_vencidas_credito_qs = CuotasVenta.objects.filter(
+        idcredito=OuterRef('pk'),
+        estado=1,
+        estado_pago__in=['Pendiente', 'Parcial'],
+        fecha_vencimiento__lt=hoy_date
+    ).values('idcredito').annotate(cnt=Count('idcuotaventa')).values('cnt')[:1]
+
+    creditos_qs = creditos_qs.annotate(
+        oldest_vencimiento=Coalesce(
+            Subquery(oldest_cuota_venta_qs),
+            Subquery(oldest_cuota_credito_qs)
+        ),
+        cuotas_vencidas_count=Coalesce(
+            Subquery(cuotas_vencidas_venta_qs),
+            Subquery(cuotas_vencidas_credito_qs),
+            0
+        )
+    )
+
+    empresa = Empresa.objects.first()
+
+    # ── Límites por frecuencia (leídos de la empresa) ──────────────────────
+    lim = {
+        'diario': {
+            'verde':    empresa.limite_dias_verde_diario    if empresa else 5,
+            'amarillo': empresa.limite_dias_amarillo_diario if empresa else 10,
+        },
+        'semanal': {
+            'verde':    empresa.limite_dias_verde_semanal    if empresa else 20,
+            'amarillo': empresa.limite_dias_amarillo_semanal if empresa else 30,
+        },
+        'quincenal': {
+            'verde':    empresa.limite_dias_verde_quincenal    if empresa else 30,
+            'amarillo': empresa.limite_dias_amarillo_quincenal if empresa else 45,
+        },
+        'mensual': {
+            'verde':    empresa.limite_cuotas_verde_mensual    if empresa else 1,
+            'amarillo': empresa.limite_cuotas_amarillo_mensual if empresa else 2,
+        },
+        # Personalizado y cualquier otro: usa los campos heredados o fallback
+        'default': {
+            'verde':    empresa.limite_dias_verde    if empresa else 10,
+            'amarillo': empresa.limite_dias_amarillo if empresa else 20,
+        },
+    }
+
+    # 2. Filtrar por color de mora (combinando todas las frecuencias con Q objects)
+    if color_mora != 'todos':
+        # Construir filtro para creditos NO mensuales (basados en días)
+        def _q_dias(freq_key, color):
+            l = lim[freq_key]
+            fecha_verde_ini    = hoy_date - timedelta(days=l['verde'])
+            fecha_amarillo_ini = hoy_date - timedelta(days=l['amarillo'])
+            if color == 'verde':
+                return Q(frecuencia_pago__iexact=freq_key) & Q(
+                    oldest_vencimiento__gte=fecha_verde_ini,
+                    oldest_vencimiento__lt=hoy_date
+                )
+            elif color == 'amarillo':
+                return Q(frecuencia_pago__iexact=freq_key) & Q(
+                    oldest_vencimiento__gte=fecha_amarillo_ini,
+                    oldest_vencimiento__lt=fecha_verde_ini
+                )
+            else:  # rojo
+                return Q(frecuencia_pago__iexact=freq_key) & Q(
+                    oldest_vencimiento__lt=fecha_amarillo_ini
+                )
+
+        # Filtro para creditos Mensuales (basado en cuotas vencidas)
+        lm = lim['mensual']
+        if color_mora == 'verde':
+            q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                cuotas_vencidas_count__gte=1,
+                cuotas_vencidas_count__lte=lm['verde']
+            )
+            q_no_mensual = (
+                _q_dias('diario', 'verde') |
+                _q_dias('semanal', 'verde') |
+                _q_dias('quincenal', 'verde') |
+                _q_dias('default', 'verde')
+            )
+        elif color_mora == 'amarillo':
+            q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                cuotas_vencidas_count__gt=lm['verde'],
+                cuotas_vencidas_count__lte=lm['amarillo']
+            )
+            q_no_mensual = (
+                _q_dias('diario', 'amarillo') |
+                _q_dias('semanal', 'amarillo') |
+                _q_dias('quincenal', 'amarillo') |
+                _q_dias('default', 'amarillo')
+            )
+        else:  # rojo
+            q_mensual = Q(frecuencia_pago__iexact='mensual') & Q(
+                cuotas_vencidas_count__gt=lm['amarillo']
+            )
+            q_no_mensual = (
+                _q_dias('diario', 'rojo') |
+                _q_dias('semanal', 'rojo') |
+                _q_dias('quincenal', 'rojo') |
+                _q_dias('default', 'rojo')
+            )
+
+        creditos_qs = creditos_qs.filter(q_mensual | q_no_mensual)
+
     creditos_qs = creditos_qs.select_related('idventa', 'idventa__idcliente', 'idcliente').order_by('-idcredito')
 
     records_total = creditos_qs.count()
@@ -1618,30 +1909,6 @@ def api_listar_reporte_creditos(request):
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
     length = int(request.GET.get('length', 10))
-    search_value = request.GET.get('search[value]', '').strip()
-
-    if search_value:
-        creditos_qs = creditos_qs.filter(
-            Q(codigo_credito__icontains=search_value) |
-            Q(idcliente__razonsocial__icontains=search_value) |
-            Q(idventa__idcliente__razonsocial__icontains=search_value) |
-            Q(idventa__numero_comprobante__icontains=search_value) |
-            # Vehiculos (Credito directo)
-            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
-            Q(id_vehiculo__serie_chasis__icontains=search_value) |
-            Q(id_vehiculo__serie_motor__icontains=search_value) |
-            # Vehiculos (Credito por venta)
-            Q(idventa__ventadetalle__id_vehiculo__idproducto__nomproducto__icontains=search_value) |
-            Q(idventa__ventadetalle__id_vehiculo__serie_chasis__icontains=search_value) |
-            Q(idventa__ventadetalle__id_vehiculo__serie_motor__icontains=search_value) |
-            # Repuestos (Credito directo)
-            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
-            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
-            # Repuestos (Credito por venta)
-            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
-            Q(idventa__ventadetalle__id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value)
-        ).distinct()
-
     records_filtered = creditos_qs.count()
 
     if length > -1:
@@ -1667,6 +1934,25 @@ def api_listar_reporte_creditos(request):
             direccion = cliente_obj.direccion or '-'
 
         venta_ref = c.idventa.numero_comprobante if c.idventa else '-'
+        
+        # Calcular color real de cada row sin N+1 gracias a las anotaciones previas
+        c_color = 'sin_mora'
+        freq = (c.frecuencia_pago or 'default').lower()
+        if freq not in lim:
+            freq = 'default'
+            
+        if freq == 'mensual':
+            cnt = c.cuotas_vencidas_count or 0
+            if cnt >= 1:
+                if cnt <= lim['mensual']['verde']: c_color = 'verde'
+                elif cnt <= lim['mensual']['amarillo']: c_color = 'amarillo'
+                else: c_color = 'rojo'
+        else:
+            if c.oldest_vencimiento and c.oldest_vencimiento < hoy_date:
+                dias_mora = (hoy_date - c.oldest_vencimiento).days
+                if dias_mora <= lim[freq]['verde']: c_color = 'verde'
+                elif dias_mora <= lim[freq]['amarillo']: c_color = 'amarillo'
+                else: c_color = 'rojo'
 
         data.append({
             'DT_RowId': f'row_{c.idcredito}',
@@ -1680,7 +1966,8 @@ def api_listar_reporte_creditos(request):
             'monto_total': c.monto_total,
             'deuda_pendiente': c.saldo_pendiente,
             'idcredito': c.idcredito,
-            'has_venta': bool(c.idventa)
+            'has_venta': bool(c.idventa),
+            'color_mora': c_color
         })
 
     total_deuda = creditos_qs.aggregate(t=Sum('saldo_pendiente'))['t'] or 0

@@ -65,6 +65,17 @@
               <option value="activo" {% if estado_filtro == 'activo' %}selected{% endif %}>Activos</option>
               <option value="mora" {% if estado_filtro == 'mora' %}selected{% endif %}>En Mora / Vencidos</option>
               <option value="pagado" {% if estado_filtro == 'pagado' %}selected{% endif %}>Pagados</option>
+              <option value="cancelado" {% if estado_filtro == 'cancelado' %}selected{% endif %}>Cancelados (Retenidos)</option>
+              <option value="anulado" {% if estado_filtro == 'anulado' %}selected{% endif %}>Anulados (Eliminados)</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Color Mora</label>
+            <select name="color_mora" class="form-select">
+              <option value="todos">Todos</option>
+              <option value="verde">Verde</option>
+              <option value="amarillo">Amarillo</option>
+              <option value="rojo">Rojo</option>
             </select>
           </div>
           <div class="col-md-2">
@@ -347,7 +358,8 @@ $(document).ready(function() {
             codigo: $('input[name="codigo"]').val(),
             cliente_id: $('#cliente_id').val(),
             sucursal: $('select[name="sucursal"]').val(),
-            frecuencia: $('select[name="frecuencia"]').val()
+            frecuencia: $('select[name="frecuencia"]').val(),
+            color_mora: $('select[name="color_mora"]').val()
         };
     };
 
@@ -366,6 +378,7 @@ $(document).ready(function() {
                 d.cliente_id = f.cliente_id;
                 d.sucursal = f.sucursal;
                 d.frecuencia = f.frecuencia;
+                d.color_mora = f.color_mora;
             }
         },
         columns: [
@@ -414,7 +427,14 @@ $(document).ready(function() {
         },
         pageLength: 10,
         lengthChange: false,
-        ordering: false
+        ordering: false,
+        rowCallback: function(row, data, dataIndex) {
+            var style = '';
+            if (data.color_mora === 'verde')    style = 'background-color: rgba(40, 167, 69, 0.2) !important;';
+            else if (data.color_mora === 'amarillo') style = 'background-color: rgba(255, 193, 7, 0.2) !important;';
+            else if (data.color_mora === 'rojo')    style = 'background-color: rgba(220, 53, 69, 0.2) !important;';
+            if (style) { $(row).attr('style', style); }
+        }
     });
 
     var tablaMoras = $('#tablaMoras').DataTable({
@@ -481,7 +501,7 @@ $(document).ready(function() {
         }
     });
 
-    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="estado"], select[name="sucursal"], input[name="codigo"], select[name="frecuencia"]').on('change keyup', function() {
+    $('input[name="fecha_inicio"], input[name="fecha_fin"], select[name="estado"], select[name="sucursal"], input[name="codigo"], select[name="frecuencia"], select[name="color_mora"]').on('change keyup', function() {
         tablaCreditos.ajax.reload();
         tablaMoras.ajax.reload();
     });
@@ -497,6 +517,7 @@ function exportarReporte(fmt) {
         codigo: $('input[name="codigo"]').val(),
         cliente_id: $('#cliente_id').val(),
         frecuencia: $('select[name="frecuencia"]').val(),
+        color_mora: $('select[name="color_mora"]').val(),
         search: $('.dataTables_filter input:visible').first().val() || ''
     });
     window.location.href = "{% url 'reporte_creditos' %}?" + urlParams.toString();
