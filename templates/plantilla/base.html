@@ -647,88 +647,144 @@
           }
       }
 
-      // ── JS Para Notificaciones Nuevas (Sin caché ni sonido) ──
+      // ── JS Para Notificaciones Nuevas (Con Caché Simple) ──
+      function renderComprasVencidas(data) {
+          const count = data.count;
+          const items = data.notificaciones;
+          const badge = document.getElementById('notif-compras-badge');
+          const countEl = document.getElementById('notif-compras-count');
+          const itemsContainer = document.getElementById('notif-compras-items');
+          
+          badge.textContent = count;
+          if(count > 0) badge.classList.remove('d-none');
+          else badge.classList.add('d-none');
+          
+          countEl.textContent = count;
+          
+          if(count === 0) {
+              itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No hay compras en mora</p></li>';
+          } else {
+              itemsContainer.innerHTML = items.map(item => `
+                  <li class="notification-item p-2">
+                      <a href="${item.url}" class="text-decoration-none">
+                          <div class="d-flex align-items-center">
+                              <i class="bi bi-exclamation-circle text-warning me-2 fs-5"></i>
+                              <div>
+                                  <h4 class="mb-0 fs-6 text-dark">${item.proveedor}</h4>
+                                  <p class="mb-0 text-muted small">Cuota ${item.numero_cuota}: S/ ${item.monto.toFixed(2)}</p>
+                                  <p class="mb-0 text-danger small">Venció: ${item.fecha_vencimiento}</p>
+                              </div>
+                          </div>
+                      </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+              `).join('');
+          }
+      }
+
       window.fetchComprasVencidas = function(e) {
+          const isManual = !!e;
           if(e) e.stopPropagation();
+          
+          const icon = e ? (e.currentTarget ? e.currentTarget.querySelector('i') : null) : null;
+          if (icon) {
+              if (!document.getElementById('spin-style-notif')) {
+                  const style = document.createElement('style');
+                  style.id = 'spin-style-notif';
+                  style.textContent = '@keyframes notif-spin { 100% { transform: rotate(360deg); } }';
+                  document.head.appendChild(style);
+              }
+              icon.style.animation = "notif-spin 1s linear infinite";
+          }
+          
+          if (!isManual) {
+              const cached = sessionStorage.getItem('cache_compras_vencidas');
+              if (cached) {
+                  try {
+                      renderComprasVencidas(JSON.parse(cached));
+                      return;
+                  } catch(err) {}
+              }
+          }
+          
           fetch('/api/notificaciones/compras_vencidas/')
               .then(r => r.json())
               .then(data => {
                   if(!data.ok) return;
-                  const count = data.count;
-                  const items = data.notificaciones;
-                  const badge = document.getElementById('notif-compras-badge');
-                  const countEl = document.getElementById('notif-compras-count');
-                  const itemsContainer = document.getElementById('notif-compras-items');
-                  
-                  badge.textContent = count;
-                  if(count > 0) badge.classList.remove('d-none');
-                  else badge.classList.add('d-none');
-                  
-                  countEl.textContent = count;
-                  
-                  if(count === 0) {
-                      itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No hay compras en mora</p></li>';
-                  } else {
-                      itemsContainer.innerHTML = items.map(item => `
-                          <li class="notification-item p-2">
-                              <a href="${item.url}" class="text-decoration-none">
-                                  <div class="d-flex align-items-center">
-                                      <i class="bi bi-exclamation-circle text-warning me-2 fs-5"></i>
-                                      <div>
-                                          <h4 class="mb-0 fs-6 text-dark">${item.proveedor}</h4>
-                                          <p class="mb-0 text-muted small">Cuota ${item.numero_cuota}: S/ ${item.monto.toFixed(2)}</p>
-                                          <p class="mb-0 text-danger small">Venció: ${item.fecha_vencimiento}</p>
-                                      </div>
-                                  </div>
-                              </a>
-                          </li>
-                          <li><hr class="dropdown-divider"></li>
-                      `).join('');
-                  }
-              }).catch(err => console.error('Error compras vencidas:', err));
+                  sessionStorage.setItem('cache_compras_vencidas', JSON.stringify(data));
+                  renderComprasVencidas(data);
+              }).catch(err => console.error('Error compras vencidas:', err))
+              .finally(() => {
+                  if (icon) icon.style.animation = "";
+              });
       };
 
+      function renderCumpleanos(data) {
+          const count = data.count;
+          const items = data.notificaciones;
+          const badge = document.getElementById('notif-cumples-badge');
+          const countEl = document.getElementById('notif-cumples-count');
+          const itemsContainer = document.getElementById('notif-cumples-items');
+          
+          badge.textContent = count;
+          if(count > 0) badge.classList.remove('d-none');
+          else badge.classList.add('d-none');
+          
+          countEl.textContent = count;
+          
+          if(count === 0) {
+              itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No hay cumpleaños hoy</p></li>';
+          } else {
+              itemsContainer.innerHTML = items.map(item => `
+                  <li class="notification-item p-2">
+                      <a href="${item.url}" class="text-decoration-none">
+                          <div class="d-flex align-items-center">
+                              <i class="bi bi-person-hearts text-info me-2 fs-5"></i>
+                              <div>
+                                  <h4 class="mb-0 fs-6 text-dark">${item.nombre}</h4>
+                                  <p class="mb-0 text-muted small"><i class="bi bi-telephone"></i> ${item.telefono}</p>
+                                  <p class="mb-0 text-muted small"><i class="bi bi-geo-alt"></i> ${item.direccion}</p>
+                              </div>
+                          </div>
+                      </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+              `).join('');
+          }
+      }
+
       window.fetchCumpleanos = function(e) {
+          const isManual = !!e;
           if(e) e.stopPropagation();
+          
+          const icon = e ? (e.currentTarget ? e.currentTarget.querySelector('i') : null) : null;
+          if (icon) {
+              icon.style.animation = "notif-spin 1s linear infinite";
+          }
+          
+          if (!isManual) {
+              const cached = sessionStorage.getItem('cache_cumpleanos');
+              if (cached) {
+                  try {
+                      renderCumpleanos(JSON.parse(cached));
+                      return;
+                  } catch(err) {}
+              }
+          }
+          
           fetch('/api/notificaciones/cumpleanos/')
               .then(r => r.json())
               .then(data => {
                   if(!data.ok) return;
-                  const count = data.count;
-                  const items = data.notificaciones;
-                  const badge = document.getElementById('notif-cumples-badge');
-                  const countEl = document.getElementById('notif-cumples-count');
-                  const itemsContainer = document.getElementById('notif-cumples-items');
-                  
-                  badge.textContent = count;
-                  if(count > 0) badge.classList.remove('d-none');
-                  else badge.classList.add('d-none');
-                  
-                  countEl.textContent = count;
-                  
-                  if(count === 0) {
-                      itemsContainer.innerHTML = '<li class="notification-item p-3 text-center"><p class="text-muted mb-0">No hay cumpleaños hoy</p></li>';
-                  } else {
-                      itemsContainer.innerHTML = items.map(item => `
-                          <li class="notification-item p-2">
-                              <a href="${item.url}" class="text-decoration-none">
-                                  <div class="d-flex align-items-center">
-                                      <i class="bi bi-person-hearts text-info me-2 fs-5"></i>
-                                      <div>
-                                          <h4 class="mb-0 fs-6 text-dark">${item.nombre}</h4>
-                                          <p class="mb-0 text-muted small"><i class="bi bi-telephone"></i> ${item.telefono}</p>
-                                          <p class="mb-0 text-muted small"><i class="bi bi-geo-alt"></i> ${item.direccion}</p>
-                                      </div>
-                                  </div>
-                              </a>
-                          </li>
-                          <li><hr class="dropdown-divider"></li>
-                      `).join('');
-                  }
-              }).catch(err => console.error('Error cumpleanos:', err));
+                  sessionStorage.setItem('cache_cumpleanos', JSON.stringify(data));
+                  renderCumpleanos(data);
+              }).catch(err => console.error('Error cumpleanos:', err))
+              .finally(() => {
+                  if (icon) icon.style.animation = "";
+              });
       };
 
-      // Cargar al inicio (solo 1 vez por pagina, o dejar que el usuario las abra, pero mejor precargar el badge)
+      // Cargar al inicio (verificará caché primero)
       fetchComprasVencidas();
       fetchCumpleanos();
 

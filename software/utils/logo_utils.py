@@ -31,12 +31,22 @@ def get_logo_buffer(empresa, use_ticket_logo=False):
     if not logo_value:
         return None
 
+    # Caché en memoria para evitar descargar el logo en cada PDF
+    if not hasattr(get_logo_buffer, '_cache'):
+        get_logo_buffer._cache = {}
+
+    if logo_value in get_logo_buffer._cache:
+        buf = get_logo_buffer._cache[logo_value]
+        buf.seek(0)
+        return BytesIO(buf.read())
+
     # ---- CASO 1: Es una URL de Cloudinary (o cualquier URL HTTP) ----
     if logo_value.startswith('http://') or logo_value.startswith('https://'):
         try:
             response = requests.get(logo_value, timeout=10)
             if response.status_code == 200:
                 buf = BytesIO(response.content)
+                get_logo_buffer._cache[logo_value] = BytesIO(response.content)
                 buf.seek(0)
                 return buf
         except Exception as e:

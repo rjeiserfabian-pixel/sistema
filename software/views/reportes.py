@@ -423,6 +423,220 @@ def api_listar_reporte_ventas(request):
 
 
 # ─────────────────────────────────────────────────
+#  REPORTE DE ARTÍCULOS VENDIDOS
+# ─────────────────────────────────────────────────
+def reporte_articulos_vendidos(request):
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return redirect('iniciar_sesion')
+        
+    fi, ff, fi_str, ff_str = _parse_fechas(request)
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    vendedor_id = request.GET.get('vendedor')
+    cliente_id = request.GET.get('cliente_id')
+    tipo_articulo = request.GET.get('tipo_articulo', '')
+
+    from software.models.VentaDetalleModel import VentaDetalle
+    qs = VentaDetalle.objects.filter(
+        idventa__fecha_venta__date__range=[fi, ff],
+        idventa__estado__in=[1, 2]
+    )
+
+    if sucursal_filtro:
+        qs = qs.filter(idventa__id_sucursal_id=sucursal_filtro)
+    if vendedor_id:
+        qs = qs.filter(idventa__idusuario_id=vendedor_id)
+    if cliente_id:
+        qs = qs.filter(idventa__idcliente_id=cliente_id)
+        
+    if tipo_articulo == 'vehiculo':
+        qs = qs.filter(id_vehiculo__isnull=False)
+    elif tipo_articulo == 'repuesto':
+        qs = qs.filter(id_repuesto_comprado__isnull=False)
+    elif tipo_articulo == 'servicio':
+        qs = qs.filter(id_servicio__isnull=False)
+
+    search_value = request.GET.get('search', '').strip()
+    if search_value:
+        qs = qs.filter(
+            Q(idventa__idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__numero_comprobante__icontains=search_value) |
+            Q(id_vehiculo__serie_motor__icontains=search_value) |
+            Q(id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(id_servicio__nombre__icontains=search_value)
+        ).distinct()
+
+    qs = qs.select_related(
+        'idventa', 'idventa__idcliente', 'idventa__idusuario', 'idventa__id_sucursal',
+        'id_vehiculo', 'id_vehiculo__idproducto', 
+        'id_repuesto_comprado', 'id_repuesto_comprado__id_repuesto',
+        'id_servicio'
+    ).order_by('-idventa__fecha_venta', '-idventadetalle')
+
+    export_fmt = request.GET.get('export')
+    if export_fmt in ['pdf', 'excel']:
+        headers = ['Nº', 'Fecha', 'Comprobante', 'Cliente', 'Vendedor', 'Sucursal', 'Tipo', 'Descripción', 'Cantidad', 'P. Unitario', 'Total (S/)']
+        data = []
+        for i, det in enumerate(qs, 1):
+            tipo = "Vehículo" if det.id_vehiculo else ("Repuesto" if det.id_repuesto_comprado else ("Servicio" if det.id_servicio else "Otro"))
+            descripcion = "-"
+            if det.id_vehiculo:
+                descripcion = f"{det.id_vehiculo.idproducto.nomproducto} - Motor: {det.id_vehiculo.serie_motor} - Chasis: {det.id_vehiculo.serie_chasis}"
+            elif det.id_repuesto_comprado:
+                descripcion = f"{det.id_repuesto_comprado.id_repuesto.nombre}"
+            elif det.id_servicio:
+                descripcion = det.id_servicio.nombre
+                
+            data.append([
+                i,
+                det.idventa.fecha_venta.strftime("%d/%m/%Y"),
+                det.idventa.numero_comprobante or '-',
+                det.idventa.idcliente.razonsocial if det.idventa.idcliente else '-',
+                det.idventa.idusuario.nombrecompleto if det.idventa.idusuario else '-',
+                det.idventa.id_sucursal.nombre_sucursal if det.idventa.id_sucursal else '-',
+                tipo,
+                descripcion,
+                det.cantidad,
+                float(det.subtotal) / det.cantidad if det.cantidad else 0.0,
+                det.subtotal
+            ])
+            
+        if export_fmt == 'excel':
+            return export_to_excel(headers, data, f'Reporte_Articulos_Vendidos_{fi_str}_{ff_str}')
+        elif export_fmt == 'pdf':
+            title = f"Reporte de Artículos Vendidos ({fi_str} al {ff_str})"
+            return export_to_pdf(headers, data, title, f'Reporte_Articulos_Vendidos_{fi_str}_{ff_str}')
+
+    totales = qs.aggregate(
+        total_suma=Sum('subtotal'),
+        cantidad_total=Sum('cantidad')
+    )
+
+    return render(request, 'reportes/reporte_articulos_vendidos.html', {
+        'fecha_inicio': fi_str,
+        'fecha_fin': ff_str,
+        'vendedor_id': int(vendedor_id) if vendedor_id and vendedor_id.isdigit() else None,
+        'cliente_id': int(cliente_id) if cliente_id and cliente_id.isdigit() else '',
+        'tipo_articulo': tipo_articulo,
+        'vendedores': Usuario.objects.filter(estado=1).order_by('nombrecompleto'),
+        'clientes_lista': Cliente.objects.filter(estado=1).order_by('razonsocial'),
+        'totales': totales,
+        'sucursales': Sucursales.objects.all(),
+        'sucursal_filtro': sucursal_filtro,
+    })
+
+
+def api_listar_reporte_articulos(request):
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        return JsonResponse({'error': 'No autenticado'}, status=401)
+        
+    fi, ff, fi_str, ff_str = _parse_fechas(request)
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    vendedor_id = request.GET.get('vendedor')
+    cliente_id = request.GET.get('cliente_id')
+    tipo_articulo = request.GET.get('tipo_articulo', '')
+
+    from software.models.VentaDetalleModel import VentaDetalle
+    qs = VentaDetalle.objects.filter(
+        idventa__fecha_venta__date__range=[fi, ff],
+        idventa__estado__in=[1, 2]
+    )
+
+    if sucursal_filtro:
+        qs = qs.filter(idventa__id_sucursal_id=sucursal_filtro)
+    if vendedor_id:
+        qs = qs.filter(idventa__idusuario_id=vendedor_id)
+    if cliente_id:
+        qs = qs.filter(idventa__idcliente_id=cliente_id)
+        
+    if tipo_articulo == 'vehiculo':
+        qs = qs.filter(id_vehiculo__isnull=False)
+    elif tipo_articulo == 'repuesto':
+        qs = qs.filter(id_repuesto_comprado__isnull=False)
+    elif tipo_articulo == 'servicio':
+        qs = qs.filter(id_servicio__isnull=False)
+        
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+    search_value = request.GET.get('search[value]', '').strip()
+
+    if search_value:
+        qs = qs.filter(
+            Q(idventa__idcliente__razonsocial__icontains=search_value) |
+            Q(idventa__numero_comprobante__icontains=search_value) |
+            Q(id_vehiculo__serie_motor__icontains=search_value) |
+            Q(id_vehiculo__serie_chasis__icontains=search_value) |
+            Q(id_vehiculo__idproducto__nomproducto__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__codigo_barras__icontains=search_value) |
+            Q(id_repuesto_comprado__id_repuesto__nombre__icontains=search_value) |
+            Q(id_servicio__nombre__icontains=search_value)
+        ).distinct()
+
+    records_total = qs.count()
+    records_filtered = records_total
+
+    totales_agregados = qs.aggregate(
+        total_suma=Sum('subtotal'),
+        cantidad_total=Sum('cantidad')
+    )
+    
+    totales_dict = {
+        'total_suma': float(totales_agregados['total_suma'] or 0),
+        'cantidad_total': float(totales_agregados['cantidad_total'] or 0)
+    }
+
+    qs = qs.select_related(
+        'idventa', 'idventa__idcliente', 'idventa__idusuario', 'idventa__id_sucursal',
+        'id_vehiculo', 'id_vehiculo__idproducto', 
+        'id_repuesto_comprado', 'id_repuesto_comprado__id_repuesto',
+        'id_servicio'
+    ).order_by('-idventa__fecha_venta', '-idventadetalle')
+
+    if length > -1:
+        page = qs[start:start + length]
+    else:
+        page = qs
+
+    data = []
+    for det in page:
+        tipo = "Vehículo" if det.id_vehiculo else ("Repuesto" if det.id_repuesto_comprado else ("Servicio" if det.id_servicio else "Otro"))
+        descripcion = "-"
+        if det.id_vehiculo:
+            descripcion = f"{det.id_vehiculo.idproducto.nomproducto} (Motor: {det.id_vehiculo.serie_motor} - Chasis: {det.id_vehiculo.serie_chasis})"
+        elif det.id_repuesto_comprado:
+            descripcion = f"{det.id_repuesto_comprado.id_repuesto.nombre}"
+        elif det.id_servicio:
+            descripcion = det.id_servicio.nombre
+            
+        data.append({
+            'DT_RowId': f'row_art_{det.idventadetalle}',
+            'fecha': det.idventa.fecha_venta.strftime("%d/%m/%Y"),
+            'comprobante': det.idventa.numero_comprobante or '-',
+            'cliente': det.idventa.idcliente.razonsocial if det.idventa.idcliente else '-',
+            'vendedor': det.idventa.idusuario.nombrecompleto if det.idventa.idusuario else '-',
+            'sucursal': det.idventa.id_sucursal.nombre_sucursal if det.idventa.id_sucursal else '-',
+            'tipo': tipo,
+            'descripcion': descripcion,
+            'cantidad': det.cantidad,
+            'precio_unitario': float(det.subtotal) / det.cantidad if det.cantidad else 0.0,
+            'total': det.subtotal
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': records_total,
+        'recordsFiltered': records_filtered,
+        'data': data,
+        'totales': totales_dict
+    })
+
+
+# ─────────────────────────────────────────────────
 #  REPORTE DE COMPRAS
 # ─────────────────────────────────────────────────
 def reporte_compras(request):
