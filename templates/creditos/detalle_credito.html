@@ -1980,6 +1980,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         Swal.fire({
             title: 'Reingresar a Stock (Semi-nueva)',
+            customClass: { popup: 'swal-wide' },
+            width: '850px',
             html: `
                 <div class="text-start">
                     <table class="table table-sm table-borderless mb-3">
@@ -1988,7 +1990,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         <tr class="border-top border-secondary"><td class="fw-bold">Precio de Compra (Stock):</td><td class="text-end text-primary fw-bold">S/ ${(saldo + costo).toFixed(2)}</td></tr>
                     </table>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold small text-muted">Margen para P. X MAYOR (S/)</label>
+                            <input type="number" id="margen_mayor_rec" class="form-control form-control-sm border-info" step="0.01" min="0" value="0"
+                                   oninput="document.getElementById('p_mayor_calc').textContent = 'S/ ' + (${saldo} + ${costo} + (parseFloat(this.value)||0)).toFixed(2)">
+                            <div class="mt-1 small text-body">
+                                P. X MAYOR: <strong id="p_mayor_calc" class="text-info">S/ ${(saldo + costo).toFixed(2)}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small text-muted">Margen para P. CASH (S/)</label>
                             <input type="number" id="margen_min_rec" class="form-control form-control-sm border-success" step="0.01" min="0" value="0"
                                    oninput="document.getElementById('p_min_calc').textContent = 'S/ ' + (${saldo} + ${costo} + (parseFloat(this.value)||0)).toFixed(2)">
@@ -1996,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 P. CASH: <strong id="p_min_calc" class="text-success">S/ ${(saldo + costo).toFixed(2)}</strong>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small text-muted">Margen para P. LISTA (S/)</label>
                             <input type="number" id="margen_max_rec" class="form-control form-control-sm border-primary" step="0.01" min="0" value="0"
                                    oninput="document.getElementById('p_max_calc').textContent = 'S/ ' + (${saldo} + ${costo} + (parseFloat(this.value)||0)).toFixed(2)">
@@ -2023,27 +2033,36 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmButtonText: 'Reingresar a Stock',
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
+                const mMayor = parseFloat($('#margen_mayor_rec').val());
                 const mMin = parseFloat($('#margen_min_rec').val());
                 const mMax = parseFloat($('#margen_max_rec').val());
                 const almacen = $('#almacen_reingresar').val();
                 
+                if (isNaN(mMayor) || mMayor < 0) {
+                    Swal.showValidationMessage('Ingrese un margen P. X MAYOR válido (≥ 0)');
+                    return false;
+                }
                 if (isNaN(mMin) || mMin < 0) {
-                    Swal.showValidationMessage('Ingrese un margen mínimo válido (≥ 0)');
+                    Swal.showValidationMessage('Ingrese un margen P. CASH válido (≥ 0)');
                     return false;
                 }
                 if (isNaN(mMax) || mMax < 0) {
-                    Swal.showValidationMessage('Ingrese un margen máximo válido (≥ 0)');
+                    Swal.showValidationMessage('Ingrese un margen P. LISTA válido (≥ 0)');
+                    return false;
+                }
+                if (mMin < mMayor) {
+                    Swal.showValidationMessage('El margen P. CASH no puede ser menor al margen P. X MAYOR');
                     return false;
                 }
                 if (mMax < mMin) {
-                    Swal.showValidationMessage('El margen máximo no puede ser menor al mínimo');
+                    Swal.showValidationMessage('El margen P. LISTA no puede ser menor al margen P. CASH');
                     return false;
                 }
                 if (!almacen) {
                     Swal.showValidationMessage('Seleccione un almacén');
                     return false;
                 }
-                return { margen_min: mMin, margen_max: mMax, id_almacen: almacen };
+                return { margen_mayor: mMayor, margen_min: mMin, margen_max: mMax, id_almacen: almacen };
             }
         }).then(r => {
             if (!r.isConfirmed) return;
@@ -2056,8 +2075,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             html: `<p>${res.message}</p>
                                     <table class="table table-sm text-start mt-2">
                                       <tr><td>Costo Base (Saldo + Rep.):</td><td class="fw-bold text-end">S/ ${res.precio_compra.toFixed(2)}</td></tr>
-                                      <tr class="table-success text-success"><td><strong>P. MÍNIMO (Límite):</strong></td><td class="fw-bold text-end">S/ ${res.precio_minimo.toFixed(2)}</td></tr>
-                                      <tr class="table-primary text-primary"><td><strong>P. MÁXIMO (Venta):</strong></td><td class="fw-bold text-end">S/ ${res.precio_maximo.toFixed(2)}</td></tr>
+                                      <tr class="table-info text-info"><td><strong>P. X MAYOR:</strong></td><td class="fw-bold text-end">S/ ${res.precio_mayor.toFixed(2)}</td></tr>
+                                      <tr class="table-success text-success"><td><strong>P. CASH:</strong></td><td class="fw-bold text-end">S/ ${res.precio_minimo.toFixed(2)}</td></tr>
+                                      <tr class="table-primary text-primary"><td><strong>P. LISTA:</strong></td><td class="fw-bold text-end">S/ ${res.precio_maximo.toFixed(2)}</td></tr>
                                       <tr><td colspan="2" class="small text-muted pt-2 text-center">Vehículo disponible en <strong>${res.almacen}</strong></td></tr>
                                     </table>`,
                             icon: 'success'

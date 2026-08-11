@@ -348,16 +348,20 @@ def reingresar_stock_recuperado(request, idcredito):
             'error': f'Solo se puede reingresar un crédito en estado REPARADO. Estado actual: {credito.estado_credito}'
         }, status=400)
 
+    margen_mayor_str = request.POST.get('margen_mayor', '0')
     margen_min_str = request.POST.get('margen_min', '0')
     margen_max_str = request.POST.get('margen_max', '0')
     id_almacen = request.POST.get('id_almacen')
     try:
+        margen_mayor = Decimal(margen_mayor_str)
         margen_min = Decimal(margen_min_str)
         margen_max = Decimal(margen_max_str)
-        if margen_min < 0 or margen_max < 0:
+        if margen_mayor < 0 or margen_min < 0 or margen_max < 0:
             raise ValueError
+        if margen_min < margen_mayor:
+            return JsonResponse({'ok': False, 'error': 'El Margen P. CASH no puede ser menor al Margen P. X MAYOR.'}, status=400)
         if margen_max < margen_min:
-            return JsonResponse({'ok': False, 'error': 'El Margen Máximo no puede ser menor al Margen Mínimo.'}, status=400)
+            return JsonResponse({'ok': False, 'error': 'El Margen P. LISTA no puede ser menor al Margen P. CASH.'}, status=400)
     except Exception:
         return JsonResponse({'ok': False, 'error': 'Márgenes de ganancia inválidos.'}, status=400)
 
@@ -378,6 +382,7 @@ def reingresar_stock_recuperado(request, idcredito):
 
     # Cálculo de precios
     precio_compra = credito.saldo_pendiente + credito.costo_reparacion
+    precio_mayor = precio_compra + margen_mayor
     precio_minimo = precio_compra + margen_min
     precio_maximo = precio_compra + margen_max
     
@@ -421,8 +426,10 @@ def reingresar_stock_recuperado(request, idcredito):
         id_repuesto_comprado=None,
         cantidad=1,
         precio_compra=precio_compra,
+        precio_por_mayor=precio_mayor,
         precio_minimo=precio_minimo,
         precio_maximo=precio_maximo,
+        margen_por_mayor=0,
         margen_minimo=0, # Podríamos calcular el %, pero el sistema usa montos fijos aquí
         margen_maximo=0,
         subtotal=float(precio_maximo)
@@ -467,11 +474,13 @@ def reingresar_stock_recuperado(request, idcredito):
 
     return JsonResponse({
         'ok': True,
-        'message': f'Vehículo reingresado a stock como SEMI-NUEVA. P. Máximo (Venta): S/ {precio_maximo:.2f}',
+        'message': f'Vehículo reingresado a stock como SEMI-NUEVA. P. LISTA: S/ {precio_maximo:.2f}',
         'precio_compra': float(precio_compra),
         'costo_reparacion': float(credito.costo_reparacion),
+        'margen_mayor': float(margen_mayor),
         'margen_min': float(margen_min),
         'margen_max': float(margen_max),
+        'precio_mayor': float(precio_mayor),
         'precio_minimo': float(precio_minimo),
         'precio_maximo': float(precio_maximo),
         'almacen': almacen.nombre_almacen,
