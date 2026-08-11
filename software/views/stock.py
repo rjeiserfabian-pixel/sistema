@@ -1648,3 +1648,118 @@ def api_buscar_vehiculos_historial(request):
         'page': page_num,
         'total_pages': total_pages
     })
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API: Generar PDF de Historial de Recaudación Vehicular
+# ─────────────────────────────────────────────────────────────────────────────
+def historial_recaudacion_vehiculo_pdf(request, id_vehiculo):
+    """
+    Genera un PDF con el historial completo de recaudación de un vehículo.
+    """
+    idusuario = request.session.get('idusuario')
+    if not idusuario:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("No autenticado")
+
+    from software.models.VentaDetalleModel import VentaDetalle
+    from software.models.CreditoModel import Credito
+    from software.models.PagoCuotaModel import PagoCuota
+    from software.models.VehiculosModel import Vehiculo
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+    from decimal import Decimal
+    from software.views.report_exports import export_to_pdf
+    from django.http import Http404
+
+    try:
+        vehiculo = Vehiculo.objects.select_related(
+            'idproducto__idmarca', 'idproducto__idmodelo', 'idproducto__idcolor',
+            'idproducto__idcilindrada', 'idestadoproducto', 'id_situacion'
+        ).get(id_vehiculo=id_vehiculo)
+    except Vehiculo.DoesNotExist:
+        raise Http404("Vehículo no encontrado")
+
+    detalles = VentaDetalle.objects.filter(
+        id_vehiculo=vehiculo
+    ).select_related(
+        'idventa__idcliente',
+        'idventa__id_forma_pago',
+    ).order_by('idventa__fecha_venta')
+
+    data = []
+    total_recaudado = Decimal('0.00')
+
+    for i, detalle in enumerate(detalles, 1):
+        venta = detalle.idventa
+        if not venta:
+            continue
+
+        cliente_obj = venta.idcliente
+        nombre_cliente = cliente_obj.razonsocial if cliente_obj else 'Sin cliente'
+        fecha_venta = venta.fecha_venta.strftime('%d/%m/%Y') if venta.fecha_venta else '-'
+        comprobante = venta.numero_comprobante or '-'
+        
+        credito = Credito.objects.filter(idventa=venta).first()
+
+        recaudado_venta = Decimal('0.00')
+        tipo = 'Contado'
+        inicial = Decimal('0.00')
+        cuotas_pagadas = Decimal('0.00')
+        estado_credito = '-'
+
+        if credito:
+            tipo = 'Crédito'
+            if credito.estado_credito == 1:
+                estado_credito = 'Completado'
+            elif credito.estado_credito == 2:
+                estado_credito = 'En Proceso'
+            elif credito.estado_credito == 3:
+                estado_credito = 'Mora'
+            elif credito.estado_credito == 4:
+                estado_credito = 'Vencido'
+            else:
+                estado_credito = str(credito.estado_credito)
+                
+            inicial = credito.monto_adelanto or Decimal('0.00')
+
+            pagos_agg = PagoCuota.objects.filter(
+                idcuotaventa__idcredito=credito,
+                estado=1
+            ).aggregate(total=Coalesce(Sum('monto_pago'), Decimal('0.00')))
+            cuotas_pagadas = pagos_agg['total']
+
+            recaudado_venta = inicial + cuotas_pagadas
+        else:
+            tipo = 'Contado'
+            recaudado_venta = detalle.subtotal or Decimal('0.00')
+
+        total_recaudado += recaudado_venta
+
+        data.append([
+            i,
+            fecha_venta,
+            comprobante,
+            nombre_cliente,
+            tipo,
+            estado_credito,
+            f"S/ {inicial:.2f}",
+            f"S/ {cuotas_pagadas:.2f}",
+            f"S/ {recaudado_venta:.2f}"
+        ])
+
+    # Fila resumen
+    data.append([
+        '', '', '', '', '', '', '',
+        'TOTAL RECAUDADO:',
+        f"S/ {total_recaudado:.2f}"
+    ])
+
+    prod = vehiculo.idproducto
+    nombre_prod = prod.nomproducto if prod else '-'
+    serie_motor = vehiculo.serie_motor or '-'
+    serie_chasis = vehiculo.serie_chasis or '-'
+    title = f"Historial de Recaudación: {nombre_prod} (Motor: {serie_motor} | Chasis: {serie_chasis})"
+    
+    headers = ['#', 'Fecha', 'Comprobante', 'Cliente', 'Tipo', 'Estado Crédito', 'Inicial', 'Cuotas Cobradas', 'Subtotal']
+    
+    return export_to_pdf(headers, data, title, f"Recaudacion_Vehiculo_{vehiculo.id_vehiculo}")

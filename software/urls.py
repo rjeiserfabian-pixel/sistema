@@ -268,6 +268,7 @@ urlpatterns = [
     path('stock/api/solicitar-traslado/', stock.api_solicitar_traslado_desde_stock, name='api_solicitar_traslado_desde_stock'),
     path('stock/exportar-excel/', stock.exportar_excel_stock, name='exportar_excel_stock'),
     path('stock/api/recaudacion/<int:id_vehiculo>/', stock.api_historial_recaudacion_vehiculo, name='api_historial_recaudacion_vehiculo'),
+    path('stock/recaudacion/pdf/<int:id_vehiculo>/', stock.historial_recaudacion_vehiculo_pdf, name='historial_recaudacion_vehiculo_pdf'),
     path('stock/api/historial/buscar/', stock.api_buscar_vehiculos_historial, name='api_buscar_vehiculos_historial'),
     path('api/agregar-vehiculo-stock/', stock.agregar_vehiculo_stock_directo, name='agregar_vehiculo_stock_directo'),
     path('api/editar-vehiculo-stock/', stock.editar_vehiculo_stock, name='editar_vehiculo_stock'),

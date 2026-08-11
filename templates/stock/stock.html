@@ -771,7 +771,8 @@
 
         </div><!-- /modal-body -->
 
-        <div class="modal-footer border-0" style="background: rgba(255,255,255,0.05);">
+        <div class="modal-footer border-0 d-flex justify-content-end gap-2" style="background: rgba(255,255,255,0.05);">
+          <a id="btn-recaudacion-pdf" href="#" target="_blank" class="btn btn-danger rounded-pill px-4" style="display:none;"><i class="fa-regular fa-file-pdf me-2"></i>Generar PDF</a>
           <button type="button" class="btn btn-outline-light rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
@@ -2721,6 +2722,8 @@ function abrirModalRecaudacion(idVehiculo) {
   document.getElementById('recaudacion-content').style.display = 'none';
   document.getElementById('recaudacion-error').style.display = 'none';
   document.getElementById('recaudacion-vehiculo-nombre').textContent = 'Cargando...';
+  var btnPdf = document.getElementById('btn-recaudacion-pdf');
+  if (btnPdf) btnPdf.style.display = 'none';
 
   var modalEl = document.getElementById('modalRecaudacion');
   _mostrarModalRecaudacion(idVehiculo, modalEl);
@@ -2816,11 +2819,21 @@ function _mostrarModalRecaudacion(idVehiculo, modalEl) {
 
       document.getElementById('recaudacion-loading').style.display = 'none';
       document.getElementById('recaudacion-content').style.display = 'block';
+
+      // Setup PDF link
+      var btnPdf = document.getElementById('btn-recaudacion-pdf');
+      if (btnPdf) {
+        btnPdf.href = '/stock/recaudacion/pdf/' + idVehiculo + '/';
+        btnPdf.style.display = 'block';
+      }
     })
     .catch(function(err) {
       document.getElementById('recaudacion-loading').style.display = 'none';
       document.getElementById('recaudacion-error').style.display = 'block';
       console.error('Error al cargar recaudacion:', err);
+      
+      var btnPdf = document.getElementById('btn-recaudacion-pdf');
+      if (btnPdf) btnPdf.style.display = 'none';
     });
 }
 
