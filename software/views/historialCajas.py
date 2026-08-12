@@ -542,9 +542,15 @@ def obtener_movimientos_caja(request, id_movimiento):
         'pagos_cuota__idcuotaventa__idcredito__idventa__idcliente'
     ).order_by('-fecha_movimiento')
     
-    # Calcular totales
-    total_ingresos = movimientos.filter(tipo_movimiento='ingreso').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-    total_egresos = movimientos.filter(tipo_movimiento='egreso').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    # Calcular totales usando monto_base_soles (equivalente en soles) cuando disponible
+    total_ingresos = Decimal('0.00')
+    total_ingresos += movimientos.filter(tipo_movimiento='ingreso', monto_base_soles__isnull=False).aggregate(total=Sum('monto_base_soles'))['total'] or Decimal('0.00')
+    total_ingresos += movimientos.filter(tipo_movimiento='ingreso', monto_base_soles__isnull=True).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+
+    total_egresos = Decimal('0.00')
+    total_egresos += movimientos.filter(tipo_movimiento='egreso', monto_base_soles__isnull=False).aggregate(total=Sum('monto_base_soles'))['total'] or Decimal('0.00')
+    total_egresos += movimientos.filter(tipo_movimiento='egreso', monto_base_soles__isnull=True).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+
     saldo_calculado = (apertura.saldo_inicial or Decimal('0.00')) + total_ingresos - total_egresos
     
     import re
@@ -677,6 +683,9 @@ def obtener_movimientos_caja(request, id_movimiento):
                     m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', mov.idcompra.observaciones)
                     if m_frac:
                         detalles_metodo = m_frac.group(1)
+            # Mostrar info de moneda USD si aplica
+            if mov.moneda == 'USD' and mov.tipo_cambio_aplicado:
+                detalles_metodo = (detalles_metodo + " " if detalles_metodo else "") + f"[USD {mov.monto} a TC {mov.tipo_cambio_aplicado}]"
         
         # 4. Evaluar si es un Cobro Inicial Pre-Crédito
         elif 'Pre-Crédito' in (mov.descripcion or ''):
@@ -705,7 +714,10 @@ def obtener_movimientos_caja(request, id_movimiento):
             'detalles_metodo': detalles_metodo,
             'nro_operacion': nro_operacion,
             'descripcion': mov.descripcion or 'Sin descripción',
-            'monto': float(mov.monto),
+            'monto': float(mov.monto_base_soles if mov.monto_base_soles is not None else mov.monto),
+            'monto_original': float(mov.monto),
+            'moneda': mov.moneda or 'PEN',
+            'tipo_cambio': float(mov.tipo_cambio_aplicado or 1),
             'usuario': mov.idusuario.nombrecompleto if mov.idusuario else 'N/A',
             'comprobante': comprobante
         })

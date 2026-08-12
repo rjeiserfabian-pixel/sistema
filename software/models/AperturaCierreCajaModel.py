@@ -9,6 +9,8 @@ class AperturaCierreCaja(models.Model):
     idusuario = models.ForeignKey(Usuario, models.DO_NOTHING, db_column='idusuario', null=True, blank=True)
     saldo_inicial = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     saldo_final = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    saldo_inicial_usd = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True, null=True)
+    saldo_final_usd = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True, null=True)
     fecha_apertura = models.DateTimeField(blank=True, null=True)
     fecha_cierre = models.DateTimeField(blank=True, null=True)
     hora_apertura = models.TimeField(blank=True, null=True)

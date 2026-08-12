@@ -161,12 +161,15 @@ def _validar_cabecera_compra(request):
 
     tipo_pago_id = None
     observaciones = None
+    pagos_procesados = []
 
     if forma_pago_id != FORMA_PAGO_CREDITO_ID:
         # ── Contado: leer lista de métodos de pago múltiples ──────────────────
         tipos_ids_raw = request.POST.getlist('tipo_pago_id[]')
         montos_raw = request.POST.getlist('monto_pago[]')
         nros_op_raw = request.POST.getlist('nro_operacion[]')
+        monedas_raw = request.POST.getlist('moneda_pago[]')
+        tcs_raw = request.POST.getlist('tc_pago[]')
 
         # Compatibilidad hacia atrás: si el frontend envía el campo simple
         if not tipos_ids_raw:
@@ -182,6 +185,16 @@ def _validar_cabecera_compra(request):
                 return JsonResponse({'ok': False, 'error': 'Tipo de pago inválido.'}, status=400), None
             if tipo_pago_id not in tipos_pago_dict:
                 return JsonResponse({'ok': False, 'error': 'El tipo de pago seleccionado no es válido.'}, status=400), None
+            
+            # Un solo pago genérico
+            pagos_procesados.append({
+                'tipo_pago_id': tipo_pago_id,
+                'monto': float(request.POST.get('monto_pago') or request.POST.get('total') or 0),
+                'nro_operacion': '',
+                'moneda': 'PEN',
+                'tc': 1.0000,
+                'nombre_tp': tipos_pago_dict[tipo_pago_id]
+            })
         else:
             # Nuevo camino: múltiples métodos de pago
             if len(tipos_ids_raw) == 0:
@@ -226,17 +239,36 @@ def _validar_cabecera_compra(request):
                         'error': f'El monto para el método de pago "{nombre_tp}" debe ser mayor a 0.'
                     }, status=400), None
 
-                parte = f'{nombre_tp}: S/{monto:.2f}'
+                moneda = (monedas_raw[idx] if idx < len(monedas_raw) else 'PEN').strip()
+                tc_str = (tcs_raw[idx] if idx < len(tcs_raw) else '1.0000').strip()
+                try:
+                    tc = float(tc_str)
+                except:
+                    tc = 1.0000
+
+                sym = '$' if moneda == 'USD' else 'S/'
+                parte = f'{nombre_tp}: {sym}{monto:.2f}'
+                if moneda == 'USD':
+                    parte += f' (TC: {tc})'
                 if nro_op:
                     parte += f' (Op: {nro_op})'
                 partes_obs.append(parte)
 
+                pagos_procesados.append({
+                    'tipo_pago_id': tp_id,
+                    'monto': monto,
+                    'nro_operacion': nro_op,
+                    'moneda': moneda,
+                    'tc': tc,
+                    'nombre_tp': nombre_tp
+                })
+
             # Resolver id_tipo_pago a guardar en la cabecera
             if len(tipos_ids_raw) == 1:
                 tipo_pago_id = int(tipos_ids_raw[0])
-                # Observaciones solo si hay N° operación
-                if partes_obs and '(Op:' in partes_obs[0]:
-                    observaciones = f'[Op: {nros_op_raw[0].strip()}]' if nros_op_raw else None
+                # Observaciones solo si hay N° operación o moneda extranjera
+                if partes_obs and ('(Op:' in partes_obs[0] or '(TC:' in partes_obs[0]):
+                    observaciones = f'[{partes_obs[0]}]'
             else:
                 # Buscar tipo "Múltiple" en memoria (sin nueva query)
                 tipo_multiple_id = None
@@ -282,6 +314,7 @@ def _validar_cabecera_compra(request):
         'numcorrelativo': numcorrelativo,
         'fechacompra': fecha_compra,
         'observaciones': observaciones,
+        'pagos_procesados': pagos_procesados,
     }
 
 
@@ -818,54 +851,71 @@ def nueva_compra(request):
                                 monto_adelanto=monto_adelanto_cuota,
                                 estado=1
                             )
-
-                        if total_adelanto > 0:
-                            monto_egreso_caja = total_adelanto
-                            descripcion_egreso = f"Pago inicial (adelanto) de Compra Crédito {compra.numcorrelativo} - Proveedor: {compra.idproveedor.razonsocial}"
-
                         print(f"✅ {cuotas} cuotas guardadas correctamente")
-                else:
-                    # Compra al contado
-                    monto_egreso_caja = total
-                    descripcion_egreso = f"Pago de Compra Contado {compra.numcorrelativo} - Proveedor: {compra.idproveedor.razonsocial}"
 
-                # Verificar si afecta a caja (ya lo calculamos antes, pero lo podemos reusar)
-                # afecta_caja = request.POST.get('afecta_caja') == '1'
-
-                # Crear movimiento de caja si hay monto a registrar y afecta a caja
-                if monto_egreso_caja > 0 and afecta_caja:
+                # Crear movimiento de caja si afecta a caja
+                if afecta_caja:
                     from software.models.movimientoCajaModel import MovimientoCaja
                     from django.db.models import Sum
                     from decimal import Decimal
-                    
-                    ingresos = MovimientoCaja.objects.filter(
-                        id_movimiento=apertura,
-                        tipo_movimiento='ingreso',
-                        estado=1
-                    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-                    
-                    egresos = MovimientoCaja.objects.filter(
-                        id_movimiento=apertura,
-                        tipo_movimiento='egreso',
-                        estado=1
-                    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-                    
-                    saldo_inicial = apertura.saldo_inicial or Decimal('0.00')
-                    saldo_actual = saldo_inicial + ingresos - egresos
-                    
-                    if saldo_actual < Decimal(str(monto_egreso_caja)):
-                        raise ValueError(f"Fondos insuficientes en la caja para la compra. Saldo actual: S/ {saldo_actual:.2f}, Monto requerido: S/ {monto_egreso_caja:.2f}.")
 
-                    MovimientoCaja.objects.create(
-                        id_caja_id=id_caja_session,
-                        idusuario_id=idusuario_session,
-                        id_movimiento=apertura,
-                        idcompra=compra,
-                        tipo_movimiento='egreso',
-                        monto=monto_egreso_caja,
-                        descripcion=descripcion_egreso,
-                        estado=1
+                    ingresos_soles = MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='ingreso', estado=1,
+                        monto_base_soles__isnull=False
+                    ).aggregate(total=Sum('monto_base_soles'))['total'] or Decimal('0.00')
+                    ingresos_soles += MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='ingreso', estado=1,
+                        monto_base_soles__isnull=True
+                    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+
+                    egresos_soles = MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='egreso', estado=1,
+                        monto_base_soles__isnull=False
+                    ).aggregate(total=Sum('monto_base_soles'))['total'] or Decimal('0.00')
+                    egresos_soles += MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='egreso', estado=1,
+                        monto_base_soles__isnull=True
+                    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+
+                    saldo_inicial = apertura.saldo_inicial or Decimal('0.00')
+                    saldo_actual = saldo_inicial + ingresos_soles - egresos_soles
+
+                    pagos = cabecera.get('pagos_procesados', [])
+                    if str(cabecera['id_forma_pago']) == str(FORMA_PAGO_CREDITO_ID):
+                        pagos = [{'monto': total_adelanto, 'moneda': 'PEN', 'tc': 1.0, 'nombre_tp': 'Adelanto Credito'}] if total_adelanto > 0 else []
+
+                    total_egreso_soles = sum(
+                        Decimal(str(p['monto'])) * Decimal(str(p['tc'])) for p in pagos
                     )
+
+                    if saldo_actual < total_egreso_soles:
+                        raise ValueError(
+                            f"Fondos insuficientes en la caja. Saldo: S/ {saldo_actual:.2f}, Requerido: S/ {total_egreso_soles:.2f}."
+                        )
+
+                    movimientos_a_crear = []
+                    for p in pagos:
+                        monto_pago = Decimal(str(p['monto']))
+                        tc_pago = Decimal(str(p['tc']))
+                        monto_base = monto_pago * tc_pago
+                        desc = f"Pago Compra {compra.numcorrelativo} - {compra.idproveedor.razonsocial} ({p['nombre_tp']})"
+                        if p['moneda'] == 'USD':
+                            desc += f" [USD {monto_pago} a TC {tc_pago}]"
+                        movimientos_a_crear.append(MovimientoCaja(
+                            id_caja_id=id_caja_session,
+                            idusuario_id=idusuario_session,
+                            id_movimiento=apertura,
+                            idcompra=compra,
+                            tipo_movimiento='egreso',
+                            monto=monto_pago,
+                            moneda=p['moneda'],
+                            tipo_cambio_aplicado=tc_pago,
+                            monto_base_soles=monto_base,
+                            descripcion=desc,
+                            estado=1
+                        ))
+                    if movimientos_a_crear:
+                        MovimientoCaja.objects.bulk_create(movimientos_a_crear)
 
                 print(f"COMPRA REGISTRADA - ID: {compra.idcompra}")
                 print(f"Sucursal: {sucursal.nombre_sucursal}")
@@ -1352,10 +1402,11 @@ def actualizar_compra(request, id):
 
             # Actualizar movimiento de caja
             from software.models.movimientoCajaModel import MovimientoCaja
-            movimiento_existente = MovimientoCaja.objects.filter(idcompra=compra, tipo_movimiento='egreso').first()
-            
+            # Eliminar movimientos anteriores de esta compra (se re-crean desde cero)
+            movimientos_existentes = MovimientoCaja.objects.filter(idcompra=compra, tipo_movimiento='egreso')
+
             afecta_caja = request.POST.get('afecta_caja') in ['1', 'on']
-            if monto_egreso_caja > 0 and afecta_caja:
+            if afecta_caja:
                 idusuario_session = request.session.get('idusuario')
                 id_caja_session = request.session.get('id_caja')
                 apertura = AperturaCierreCaja.objects.filter(
@@ -1366,51 +1417,71 @@ def actualizar_compra(request, id):
                 if apertura:
                     from django.db.models import Sum
                     from decimal import Decimal
-                    
-                    ingresos = MovimientoCaja.objects.filter(
-                        id_movimiento=apertura,
-                        tipo_movimiento='ingreso',
-                        estado=1
-                    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-                    
-                    egresos_qs = MovimientoCaja.objects.filter(
-                        id_movimiento=apertura,
-                        tipo_movimiento='egreso',
-                        estado=1
-                    )
-                    if movimiento_existente:
-                        egresos_qs = egresos_qs.exclude(id_movimiento_caja=movimiento_existente.id_movimiento_caja)
-                    egresos = egresos_qs.aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
-                    
-                    saldo_inicial = apertura.saldo_inicial or Decimal('0.00')
-                    saldo_actual = saldo_inicial + ingresos - egresos
-                    
-                    if saldo_actual < Decimal(str(monto_egreso_caja)):
-                        raise ValueError(f"Fondos insuficientes en la caja para actualizar la compra. Saldo disponible: S/ {saldo_actual:.2f}, Monto requerido: S/ {monto_egreso_caja:.2f}.")
 
-                if movimiento_existente:
-                    movimiento_existente.monto = monto_egreso_caja
-                    movimiento_existente.descripcion = descripcion_egreso
-                    movimiento_existente.estado = 1
-                    movimiento_existente.save()
-                else:
-                    if apertura:
-                        MovimientoCaja.objects.create(
+                    ids_existentes = list(movimientos_existentes.values_list('id_movimiento_caja', flat=True))
+
+                    ingresos_soles = MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='ingreso', estado=1,
+                        monto_base_soles__isnull=False
+                    ).aggregate(total=Sum('monto_base_soles'))['total'] or Decimal('0.00')
+                    ingresos_soles += MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='ingreso', estado=1,
+                        monto_base_soles__isnull=True
+                    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+
+                    egresos_soles = MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='egreso', estado=1,
+                        monto_base_soles__isnull=False
+                    ).exclude(id_movimiento_caja__in=ids_existentes).aggregate(total=Sum('monto_base_soles'))['total'] or Decimal('0.00')
+                    egresos_soles += MovimientoCaja.objects.filter(
+                        id_movimiento=apertura, tipo_movimiento='egreso', estado=1,
+                        monto_base_soles__isnull=True
+                    ).exclude(id_movimiento_caja__in=ids_existentes).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+
+                    saldo_inicial = apertura.saldo_inicial or Decimal('0.00')
+                    saldo_actual = saldo_inicial + ingresos_soles - egresos_soles
+
+                    pagos = cabecera.get('pagos_procesados', [])
+                    if str(cabecera['id_forma_pago']) == str(FORMA_PAGO_CREDITO_ID):
+                        pagos = [{'monto': monto_egreso_caja, 'moneda': 'PEN', 'tc': 1.0, 'nombre_tp': 'Adelanto Credito'}] if monto_egreso_caja > 0 else []
+
+                    total_egreso_soles = sum(
+                        Decimal(str(p['monto'])) * Decimal(str(p['tc'])) for p in pagos
+                    )
+
+                    if saldo_actual < total_egreso_soles:
+                        raise ValueError(
+                            f"Fondos insuficientes en la caja para actualizar la compra. Saldo disponible: S/ {saldo_actual:.2f}, Monto requerido: S/ {total_egreso_soles:.2f}."
+                        )
+
+                    # Borrar movimientos anteriores y re-crear
+                    movimientos_existentes.delete()
+                    nuevos = []
+                    for p in pagos:
+                        monto_pago = Decimal(str(p['monto']))
+                        tc_pago = Decimal(str(p['tc']))
+                        monto_base = monto_pago * tc_pago
+                        desc = f"Pago Compra {compra.numcorrelativo} - {compra.idproveedor.razonsocial} ({p['nombre_tp']})"
+                        if p['moneda'] == 'USD':
+                            desc += f" [USD {monto_pago} a TC {tc_pago}]"
+                        nuevos.append(MovimientoCaja(
                             id_caja_id=id_caja_session,
                             idusuario_id=idusuario_session,
                             id_movimiento=apertura,
                             idcompra=compra,
                             tipo_movimiento='egreso',
-                            monto=monto_egreso_caja,
-                            descripcion=descripcion_egreso,
+                            monto=monto_pago,
+                            moneda=p['moneda'],
+                            tipo_cambio_aplicado=tc_pago,
+                            monto_base_soles=monto_base,
+                            descripcion=desc,
                             estado=1
-                        )
+                        ))
+                    if nuevos:
+                        MovimientoCaja.objects.bulk_create(nuevos)
             else:
-                # Si el monto ahora es 0 (ej. cambió a crédito sin inicial), anular el movimiento si existe
-                if movimiento_existente:
-                    movimiento_existente.estado = 0
-                    movimiento_existente.monto = 0
-                    movimiento_existente.save()
+                # Si ya no afecta caja, anular movimientos previos
+                movimientos_existentes.update(estado=0)
             
             # REGISTRAR EN AUDITORÍA
             from software.models.AuditoriaComprasModel import AuditoriaCompras
@@ -1714,6 +1785,9 @@ def compra_pdf(request, idcompra):
 
     if compra.id_tipo_pago:
         tipo_pago_nom = compra.id_tipo_pago.nombre
+        if compra.observaciones and ('[FRACCIONADO:' in compra.observaciones or '(TC:' in compra.observaciones):
+            obs = compra.observaciones.replace('[FRACCIONADO:', '').replace('[', '').replace(']', '').strip()
+            tipo_pago_nom += f"<br/><i><font size='7'>{obs}</font></i>"
         tp_bg = BADGE_TEAL
     elif compra.id_forma_pago and compra.id_forma_pago.id_forma_pago == 2:
         tipo_pago_nom = 'Crédito'
@@ -2395,18 +2469,37 @@ def api_obtener_detalle_compra(request, id):
         import re
         pagos_list = []
         if compra.id_forma_pago and compra.id_forma_pago.id_forma_pago != 2:
-            if compra.observaciones and '[FRACCIONADO:' in compra.observaciones:
-                obs = compra.observaciones.replace('[FRACCIONADO:', '').replace(']', '').strip()
+            if compra.observaciones and ('[FRACCIONADO:' in compra.observaciones or '(TC:' in compra.observaciones):
+                obs = compra.observaciones.replace('[FRACCIONADO:', '').replace('[', '').replace(']', '').strip()
                 partes = obs.split('|')
                 for parte in partes:
                     parte = parte.strip()
                     if not parte: continue
-                    m = re.match(r'^(.*?):\s*S/([\d.]+)(?:\s*\(Op:\s*(.*?)\))?$', parte)
+                    # Regex para capturar: Nombre: S/ o $ Monto (TC: x) (Op: y)
+                    m = re.match(r'^(.*?):\s*(S/|\$)([\d.]+)(?:\s*\(TC:\s*([\d.]+)\))?(?:\s*\(Op:\s*(.*?)\))?$', parte)
                     if m:
+                        nombre = m.group(1).strip()
+                        sym = m.group(2)
+                        monto = float(m.group(3))
+                        tc = m.group(4)
+                        op = m.group(5)
+                        
+                        nom_full = nombre
+                        if sym == '$':
+                            nom_full += f" (USD a TC {tc})"
+                        
                         pagos_list.append({
-                            'nombre': m.group(1).strip(),
-                            'monto': float(m.group(2)),
-                            'operacion': m.group(3).strip() if m.group(3) else 'Sin detalle'
+                            'nombre': nom_full,
+                            'monto': monto if sym == 'S/' else (monto * float(tc) if tc else monto),
+                            'monto_usd': monto if sym == '$' else None,
+                            'operacion': op.strip() if op else 'Sin detalle'
+                        })
+                    else:
+                        # Fallback simple
+                        pagos_list.append({
+                            'nombre': parte,
+                            'monto': float(compra.total_compra) if compra.total_compra else 0.0,
+                            'operacion': 'Sin detalle'
                         })
             else:
                 monto = float(compra.total_compra) if compra.total_compra else 0.0
@@ -2416,7 +2509,7 @@ def api_obtener_detalle_compra(request, id):
                     if m:
                         operacion = m.group(1).strip()
                 pagos_list.append({
-                    'nombre': compra.id_forma_pago.nombre if compra.id_forma_pago else '',
+                    'nombre': compra.id_tipo_pago.nombre if compra.id_tipo_pago else (compra.id_forma_pago.nombre if compra.id_forma_pago else ''),
                     'monto': monto,
                     'operacion': operacion
                 })

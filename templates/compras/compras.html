@@ -2808,7 +2808,14 @@
         if (isNaN(val) || val <= 0) {
             montoOk = false;
         } else {
-            totalPagado += val;
+            const monedaSelect = row.querySelector('.select-moneda-pago-compra');
+            if (monedaSelect && monedaSelect.value === 'USD') {
+                const tcInp = row.querySelector('.tc-pago-compra');
+                const tc = parseFloat(tcInp.value) || 1.0;
+                totalPagado += (val * tc);
+            } else {
+                totalPagado += val;
+            }
         }
     });
 
@@ -4438,19 +4445,34 @@ function agregarFilaPagoCompra(tpId='', monto='', operacion='') {
     div.className = 'pago-row-compra row g-2 mb-2 align-items-center';
     div.id = `pago-row-compra-${pagoCompraCount}`;
     div.innerHTML = `
-      <div class="col-md-5 col-selector-c">
+      <div class="col-md-4 col-selector-c">
         <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago-compra" required onchange="toggleOperacionCompra(this)">
           <option value="">Método de Pago...</option>
           ${TIPOS_PAGO_COMPRA_TPL}
         </select>
       </div>
-      <div class="col-md-4 nro-op-compra-container d-none">
-        <input type="text" name="nro_operacion[]" class="form-control form-control-sm nro-operacion-input" placeholder="N° Operación" value="${operacion}">
+      <div class="col-md-3 col-moneda-c">
+        <select name="moneda_pago[]" class="form-select form-select-sm select-moneda-pago-compra" onchange="toggleMonedaPagoCompra(this)">
+          <option value="PEN">Soles (PEN)</option>
+          <option value="USD">Dólares (USD)</option>
+        </select>
       </div>
-      <div class="col-md-3 flex-grow-1 col-monto-c">
+      <div class="col-md-2 col-tc-c d-none">
         <div class="input-group input-group-sm">
-          <span class="input-group-text bg-white">S/</span>
+          <span class="input-group-text bg-white" style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">TC</span>
+          <input type="number" name="tc_pago[]" class="form-control form-control-sm tc-pago-compra" step="0.0001" min="0.0001" value="${document.getElementById('tipo_cambio') ? document.getElementById('tipo_cambio').value : '1.0000'}" oninput="calcularTotalPagadoCompra()">
+        </div>
+      </div>
+      <div class="col-md-2 nro-op-compra-container d-none">
+        <input type="text" name="nro_operacion[]" class="form-control form-control-sm nro-operacion-input" placeholder="N° Op." value="${operacion}">
+      </div>
+      <div class="col-md-5 flex-grow-1 col-monto-c">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white moneda-symbol-pago">S/</span>
           <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-pago-compra" step="0.01" min="0.01" placeholder="0.00" value="${monto}" required oninput="calcularTotalPagadoCompra()">
+          <button type="button" class="btn btn-sm btn-outline-info" title="Calcular restante exacto" onclick="autocompletarRestanteCompra(this)">
+            <i class="fa-solid fa-calculator"></i>
+          </button>
           <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-compra no-auth" title="Quitar" onclick="eliminarFilaPagoCompra(this)">
             <i class="fa-solid fa-minus"></i>
           </button>
@@ -4473,26 +4495,77 @@ function agregarFilaPagoCompra(tpId='', monto='', operacion='') {
 
 function toggleOperacionCompra(select) {
     const row = select.closest('.pago-row-compra');
-    const container = row.querySelector('.nro-op-compra-container');
-    const input = container.querySelector('input');
-    const texto = (select.options[select.selectedIndex]?.text || '').toLowerCase();
-    const esEfectivo = texto.includes('efectivo') || select.value === '';
+    recalcularColumnasPagoCompra(row);
+}
+
+function toggleMonedaPagoCompra(select) {
+    const row = select.closest('.pago-row-compra');
+    const tcContainer = row.querySelector('.col-tc-c');
+    const symbol = row.querySelector('.moneda-symbol-pago');
+    const tcInput = row.querySelector('.tc-pago-compra');
     
-    // Si contiene 'múltiple', es un tipo genérico que no debe usarse directamente aquí
-    // pero si lo eligen, requerir operación por si acaso.
-    
-    if (!esEfectivo && select.value !== '') {
-        container.classList.remove('d-none');
-        input.required = true;
-        row.querySelector('.col-selector-c').className = 'col-md-4 col-selector-c';
-        container.className = 'col-md-4 nro-op-compra-container';
-        row.querySelector('.col-monto-c').className = 'col-md-4 flex-grow-1 col-monto-c';
+    if (select.value === 'USD') {
+        tcContainer.classList.remove('d-none');
+        symbol.textContent = '$';
+        tcInput.required = true;
     } else {
-        container.classList.add('d-none');
-        input.required = false;
-        input.value = '';
-        row.querySelector('.col-selector-c').className = 'col-md-5 col-selector-c';
-        row.querySelector('.col-monto-c').className = 'col-md-3 flex-grow-1 col-monto-c';
+        tcContainer.classList.add('d-none');
+        symbol.textContent = 'S/';
+        tcInput.required = false;
+    }
+    recalcularColumnasPagoCompra(row);
+    calcularTotalPagadoCompra();
+}
+
+function recalcularColumnasPagoCompra(row) {
+    const selectTipo = row.querySelector('.select-tipo-pago-compra');
+    const texto = (selectTipo.options[selectTipo.selectedIndex]?.text || '').toLowerCase();
+    const esEfectivo = texto.includes('efectivo') || selectTipo.value === '';
+    
+    const selectMoneda = row.querySelector('.select-moneda-pago-compra');
+    const esUSD = selectMoneda.value === 'USD';
+    
+    const nroOpContainer = row.querySelector('.nro-op-compra-container');
+    const nroOpInput = nroOpContainer.querySelector('input');
+    
+    if (!esEfectivo && selectTipo.value !== '') {
+        nroOpContainer.classList.remove('d-none');
+        nroOpInput.required = true;
+    } else {
+        nroOpContainer.classList.add('d-none');
+        nroOpInput.required = false;
+        nroOpInput.value = '';
+    }
+    
+    const colSelector = row.querySelector('.col-selector-c');
+    const colMoneda = row.querySelector('.col-moneda-c');
+    const colTc = row.querySelector('.col-tc-c');
+    const colMonto = row.querySelector('.col-monto-c');
+    
+    if (esUSD && !esEfectivo) {
+        colSelector.className = 'col-md-3 col-selector-c';
+        colMoneda.className = 'col-md-2 col-moneda-c';
+        colTc.className = 'col-md-2 col-tc-c';
+        nroOpContainer.className = 'col-md-2 nro-op-compra-container';
+        colMonto.className = 'col-md-3 flex-grow-1 col-monto-c';
+    } else if (esUSD && esEfectivo) {
+        colSelector.className = 'col-md-3 col-selector-c';
+        colMoneda.className = 'col-md-2 col-moneda-c';
+        colTc.className = 'col-md-2 col-tc-c';
+        nroOpContainer.className = 'col-md-2 nro-op-compra-container d-none';
+        colMonto.className = 'col-md-5 flex-grow-1 col-monto-c';
+    } else if (!esUSD && !esEfectivo) {
+        colSelector.className = 'col-md-4 col-selector-c';
+        colMoneda.className = 'col-md-2 col-moneda-c';
+        colTc.className = 'col-md-2 col-tc-c d-none';
+        nroOpContainer.className = 'col-md-2 nro-op-compra-container';
+        colMonto.className = 'col-md-4 flex-grow-1 col-monto-c';
+    } else {
+        colSelector.className = 'col-md-4 col-selector-c';
+        colMoneda.className = 'col-md-3 col-moneda-c';
+        colTc.className = 'col-md-2 col-tc-c d-none';
+        nroOpContainer.className = 'col-md-2 nro-op-compra-container d-none';
+        colMonto.className = 'col-md-5 flex-grow-1 col-monto-c';
     }
 }
 
@@ -4509,11 +4582,54 @@ function actualizarBotonesEliminarCompra() {
 
 function calcularTotalPagadoCompra() {
     let totalP = 0;
-    document.querySelectorAll('.monto-pago-compra').forEach(inp => {
-        totalP += parseFloat(inp.value) || 0;
+    document.querySelectorAll('.pago-row-compra').forEach(row => {
+        const monto = parseFloat(row.querySelector('.monto-pago-compra').value) || 0;
+        const moneda = row.querySelector('.select-moneda-pago-compra').value;
+        if (moneda === 'USD') {
+            const tc = parseFloat(row.querySelector('.tc-pago-compra').value) || 1;
+            totalP += monto * tc;
+        } else {
+            totalP += monto;
+        }
     });
     const lbl = document.getElementById('total_pagado_compra_lbl');
     if (lbl) lbl.textContent = `S/ ${totalP.toFixed(2)}`;
+}
+
+function autocompletarRestanteCompra(btn) {
+    const row = btn.closest('.pago-row-compra');
+    
+    // Obtener el total a pagar (sumar detalle, etc. El total general suele estar en let total = calcularTotalVenta... pero aquí es Compra)
+    // Obtener el total a pagar de la variable global 'total'
+    let totalCompra = typeof total !== 'undefined' ? total : 0;
+
+    let pagadoOtros = 0;
+    document.querySelectorAll('.pago-row-compra').forEach(r => {
+        if (r !== row) {
+            const m = parseFloat(r.querySelector('.monto-pago-compra').value) || 0;
+            const mon = r.querySelector('.select-moneda-pago-compra').value;
+            if (mon === 'USD') {
+                const t = parseFloat(r.querySelector('.tc-pago-compra').value) || 1;
+                pagadoOtros += (m * t);
+            } else {
+                pagadoOtros += m;
+            }
+        }
+    });
+
+    let faltanteSoles = totalCompra - pagadoOtros;
+    if (faltanteSoles < 0) faltanteSoles = 0;
+
+    const moneda = row.querySelector('.select-moneda-pago-compra').value;
+    const inpMonto = row.querySelector('.monto-pago-compra');
+    
+    if (moneda === 'USD') {
+        const tc = parseFloat(row.querySelector('.tc-pago-compra').value) || 1;
+        inpMonto.value = (faltanteSoles / tc).toFixed(2);
+    } else {
+        inpMonto.value = faltanteSoles.toFixed(2);
+    }
+    calcularTotalPagadoCompra();
 }
 
 function resetearPagosCompra() {
@@ -5191,7 +5307,10 @@ function abrirModalDetallesCompra(id) {
                           <td>
                             <span class="text-muted fst-italic">${pago.operacion || 'Sin detalle'}</span>
                           </td>
-                          <td class="text-end fw-bold text-primary">S/. ${pago.monto.toFixed(2)}</td>
+                          <td class="text-end">
+                            ${pago.monto_usd ? `<div class="text-success fw-bold" style="font-size:0.85rem;">$ ${pago.monto_usd.toFixed(2)}</div>` : ''}
+                            <div class="fw-bold text-primary">S/ ${pago.monto.toFixed(2)}</div>
+                          </td>
                         </tr>
                     `;
                 });

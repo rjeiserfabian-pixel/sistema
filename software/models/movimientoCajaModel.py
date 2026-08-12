@@ -25,6 +25,9 @@ class MovimientoCaja(models.Model):
     
     tipo_movimiento = models.CharField(max_length=10, choices=TIPOS_MOVIMIENTO, db_column='tipo_movimiento', db_index=True)
     monto = models.DecimalField(max_digits=10, decimal_places=2, db_column='monto')
+    moneda = models.CharField(max_length=3, default='PEN', db_column='moneda')
+    tipo_cambio_aplicado = models.DecimalField(max_digits=10, decimal_places=4, default=1.00, db_column='tipo_cambio_aplicado')
+    monto_base_soles = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, db_column='monto_base_soles')
     descripcion = models.TextField(db_column='descripcion', null=True, blank=True)
     
     fecha_movimiento = models.DateTimeField(auto_now_add=True, db_column='fecha_movimiento', db_index=True)
