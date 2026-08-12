@@ -1398,6 +1398,158 @@ def api_listar_inventario_repuestos(request):
 # ─────────────────────────────────────────────────
 #  REPORTE DE CAJA
 # ─────────────────────────────────────────────────
+def _generar_filas_movimiento(m, detalles_por_precredito, export_fmt=None, metodo_filtro_id=None, is_efectivo_filtro=False, nombre_metodo_filtro=''):
+    """
+    Desglosa un MovimientoCaja en múltiples filas si tiene pagos combinados.
+    Aplica filtro de método de pago a nivel de sub-fila para totales y visualización exacta.
+    """
+    import re
+    filas = []
+    
+    pagos_cuota = [p for p in m.pagos_cuota.all() if p.estado == 1]
+    es_precredito = False
+    dp_list = []
+    if 'Pre-Crédito' in (m.descripcion or ''):
+        m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
+        if m_pre:
+            pid = m_pre.group(1)
+            dp_list = detalles_por_precredito.get(pid, [])
+            if dp_list:
+                es_precredito = True
+
+    def agregar_fila_fraccionada(monto_parcial, id_tipo_pago_obj, numero_operacion='', observaciones=''):
+        metodo_bd = id_tipo_pago_obj.nombre if id_tipo_pago_obj else 'Efectivo'
+        id_tipo_pago_val = str(id_tipo_pago_obj.id_tipo_pago) if id_tipo_pago_obj else ''
+        
+        # Si tiene etiqueta FRACCIONADO, lo dividimos en partes
+        if observaciones and '[FRACCIONADO:' in observaciones:
+            match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', observaciones)
+            if match:
+                fracciones = match.group(1).split('|')
+                for frac in fracciones:
+                    frac = frac.strip()
+                    # Formato: "Plin: S/ 10.00 (Op:123)" o "Efectivo: S/ 15.00"
+                    m_frac = re.match(r'^(.*?):\s*S/\s*([\d\.]+)(.*)$', frac)
+                    if m_frac:
+                        f_metodo = m_frac.group(1).strip()
+                        f_monto = float(m_frac.group(2))
+                        f_detalles = m_frac.group(3).strip()
+                        if f_detalles.startswith('(') and f_detalles.endswith(')'):
+                            f_detalles = f_detalles[1:-1]
+                        
+                        # Filtro
+                        if metodo_filtro_id:
+                            if is_efectivo_filtro:
+                                if f_metodo.lower() != 'efectivo':
+                                    continue
+                            else:
+                                if f_metodo.lower() != nombre_metodo_filtro.lower():
+                                    continue
+                                    
+                        # Agregar sub-fila
+                        desc = str(m.descripcion or 'S/N Descripción')
+                        if export_fmt == 'pdf' and len(desc) > 200:
+                            desc = desc[:197] + '...'
+                            
+                        texto_metodo = f_metodo
+                        if export_fmt and f_detalles:
+                            if export_fmt == 'pdf':
+                                texto_metodo += f"<br/>({f_detalles})"
+                            else:
+                                texto_metodo += f"\n({f_detalles})"
+                                
+                        filas.append({
+                            'fecha': m.fecha_movimiento.strftime("%d/%m/%Y %H:%M"),
+                            'caja': m.id_caja.nombre_caja if m.id_caja else '-',
+                            'usuario': m.idusuario.nombrecompleto if m.idusuario else '-',
+                            'descripcion': desc,
+                            'tipo_movimiento': m.tipo_movimiento,
+                            'metodo': f_metodo,
+                            'detalles_metodo': f_detalles,
+                            'texto_metodo_export': texto_metodo,
+                            'monto': f_monto
+                        })
+                return # Detenemos aquí porque ya agregamos las fracciones
+                
+        # Lógica normal si NO es fraccionado
+        if metodo_filtro_id:
+            if is_efectivo_filtro:
+                # Permitir si el objeto es None (Efectivo por defecto) o si es Efectivo explícito
+                if id_tipo_pago_obj is not None and metodo_bd.lower() != 'efectivo':
+                    return
+            else:
+                if id_tipo_pago_val != str(metodo_filtro_id):
+                    return
+
+        detalles = ""
+        if numero_operacion and numero_operacion.lower() != 'múltiple':
+            detalles = f"Op: {numero_operacion}"
+            
+        texto_metodo = metodo_bd
+        if export_fmt and detalles:
+            if export_fmt == 'pdf':
+                if len(detalles) > 100: detalles = detalles[:97] + '...'
+                texto_metodo += f"<br/>({detalles})"
+            else:
+                texto_metodo += f"\n({detalles})"
+        
+        desc = str(m.descripcion or 'S/N Descripción')
+        if export_fmt == 'pdf' and len(desc) > 200:
+            desc = desc[:197] + '...'
+            
+        filas.append({
+            'fecha': m.fecha_movimiento.strftime("%d/%m/%Y %H:%M"),
+            'caja': m.id_caja.nombre_caja if m.id_caja else '-',
+            'usuario': m.idusuario.nombrecompleto if m.idusuario else '-',
+            'descripcion': desc,
+            'tipo_movimiento': m.tipo_movimiento,
+            'metodo': metodo_bd,
+            'detalles_metodo': detalles,
+            'texto_metodo_export': texto_metodo,
+            'monto': float(monto_parcial)
+        })
+
+    if len(pagos_cuota) > 0:
+        for p in pagos_cuota:
+            agregar_fila_fraccionada(p.monto_pago, p.id_tipo_pago, p.numero_operacion, p.observaciones)
+    elif es_precredito:
+        for p in dp_list:
+            agregar_fila_fraccionada(p.monto, p.id_tipo_pago, p.numero_operacion)
+    else:
+        if m.idventa:
+            agregar_fila_fraccionada(m.monto, m.idventa.id_tipo_pago, observaciones=m.idventa.observaciones)
+        elif m.idcompra:
+            agregar_fila_fraccionada(m.monto, m.idcompra.id_tipo_pago, observaciones=m.idcompra.observaciones)
+        else:
+            agregar_fila_fraccionada(m.monto, None)
+            
+    return filas
+
+
+def _obtener_detalles_precreditos(movimientos_list):
+    import re
+    pre_credito_ids = []
+    for m in movimientos_list:
+        if 'Pre-Crédito' in (m.descripcion or ''):
+            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
+            if m_pre:
+                pre_credito_ids.append(m_pre.group(1))
+    
+    detalles = {}
+    if pre_credito_ids:
+        try:
+            from software.models.DetallePagoInicialModel import DetallePagoInicial
+            dps = DetallePagoInicial.objects.filter(id_pre_credito_id__in=pre_credito_ids).select_related('id_tipo_pago')
+            for p in dps:
+                pid = str(p.id_pre_credito_id)
+                if pid not in detalles:
+                    detalles[pid] = []
+                detalles[pid].append(p)
+        except Exception:
+            pass
+    return detalles
+
+
 def reporte_caja(request):
     idusuario = request.session.get('idusuario')
     if not idusuario:
@@ -1426,18 +1578,24 @@ def reporte_caja(request):
             )
         if tipo_movimiento:
             movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
+            
+        is_efectivo = False
         if metodo_pago_id:
-            is_efectivo = False
             try:
                 tp = TipoPago.objects.get(pk=metodo_pago_id)
                 if tp.nombre.lower() == 'efectivo':
                     is_efectivo = True
+                nombre_metodo = tp.nombre
             except TipoPago.DoesNotExist:
-                pass
+                nombre_metodo = ''
             
             cond = Q(idventa__id_tipo_pago_id=metodo_pago_id) | \
                    Q(idcompra__id_tipo_pago_id=metodo_pago_id) | \
-                   Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1)
+                   Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1) | \
+                   Q(idventa__observaciones__icontains=nombre_metodo) | \
+                   Q(idcompra__observaciones__icontains=nombre_metodo) | \
+                   Q(pagos_cuota__observaciones__icontains=nombre_metodo, pagos_cuota__estado=1) | \
+                   Q(descripcion__icontains='Pre-Crédito')
                    
             if is_efectivo:
                 cond |= Q(idventa__id_tipo_pago__isnull=True, idcompra__id_tipo_pago__isnull=True, pagos_cuota__isnull=True)
@@ -1451,107 +1609,34 @@ def reporte_caja(request):
                 Q(idusuario__nombrecompleto__icontains=search)
             )
             
-        movimientos_qs = movimientos_qs.select_related(
+        movimientos_list = list(movimientos_qs.select_related(
             'id_caja', 'idusuario', 'idventa__id_tipo_pago', 'idcompra__id_tipo_pago'
         ).prefetch_related(
             'pagos_cuota__id_tipo_pago'
-        ).order_by('-fecha_movimiento', '-id_movimiento_caja')
+        ).order_by('-fecha_movimiento', '-id_movimiento_caja'))
+        
+        detalles_precreditos = _obtener_detalles_precreditos(movimientos_list)
         
         headers = ['Fecha', 'Caja', 'Usuario', 'Descripción', 'Tipo', 'Método', 'Monto (S/)']
         data = []
-        for m in movimientos_qs:
-            metodo_pago = "Efectivo"
-            detalles_metodo = ""
-            # Evaluamos en memoria para usar el prefetch_related y evitar N+1
-            pagos_cuota = [p for p in m.pagos_cuota.all() if p.estado == 1]
-            
-            if len(pagos_cuota) > 1:
-                metodo_pago = "Múltiple"
-                import re as _re
-                # Primero buscamos si algún pago tiene detalles [FRACCIONADO:]
-                # (ocurre en multipagos: varias cuotas pagadas con mismo método fraccionado)
-                frac_detail = ""
-                for p in pagos_cuota:
-                    if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                        m_frac = _re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
-                        if m_frac:
-                            frac_detail = m_frac.group(1)
-                            break
-                if frac_detail:
-                    detalles_metodo = frac_detail
+        total_monto = 0.0
+        
+        for m in movimientos_list:
+            filas_desglosadas = _generar_filas_movimiento(m, detalles_precreditos, export_fmt, metodo_pago_id, is_efectivo, nombre_metodo if metodo_pago_id else '')
+            for f in filas_desglosadas:
+                data.append([
+                    f['fecha'],
+                    f['caja'],
+                    f['usuario'],
+                    f['descripcion'],
+                    str(f['tipo_movimiento']).capitalize(),
+                    f['texto_metodo_export'],
+                    f['monto']
+                ])
+                if str(f['tipo_movimiento']).lower() == 'ingreso':
+                    total_monto += f['monto']
                 else:
-                    # Comprobar si todos los pagos de cuota tienen exactamente el mismo método y operación
-                    metodos_unicos = set(p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo' for p in pagos_cuota)
-                    ops_unicas = set(p.numero_operacion or '' for p in pagos_cuota)
-                    
-                    if len(metodos_unicos) == 1 and len(ops_unicas) == 1:
-                        metodo_pago = metodos_unicos.pop()
-                        op = ops_unicas.pop()
-                        if op and op.lower() != 'múltiple':
-                            detalles_metodo = f"Op: {op}"
-                        else:
-                            detalles_metodo = ""
-                    else:
-                        # Fallback: construir desde tipo y monto de cada pago
-                        metodo_pago = "Múltiple"
-                        arr = []
-                        for p in pagos_cuota:
-                            n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
-                            op = f' (Op:{p.numero_operacion})' if p.numero_operacion and p.numero_operacion.lower() != 'múltiple' else ''
-                            arr.append(f"{n}: S/ {p.monto_pago}{op}")
-                        detalles_metodo = " | ".join(arr)
-            elif len(pagos_cuota) == 1:
-                p = pagos_cuota[0]
-                if p.id_tipo_pago:
-                    metodo_pago = p.id_tipo_pago.nombre
-                    # Verificar por FRACCIONADO directamente (evitar fallo con tilde en 'Múltiple')
-                    if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                        import re
-                        match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
-                        if match:
-                            detalles_metodo = match.group(1)
-            elif m.idventa and m.idventa.id_tipo_pago:
-                metodo_pago = m.idventa.id_tipo_pago.nombre
-                # Verificar por FRACCIONADO directamente
-                if m.idventa.observaciones and '[FRACCIONADO:' in m.idventa.observaciones:
-                    import re
-                    match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', m.idventa.observaciones)
-                    if match:
-                        detalles_metodo = match.group(1)
-            elif m.idcompra and m.idcompra.id_tipo_pago:
-                metodo_pago = m.idcompra.id_tipo_pago.nombre
-                # Verificar por FRACCIONADO directamente
-                if m.idcompra.observaciones and '[FRACCIONADO:' in m.idcompra.observaciones:
-                    import re
-                    match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', m.idcompra.observaciones)
-                    if match:
-                        detalles_metodo = match.group(1)
-
-            # Si se exporta a Excel/PDF y tiene detalles, lo concatenamos
-            texto_metodo_export = metodo_pago
-            if detalles_metodo:
-                if export_fmt == 'pdf':
-                    if len(detalles_metodo) > 100:
-                        detalles_metodo = detalles_metodo[:97] + '...'
-                    texto_metodo_export += f"<br/>({detalles_metodo})"
-                else:
-                    texto_metodo_export += f"\n({detalles_metodo})"
-
-            desc = str(m.descripcion or 'S/N Descripción')
-            if export_fmt == 'pdf' and len(desc) > 200:
-                desc = desc[:197] + '...'
-
-            data.append([
-                m.fecha_movimiento.strftime("%d/%m/%Y %H:%M"),
-                m.id_caja.nombre_caja if m.id_caja else '-',
-                getattr(m.idusuario, 'nombrecompleto', '-') if getattr(m, 'idusuario', None) else '-',
-                desc,
-                m.tipo_movimiento.capitalize(),
-                texto_metodo_export,
-                m.monto
-            ])
-            
-        total_monto = sum(float(m.monto) if str(m.tipo_movimiento).lower() == 'ingreso' else -float(m.monto) for m in movimientos_qs)
+                    total_monto -= f['monto']
             
         if export_fmt == 'excel':
             data.append(["", "", "", "", "", "TOTAL RECAUDADO:", f"S/ {total_monto:.2f}"])
@@ -1604,18 +1689,24 @@ def api_listar_reporte_caja(request):
     if tipo_movimiento in ['ingreso', 'egreso']:
         movimientos_qs = movimientos_qs.filter(tipo_movimiento=tipo_movimiento)
         
+    is_efectivo = False
     if metodo_pago_id:
         is_efectivo = False
         try:
             tp = TipoPago.objects.get(pk=metodo_pago_id)
             if tp.nombre.lower() == 'efectivo':
                 is_efectivo = True
+            nombre_metodo = tp.nombre
         except TipoPago.DoesNotExist:
-            pass
+            nombre_metodo = ''
             
         cond = Q(idventa__id_tipo_pago_id=metodo_pago_id) | \
                Q(idcompra__id_tipo_pago_id=metodo_pago_id) | \
-               Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1)
+               Q(pagos_cuota__id_tipo_pago_id=metodo_pago_id, pagos_cuota__estado=1) | \
+               Q(idventa__observaciones__icontains=nombre_metodo) | \
+               Q(idcompra__observaciones__icontains=nombre_metodo) | \
+               Q(pagos_cuota__observaciones__icontains=nombre_metodo, pagos_cuota__estado=1) | \
+               Q(descripcion__icontains='Pre-Crédito')
                
         if is_efectivo:
             cond |= Q(idventa__id_tipo_pago__isnull=True, idcompra__id_tipo_pago__isnull=True, pagos_cuota__isnull=True)
@@ -1629,10 +1720,30 @@ def api_listar_reporte_caja(request):
             Q(idusuario__nombrecompleto__icontains=search_value)
         )
         
-    # Calcular totales antes de paginar
-    ingresos = movimientos_qs.filter(tipo_movimiento='ingreso').aggregate(t=Sum('monto'))['t'] or 0
-    egresos = movimientos_qs.filter(tipo_movimiento='egreso').aggregate(t=Sum('monto'))['t'] or 0
-    saldo_neto = ingresos - egresos
+    # Calcular totales globalmente (optimizado)
+    ingresos = 0.0
+    egresos = 0.0
+    if not metodo_pago_id:
+        # Sin filtro de método, los totales agregados de DB son 100% correctos y rápidos
+        ingresos = movimientos_qs.filter(tipo_movimiento='ingreso').aggregate(t=Sum('monto'))['t'] or 0.0
+        egresos = movimientos_qs.filter(tipo_movimiento='egreso').aggregate(t=Sum('monto'))['t'] or 0.0
+    else:
+        # Con filtro de método, debemos calcular exacto evitando sumar partes de otros métodos.
+        # En la mayoría de reportes diarios/mensuales es muy rápido iterar en memoria
+        todas_movs = list(movimientos_qs.select_related(
+            'idventa__id_tipo_pago', 'idcompra__id_tipo_pago'
+        ).prefetch_related('pagos_cuota__id_tipo_pago'))
+        detalles_totales = _obtener_detalles_precreditos(todas_movs)
+        
+        for m in todas_movs:
+            filas_m = _generar_filas_movimiento(m, detalles_totales, None, metodo_pago_id, is_efectivo, nombre_metodo if metodo_pago_id else '')
+            for f in filas_m:
+                if str(f['tipo_movimiento']).lower() == 'ingreso':
+                    ingresos += f['monto']
+                else:
+                    egresos += f['monto']
+                    
+    saldo_neto = float(ingresos) - float(egresos)
     
     # Order & Pagination
     movimientos_qs = movimientos_qs.select_related(
@@ -1650,111 +1761,13 @@ def api_listar_reporte_caja(request):
         start = 0
         length = 10
         
-    mov_page = movimientos_qs[start:start+length]
-    
-    import re
-    # PRE-FETCH MANUAL para evitar N+1 en Pre-Créditos
-    pre_credito_ids = []
-    for m in mov_page:
-        if 'Pre-Crédito' in (m.descripcion or ''):
-            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
-            if m_pre:
-                pre_credito_ids.append(m_pre.group(1))
-    
-    detalles_por_precredito = {}
-    if pre_credito_ids:
-        try:
-            from software.models.DetallePagoInicialModel import DetallePagoInicial
-            dps = DetallePagoInicial.objects.filter(id_pre_credito_id__in=pre_credito_ids).select_related('id_tipo_pago')
-            for p in dps:
-                pid = str(p.id_pre_credito_id)
-                if pid not in detalles_por_precredito:
-                    detalles_por_precredito[pid] = []
-                detalles_por_precredito[pid].append(p)
-        except Exception:
-            pass
+    mov_page = list(movimientos_qs[start:start+length])
+    detalles_por_precredito = _obtener_detalles_precreditos(mov_page)
 
     data = []
     for m in mov_page:
-        metodo_pago = "Efectivo"
-        detalles_metodo = ""
-        # Evaluamos en memoria para usar el prefetch_related y evitar N+1
-        pagos_cuota = [p for p in m.pagos_cuota.all() if p.estado == 1]
-        
-        if len(pagos_cuota) > 1:
-            frac_detail = ""
-            for p in pagos_cuota:
-                if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                    m_frac = re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
-                    if m_frac:
-                        frac_detail = m_frac.group(1)
-                        break
-            if frac_detail:
-                metodo_pago = "Múltiple"
-                detalles_metodo = frac_detail
-            else:
-                # Check if all payments have the exact same method
-                metodos_unicos = set(p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo' for p in pagos_cuota)
-                if len(metodos_unicos) == 1:
-                    metodo_pago = metodos_unicos.pop()
-                    detalles_metodo = ""
-                else:
-                    metodo_pago = "Múltiple"
-                    arr = []
-                    for p in pagos_cuota:
-                        n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
-                        op = f' (Op:{p.numero_operacion})' if p.numero_operacion and p.numero_operacion.lower() != 'múltiple' else ''
-                        arr.append(f"{n}: S/ {p.monto_pago}{op}")
-                    detalles_metodo = " | ".join(arr)
-        elif len(pagos_cuota) == 1:
-            p = pagos_cuota[0]
-            if p.id_tipo_pago:
-                metodo_pago = p.id_tipo_pago.nombre
-                # Verificar por FRACCIONADO directamente (evitar fallo con tilde en 'Múltiple')
-                if p.observaciones and '[FRACCIONADO:' in p.observaciones:
-                    match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', p.observaciones)
-                    if match:
-                        detalles_metodo = match.group(1)
-        elif m.idventa and m.idventa.id_tipo_pago:
-            metodo_pago = m.idventa.id_tipo_pago.nombre
-            # Verificar por FRACCIONADO directamente
-            if m.idventa.observaciones and '[FRACCIONADO:' in m.idventa.observaciones:
-                match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', m.idventa.observaciones)
-                if match:
-                    detalles_metodo = match.group(1)
-        elif m.idcompra and m.idcompra.id_tipo_pago:
-            metodo_pago = m.idcompra.id_tipo_pago.nombre
-            # Verificar por FRACCIONADO directamente
-            if m.idcompra.observaciones and '[FRACCIONADO:' in m.idcompra.observaciones:
-                match = re.search(r'\[FRACCIONADO:\s*(.*?)\]', m.idcompra.observaciones)
-                if match:
-                    detalles_metodo = match.group(1)
-        elif 'Pre-Crédito' in (m.descripcion or ''):
-            m_pre = re.search(r'Pre-Crédito\s*#(\d+)', m.descripcion)
-            if m_pre:
-                pid = m_pre.group(1)
-                dp_list = detalles_por_precredito.get(pid, [])
-                if len(dp_list) > 1:
-                    metodo_pago = "Múltiple"
-                    arr = []
-                    for p in dp_list:
-                        n = p.id_tipo_pago.nombre if p.id_tipo_pago else 'Efectivo'
-                        op = f' (Op:{p.numero_operacion})' if p.numero_operacion else ''
-                        arr.append(f"{n}: S/ {p.monto}{op}")
-                    detalles_metodo = " | ".join(arr)
-                elif len(dp_list) == 1:
-                    metodo_pago = dp_list[0].id_tipo_pago.nombre if dp_list[0].id_tipo_pago else 'Efectivo'
-
-        data.append({
-            'fecha': m.fecha_movimiento.strftime("%d/%m/%Y %H:%M"),
-            'caja': m.id_caja.nombre_caja if m.id_caja else '-',
-            'usuario': m.idusuario.nombrecompleto if m.idusuario else '-',
-            'descripcion': m.descripcion or 'S/N Descripción',
-            'tipo_movimiento': m.tipo_movimiento,
-            'metodo': metodo_pago,
-            'detalles_metodo': detalles_metodo,
-            'monto': float(m.monto),
-        })
+        filas_desglosadas = _generar_filas_movimiento(m, detalles_por_precredito, None, metodo_pago_id, is_efectivo, nombre_metodo if metodo_pago_id else '')
+        data.extend(filas_desglosadas)
         
     return JsonResponse({
         'draw': int(request.GET.get('draw', 1)),
