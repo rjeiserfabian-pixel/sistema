@@ -42,7 +42,7 @@ from django.utils import timezone
 # Debe coincidir con el catálogo: id 2 = Crédito (compras al crédito no exigen tipo de pago).
 FORMA_PAGO_CREDITO_ID = 2
 
-def _sincronizar_inventario_compra(id_almacen, tipo_item, id_item, cantidad, operacion):
+def _sincronizar_inventario_compra(id_almacen, tipo_item, id_item, cantidad, operacion, id_compra_detalle=None):
     """
     Sincroniza el Stock para Vehículos o Repuestos en un almacén.
     operacion: 'AUMENTAR' o 'REDUCIR'
@@ -63,10 +63,17 @@ def _sincronizar_inventario_compra(id_almacen, tipo_item, id_item, cantidad, ope
         )
     
     if stock:
+        if id_compra_detalle:
+            stock.idcompradetalle_id = id_compra_detalle
+            
         if operacion == 'AUMENTAR':
             stock.agregar_stock(cantidad)
         elif operacion == 'REDUCIR':
             stock.descontar_stock(cantidad)
+        
+        # En caso de que haya modificado idcompradetalle, guardarlo
+        if id_compra_detalle:
+            stock.save()
 
 def _validar_cabecera_compra(request):
     """
@@ -769,9 +776,9 @@ def nueva_compra(request):
                 CompraDetalle.objects.bulk_create(nuevos_detalles)
                 for d in nuevos_detalles:
                     if d.id_vehiculo_id:
-                        _sincronizar_inventario_compra(compra.id_almacen_id, 'vehiculo', d.id_vehiculo_id, d.cantidad, 'AUMENTAR')
+                        _sincronizar_inventario_compra(compra.id_almacen_id, 'vehiculo', d.id_vehiculo_id, d.cantidad, 'AUMENTAR', d.idcompradetalle)
                     elif d.id_repuesto_comprado_id:
-                        _sincronizar_inventario_compra(compra.id_almacen_id, 'repuesto', d.id_repuesto_comprado_id, d.cantidad, 'AUMENTAR')
+                        _sincronizar_inventario_compra(compra.id_almacen_id, 'repuesto', d.id_repuesto_comprado_id, d.cantidad, 'AUMENTAR', d.idcompradetalle)
 
                 compra.total_compra = total
                 compra.save()
@@ -1290,9 +1297,9 @@ def actualizar_compra(request, id):
             
             for d in detalles_agregados_para_stock:
                 if d.id_vehiculo_id:
-                    _sincronizar_inventario_compra(compra.id_almacen_id, 'vehiculo', d.id_vehiculo_id, d.cantidad, 'AUMENTAR')
+                    _sincronizar_inventario_compra(compra.id_almacen_id, 'vehiculo', d.id_vehiculo_id, d.cantidad, 'AUMENTAR', d.idcompradetalle)
                 elif d.id_repuesto_comprado_id:
-                    _sincronizar_inventario_compra(compra.id_almacen_id, 'repuesto', d.id_repuesto_comprado_id, d.cantidad, 'AUMENTAR')
+                    _sincronizar_inventario_compra(compra.id_almacen_id, 'repuesto', d.id_repuesto_comprado_id, d.cantidad, 'AUMENTAR', d.idcompradetalle)
             # ------------------------------------------
 
             # Actualizar total

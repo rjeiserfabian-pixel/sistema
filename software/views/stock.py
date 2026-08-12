@@ -614,11 +614,12 @@ def editar_repuesto_stock(request):
                             detalle_compra.precio_maximo = precio_maximo
                             detalle_compra.save()
                         
-                        # Actualizar catálogo base (Repuesto) solo si es el más reciente
-                        if es_el_mas_reciente and id_repuesto_base:
+                        # Actualizar catálogo base (Repuesto) solo si es el más reciente o no tiene compra
+                        if (es_el_mas_reciente or detalle_compra is None) and id_repuesto_base:
                             Repuesto.objects.filter(id_repuesto=id_repuesto_base).update(
+                                costo_unitario=precio_compra,
                                 precio_por_mayor=precio_por_mayor,
-                precio_minimo=precio_minimo,
+                                precio_minimo=precio_minimo,
                                 precio_sugerido=precio_maximo,
                             )
 
@@ -641,11 +642,12 @@ def editar_repuesto_stock(request):
                 detalle_compra.precio_maximo = precio_maximo
                 detalle_compra.save()
 
-            # Actualizar catálogo base (Repuesto) solo si es el lote más reciente
-            if es_el_mas_reciente and id_repuesto_base:
+            # Actualizar catálogo base (Repuesto) solo si es el lote más reciente o no tiene compra
+            if (es_el_mas_reciente or detalle_compra is None) and id_repuesto_base:
                 Repuesto.objects.filter(id_repuesto=id_repuesto_base).update(
+                    costo_unitario=precio_compra,
                     precio_por_mayor=precio_por_mayor,
-                precio_minimo=precio_minimo,
+                    precio_minimo=precio_minimo,
                     precio_sugerido=precio_maximo,
                 )
             
@@ -959,10 +961,10 @@ def api_listar_repuestos_stock(request):
         det = s.idcompradetalle or fallback_r.get(rc.id_repuesto_comprado)
         rep = rc.id_repuesto
 
-        p_compra = rep.costo_unitario or (det.precio_compra if det else 0)
-        p_por_mayor = getattr(rep, 'precio_por_mayor', 0) or (getattr(det, 'precio_por_mayor', 0) if det else 0)
-        p_minimo = rep.precio_minimo or (det.precio_minimo if det else 0)
-        p_maximo = rep.precio_sugerido or (det.precio_maximo if det else 0)
+        p_compra = (det.precio_compra if det and det.precio_compra else 0) or rep.costo_unitario
+        p_por_mayor = (getattr(det, 'precio_por_mayor', 0) if det and getattr(det, 'precio_por_mayor', 0) else 0) or getattr(rep, 'precio_por_mayor', 0)
+        p_minimo = (det.precio_minimo if det and det.precio_minimo else 0) or rep.precio_minimo
+        p_maximo = (det.precio_maximo if det and det.precio_maximo else 0) or rep.precio_sugerido
 
         nom = rep.nombre
         if nom not in repuestos_stock_dict:
