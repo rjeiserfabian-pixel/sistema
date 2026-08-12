@@ -1523,7 +1523,38 @@ def _generar_filas_movimiento(m, detalles_por_precredito, export_fmt=None, metod
         else:
             agregar_fila_fraccionada(m.monto, None)
             
-    return filas
+    # Agrupar filas generadas por método de pago para no mostrar redundancia
+    filas_agrupadas = {}
+    for f in filas:
+        key = (f['fecha'], f['caja'], f['usuario'], f['descripcion'], f['tipo_movimiento'], f['metodo'])
+        if key not in filas_agrupadas:
+            filas_agrupadas[key] = f.copy()
+            if f['detalles_metodo']:
+                filas_agrupadas[key]['_detalles_list'] = [f['detalles_metodo']]
+            else:
+                filas_agrupadas[key]['_detalles_list'] = []
+        else:
+            filas_agrupadas[key]['monto'] += f['monto']
+            if f['detalles_metodo'] and f['detalles_metodo'] not in filas_agrupadas[key]['_detalles_list']:
+                filas_agrupadas[key]['_detalles_list'].append(f['detalles_metodo'])
+                
+    filas_finales = []
+    for key, f in filas_agrupadas.items():
+        detalles_list = f.pop('_detalles_list', [])
+        if detalles_list:
+            f['detalles_metodo'] = ", ".join(detalles_list)
+            texto_metodo = f['metodo']
+            if export_fmt:
+                if export_fmt == 'pdf':
+                    texto_metodo += f"<br/>({f['detalles_metodo']})"
+                else:
+                    texto_metodo += f"\n({f['detalles_metodo']})"
+            f['texto_metodo_export'] = texto_metodo
+        else:
+            f['detalles_metodo'] = ""
+        filas_finales.append(f)
+            
+    return filas_finales
 
 
 def _obtener_detalles_precreditos(movimientos_list):
@@ -1745,15 +1776,6 @@ def api_listar_reporte_caja(request):
                     
     saldo_neto = float(ingresos) - float(egresos)
     
-    # Order & Pagination
-    movimientos_qs = movimientos_qs.select_related(
-        'id_caja', 'idusuario', 'idventa__id_tipo_pago', 'idcompra__id_tipo_pago'
-    ).prefetch_related(
-        'pagos_cuota__id_tipo_pago'
-    ).order_by('-fecha_movimiento', '-id_movimiento_caja')
-    
-    total_records = movimientos_qs.count()
-    
     try:
         start = int(request.GET.get('start', 0))
         length = int(request.GET.get('length', 10))
@@ -1761,13 +1783,25 @@ def api_listar_reporte_caja(request):
         start = 0
         length = 10
         
-    mov_page = list(movimientos_qs[start:start+length])
-    detalles_por_precredito = _obtener_detalles_precreditos(mov_page)
+    todas_movs = list(movimientos_qs.select_related(
+        'id_caja', 'idusuario', 'idventa__id_tipo_pago', 'idcompra__id_tipo_pago'
+    ).prefetch_related(
+        'pagos_cuota__id_tipo_pago'
+    ).order_by('-fecha_movimiento', '-id_movimiento_caja'))
+    
+    detalles_por_precredito = _obtener_detalles_precreditos(todas_movs)
 
-    data = []
-    for m in mov_page:
+    todas_filas = []
+    for m in todas_movs:
         filas_desglosadas = _generar_filas_movimiento(m, detalles_por_precredito, None, metodo_pago_id, is_efectivo, nombre_metodo if metodo_pago_id else '')
-        data.extend(filas_desglosadas)
+        todas_filas.extend(filas_desglosadas)
+        
+    total_records = len(todas_filas)
+    
+    if length == -1:
+        data = todas_filas[start:]
+    else:
+        data = todas_filas[start:start+length]
         
     return JsonResponse({
         'draw': int(request.GET.get('draw', 1)),

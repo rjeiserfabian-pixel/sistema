@@ -217,8 +217,9 @@ $(document).ready(function() {
         ],
         order: [], // Desactivar ordenación nativa inicial (ya lo hace django)
         ordering: false, // Desactivar la capacidad de ordenar columnas (ya está optimizado en BD)
-        pagingType: 'simple_numbers', // Paginador compacto como en Ventas
-        dom: '<"top">rt<"bottom"p><"clear">', // Ocultar search nativo y "showing entries" superior
+        pagingType: 'simple_numbers',
+        pageLength: 10,
+        dom: '<"table-responsive"t><"row mt-3"<"col-md-5"i><"col-md-7"p>>',
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
         },
