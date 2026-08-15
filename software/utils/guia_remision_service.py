@@ -94,8 +94,8 @@ def generar_guia_pdf(transferencia, logistica, detalles, empresa):
         [Paragraph("<b>PUNTOS DE PARTIDA Y LLEGADA</b>", estilo_titulo_seccion), ""],
         [Paragraph(f"<b>Lugar de Partida:</b> {transferencia.lugar_origen or (transferencia.id_almacen_origen.nombre_almacen if transferencia.id_almacen_origen else '---')}", estilo_normal),
          Paragraph(f"<b>Lugar de Llegada:</b> {transferencia.lugar_destino or (transferencia.id_almacen_destino.nombre_almacen if transferencia.id_almacen_destino else '---')}", estilo_normal)],
-        [Paragraph(f"<b>Dirección de Partida:</b> {transferencia.direccion_origen or (transferencia.id_almacen_origen.id_sucursal.direccion if transferencia.id_almacen_origen else '---')}", estilo_normal),
-         Paragraph(f"<b>Dirección de Llegada:</b> {transferencia.direccion_destino or (transferencia.id_almacen_destino.id_sucursal.direccion if transferencia.id_almacen_destino else '---')}", estilo_normal)]
+        [Paragraph(f"<b>Dirección de Partida:</b> {transferencia.direccion_origen or (transferencia.id_almacen_origen.direccion if transferencia.id_almacen_origen and transferencia.id_almacen_origen.direccion else (transferencia.id_almacen_origen.id_sucursal.direccion if transferencia.id_almacen_origen else '---'))}", estilo_normal),
+         Paragraph(f"<b>Dirección de Llegada:</b> {transferencia.direccion_destino or (transferencia.id_almacen_destino.direccion if transferencia.id_almacen_destino and transferencia.id_almacen_destino.direccion else (transferencia.id_almacen_destino.id_sucursal.direccion if transferencia.id_almacen_destino else '---'))}", estilo_normal)]
     ]
     t_puntos = Table(puntos_data, colWidths=[9.5*cm, 9.5*cm])
     t_puntos.setStyle(TableStyle([('SPAN', (0,0), (1,0))]))

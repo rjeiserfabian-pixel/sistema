@@ -39,6 +39,7 @@ def agregarAlmacenes(request):
         nombre_almacen = request.POST.get('nameAlmacenAgregar')
         codigo_almacen = request.POST.get('codigoAlmacenAgregar')
         descripcion = request.POST.get('descripcionAgregar')
+        direccion = request.POST.get('direccionAgregar')
         capacidad_maxima = request.POST.get('capacidadMaximaAgregar')
 
         if not nombre_almacen or nombre_almacen.strip() == '':
@@ -122,6 +123,7 @@ def agregarAlmacenes(request):
             nombre_almacen=nombre_limpio,
             codigo_almacen=codigo_limpio,
             descripcion=descripcion.strip() if descripcion and descripcion.strip() != '' else None,
+            direccion=direccion.strip() if direccion and direccion.strip() != '' else None,
             capacidad_maxima=capacidad_int,
             estado=1
         )
@@ -152,6 +154,7 @@ def editarAlmacenes(request):
         nombre_almacen = request.POST.get('nameAlmacen')
         codigo_almacen = request.POST.get('codigoAlmacen')
         descripcion = request.POST.get('descripcion')
+        direccion = request.POST.get('direccionEdit')
         capacidad_maxima = request.POST.get('capacidadMaxima')
 
         if not id_almacen or str(id_almacen).strip() == '':
@@ -251,6 +254,7 @@ def editarAlmacenes(request):
         almacen.nombre_almacen = nombre_limpio
         almacen.codigo_almacen = codigo_limpio
         almacen.descripcion = descripcion.strip() if descripcion and descripcion.strip() != '' else None
+        almacen.direccion = direccion.strip() if direccion and direccion.strip() != '' else None
         almacen.capacidad_maxima = capacidad_int
         almacen.save()
 

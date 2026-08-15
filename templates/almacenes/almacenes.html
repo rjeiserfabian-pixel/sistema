@@ -34,6 +34,7 @@
                 <th scope="col" style="width: 18%;">Sucursal</th>
                 <th scope="col" style="width: 15%;">Empresa</th>
                 <th scope="col" style="width: 10%;">Capacidad</th>
+                <th scope="col" style="width: 15%;">Dirección</th>
                 <th scope="col" style="width: 12%;">Descripción</th>
                 <th scope="col" class="text-center" style="width: 10%;">Acciones</th>
               </tr>
@@ -51,6 +52,13 @@
                     {{ almacen_registro.capacidad_maxima }}
                   {% else %}
                     <span class="text-muted">N/A</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if almacen_registro.direccion %}
+                    {{ almacen_registro.direccion }}
+                  {% else %}
+                    <span class="text-muted">Sin dirección</span>
                   {% endif %}
                 </td>
                 <td>
@@ -140,6 +148,12 @@
             </div>
 
             <div class="mb-3">
+              <label class="form-label fw-semibold">Dirección</label>
+              <input type="text" name="direccionEdit" value="{{ almacen_registro.direccion|default:'' }}" class="form-control rounded-pill">
+              <small class="text-muted">Opcional: dirección del almacén</small>
+            </div>
+
+            <div class="mb-3">
               <label class="form-label fw-semibold">Descripción</label>
               <textarea name="descripcion" class="form-control" rows="3">{{ almacen_registro.descripcion|default:'' }}</textarea>
               <small class="text-muted">Opcional: descripción del almacén</small>
@@ -201,6 +215,12 @@
               <label class="form-label fw-semibold">Capacidad Máxima</label>
               <input type="number" name="capacidadMaximaAgregar" class="form-control rounded-pill" min="0">
               <small class="text-muted">Opcional: capacidad máxima del almacén</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Dirección</label>
+              <input type="text" name="direccionAgregar" class="form-control rounded-pill">
+              <small class="text-muted">Opcional: dirección del almacén</small>
             </div>
 
             <div class="mb-3">

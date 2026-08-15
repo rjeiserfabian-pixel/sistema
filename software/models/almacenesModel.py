@@ -8,6 +8,7 @@ class Almacenes(models.Model):
     nombre_almacen = models.CharField(max_length=100)
     codigo_almacen = models.CharField(max_length=20)
     descripcion = models.TextField(blank=True, null=True)
+    direccion = models.CharField(max_length=255, blank=True, null=True)
     capacidad_maxima = models.IntegerField(blank=True, null=True)
     estado = models.IntegerField()
     
