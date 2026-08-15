@@ -3234,9 +3234,13 @@ def imprimir_comprobante(request, idventa):
         
         texto_moneda = "SOLES (PEN)"
         if venta.observaciones:
-            if 'USD' in venta.observaciones and 'PEN' in venta.observaciones:
+            obs_upper = venta.observaciones.upper()
+            has_usd = 'USD' in obs_upper or '$' in obs_upper
+            has_pen = 'PEN' in obs_upper or 'S/' in obs_upper
+            
+            if has_usd and has_pen:
                 texto_moneda = "MIXTA (PEN / USD)"
-            elif 'USD' in venta.observaciones:
+            elif has_usd:
                 texto_moneda = "DÓLARES (USD)"
                 
         elements.append(Paragraph(f"<b>MONEDA: {texto_moneda}</b>", style_normal_center))

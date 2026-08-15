@@ -1674,6 +1674,18 @@ def reporte_caja(request):
             'pagos_cuota__id_tipo_pago'
         ).order_by('-fecha_movimiento', '-id_movimiento_caja'))
         
+        movs_unicos = []
+        vistos = set()
+        for m in movimientos_list:
+            if m.idventa_id and m.idventa.observaciones and '[FRACCIONADO:' in m.idventa.observaciones:
+                if m.idventa_id in vistos: continue
+                vistos.add(m.idventa_id)
+            if m.idcompra_id and m.idcompra.observaciones and '[FRACCIONADO:' in m.idcompra.observaciones:
+                if m.idcompra_id in vistos: continue
+                vistos.add(m.idcompra_id)
+            movs_unicos.append(m)
+        movimientos_list = movs_unicos
+        
         detalles_precreditos = _obtener_detalles_precreditos(movimientos_list)
         
         headers = ['Fecha', 'Caja', 'Usuario', 'Descripción', 'Tipo', 'Método', 'Monto Equivalente (S/)']

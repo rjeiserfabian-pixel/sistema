@@ -922,7 +922,7 @@
 
   <!-- Modal para Cobrar Venta Pendiente -->
   <div class="modal fade" id="modalCobrarVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content rounded-3 shadow-lg">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Cobrar Venta</h5>
@@ -7778,32 +7778,51 @@
     pagoCobroCount++;
     const container = document.getElementById('cobro_metodos_pago_container');
     const div = document.createElement('div');
-    div.className = 'row g-3 mb-3 align-items-center pago-row-cobro';
+    div.className = 'row g-2 mb-3 align-items-center pago-row-cobro';
     div.id = `pago-row-cobro-${pagoCobroCount}`;
 
+    // Buscamos el TC actual o por defecto
+    const tcInputPrincipal = document.getElementById('tipo_cambio_input') || document.querySelector('.tc-pago-contado');
+    const tcDefecto = tcInputPrincipal ? tcInputPrincipal.value : '3.3720';
+
     div.innerHTML = `
-      <div class="col-md-5">
+      <div class="col-md-3">
         <select name="cobro_tipo_pago_id[]" class="form-select select-tipo-pago-cobro" required onchange="toggleOperacionCobro(this)">
           <option value="">Método de Pago...</option>
           ${typeof TIPOS_PAGO_TEMPLATE !== 'undefined' ? TIPOS_PAGO_TEMPLATE : ''}
         </select>
       </div>
-      <div class="col-md-4 nro-operacion-cobro-container d-none">
+      <div class="col-md-2">
+        <select name="cobro_moneda_pago[]" class="form-select select-moneda-pago-cobro" onchange="toggleMonedaPagoCobro(this)">
+          <option value="PEN">Soles (PEN)</option>
+          <option value="USD">Dólares (USD)</option>
+        </select>
+      </div>
+      <div class="col-md-2 tc-pago-cobro-container d-none">
+        <div class="input-group">
+          <span class="input-group-text bg-light text-muted px-2" style="font-size:0.8rem;">TC</span>
+          <input type="number" name="cobro_tc_pago[]" class="form-control tc-pago-cobro" step="0.0001" min="0.0001" value="${tcDefecto}" oninput="calcularTotalCobro()">
+        </div>
+      </div>
+      <div class="col-md-2 nro-operacion-cobro-container d-none">
         <input type="text" name="cobro_nro_operacion[]" class="form-control" placeholder="N° Operación" value="${operacion}">
       </div>
-      <div class="col-md-3 d-flex align-items-center gap-2 monto-cobro-container">
+      <div class="col-md-3 flex-grow-1 d-flex align-items-center gap-2 monto-cobro-container">
         <div class="input-group w-100">
-          <span class="input-group-text bg-light border-end-0 text-muted px-2">S/</span>
-          <input type="number" name="cobro_monto_pago[]" class="form-control border-start-0 ps-1 fw-bold input-monto-cobro" placeholder="Monto" step="0.01" min="0" required value="${monto}" oninput="calcularTotalCobro()">
+          <span class="input-group-text bg-light text-muted px-2 moneda-symbol-cobro">S/</span>
+          <input type="number" name="cobro_monto_pago[]" class="form-control fw-bold input-monto-cobro" placeholder="Monto" step="0.01" min="0" required value="${monto}" oninput="calcularTotalCobro()">
+          <button type="button" class="btn btn-outline-info" title="Calcular restante exacto" onclick="autocompletarRestanteCobro(this)">
+            <i class="fa-solid fa-calculator"></i>
+          </button>
+          ${pagoCobroCount > 1 ? `<button type="button" class="btn btn-outline-danger btn-remove-pago-cobro" onclick="eliminarFilaPagoCobro(this)"><i class="fa-solid fa-minus"></i></button>` : ''}
         </div>
-        ${pagoCobroCount > 1 ? `<button type="button" class="btn btn-outline-danger px-3" onclick="eliminarFilaPagoCobro(this)"><i class="fa-solid fa-minus"></i></button>` : ''}
       </div>
     `;
     
     container.appendChild(div);
 
     if (tpId) {
-      const select = div.querySelector('select');
+      const select = div.querySelector('.select-tipo-pago-cobro');
       select.value = tpId;
       toggleOperacionCobro(select);
     }
@@ -7813,17 +7832,59 @@
     const row = selectEl.closest('.pago-row-cobro');
     const textLower = selectEl.options[selectEl.selectedIndex]?.text.toLowerCase() || '';
     const nroContainer = row.querySelector('.nro-operacion-cobro-container');
-    const montoContainer = row.querySelector('.monto-cobro-container');
 
     if (textLower.includes('efectivo')) {
       nroContainer.classList.add('d-none');
-      montoContainer.classList.remove('col-md-3');
-      montoContainer.classList.add('col-md-7');
     } else {
       nroContainer.classList.remove('d-none');
-      montoContainer.classList.remove('col-md-7');
-      montoContainer.classList.add('col-md-3');
     }
+  };
+
+  window.toggleMonedaPagoCobro = function(selectEl) {
+    const row = selectEl.closest('.pago-row-cobro');
+    const tcContainer = row.querySelector('.tc-pago-cobro-container');
+    const symbol = row.querySelector('.moneda-symbol-cobro');
+    if (selectEl.value === 'USD') {
+      tcContainer.classList.remove('d-none');
+      symbol.textContent = '$';
+    } else {
+      tcContainer.classList.add('d-none');
+      symbol.textContent = 'S/';
+    }
+    calcularTotalCobro();
+  };
+
+  window.autocompletarRestanteCobro = function(btn) {
+    const row = btn.closest('.pago-row-cobro');
+    const totalVenta = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
+    
+    let pagadoOtros = 0;
+    document.querySelectorAll('.pago-row-cobro').forEach(r => {
+      if (r !== row) {
+        const m = parseFloat(r.querySelector('.input-monto-cobro').value) || 0;
+        const mon = r.querySelector('.select-moneda-pago-cobro').value;
+        if (mon === 'USD') {
+          const t = parseFloat(r.querySelector('.tc-pago-cobro').value) || 1;
+          pagadoOtros += (m * t);
+        } else {
+          pagadoOtros += m;
+        }
+      }
+    });
+
+    let faltanteSoles = totalVenta - pagadoOtros;
+    if (faltanteSoles < 0) faltanteSoles = 0;
+
+    const moneda = row.querySelector('.select-moneda-pago-cobro').value;
+    const inpMonto = row.querySelector('.input-monto-cobro');
+    
+    if (moneda === 'USD') {
+      const tc = parseFloat(row.querySelector('.tc-pago-cobro').value) || 1;
+      inpMonto.value = (faltanteSoles / tc).toFixed(2);
+    } else {
+      inpMonto.value = faltanteSoles.toFixed(2);
+    }
+    calcularTotalCobro();
   };
 
   window.eliminarFilaPagoCobro = function(btn) {
@@ -7835,8 +7896,15 @@
     const totalVenta = parseFloat(document.getElementById('cobro_total_venta').textContent) || 0;
     let sumaRecibido = 0;
     
-    document.querySelectorAll('.input-monto-cobro').forEach(input => {
-      sumaRecibido += parseFloat(input.value) || 0;
+    document.querySelectorAll('.pago-row-cobro').forEach(row => {
+      const m = parseFloat(row.querySelector('.input-monto-cobro').value) || 0;
+      const mon = row.querySelector('.select-moneda-pago-cobro').value;
+      if (mon === 'USD') {
+        const tc = parseFloat(row.querySelector('.tc-pago-cobro').value) || 1;
+        sumaRecibido += (m * tc);
+      } else {
+        sumaRecibido += m;
+      }
     });
 
     document.getElementById('cobro_total_recibido').textContent = sumaRecibido.toFixed(2);
@@ -7884,17 +7952,23 @@
       const tipos = [];
       const montos = [];
       const nros = [];
+      const monedas = [];
+      const tcs = [];
 
       document.querySelectorAll('.pago-row-cobro').forEach(row => {
         const tp = row.querySelector('.select-tipo-pago-cobro').value;
         const mt = row.querySelector('.input-monto-cobro').value;
         const nr = row.querySelector('.nro-operacion-cobro-container input').value;
+        const mo = row.querySelector('.select-moneda-pago-cobro').value;
+        const tc = row.querySelector('.tc-pago-cobro').value || 1;
         if (!tp || !mt || parseFloat(mt) <= 0) {
           formValido = false;
         }
         tipos.push(tp);
         montos.push(mt);
         nros.push(nr);
+        monedas.push(mo);
+        tcs.push(tc);
       });
 
       if (!formValido) {
@@ -7921,6 +7995,8 @@
           tipos.forEach(t => formData.append('tipo_pago_id[]', t));
           montos.forEach(m => formData.append('monto_pago[]', m));
           nros.forEach(n => formData.append('nro_operacion[]', n));
+          monedas.forEach(m => formData.append('moneda_pago[]', m));
+          tcs.forEach(t => formData.append('tc_pago[]', t));
           
           // Necesitamos enviar CSRF token
           const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
