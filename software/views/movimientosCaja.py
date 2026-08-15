@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Sum, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from decimal import Decimal
 
@@ -49,25 +50,39 @@ def movimientos_caja(request):
     else:
         movimientos = MovimientoCaja.objects.none()
     
-    # Calcular totales
+    # Calcular totales equivalentes en SOLES
     total_ingresos = movimientos.filter(
         tipo_movimiento='ingreso'
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    ).aggregate(total=Sum(Coalesce('monto_base_soles', 'monto')))['total'] or Decimal('0.00')
     
     total_egresos = movimientos.filter(
         tipo_movimiento='egreso'
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    ).aggregate(total=Sum(Coalesce('monto_base_soles', 'monto')))['total'] or Decimal('0.00')
     
     saldo_actual = total_ingresos - total_egresos
     
     if apertura_actual:
         saldo_actual += apertura_actual.saldo_inicial
+        
+    # Calcular totales físicos
+    ingresos_usd = movimientos.filter(tipo_movimiento='ingreso', moneda='USD').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    egresos_usd = movimientos.filter(tipo_movimiento='egreso', moneda='USD').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    total_fisico_usd = ingresos_usd - egresos_usd
+    
+    ingresos_pen = movimientos.filter(tipo_movimiento='ingreso').filter(Q(moneda='PEN') | Q(moneda__isnull=True)).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    egresos_pen = movimientos.filter(tipo_movimiento='egreso').filter(Q(moneda='PEN') | Q(moneda__isnull=True)).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    total_fisico_pen = ingresos_pen - egresos_pen
+    
+    if apertura_actual:
+        total_fisico_pen += apertura_actual.saldo_inicial
     
     data = {
         'movimientos': [],
         'total_ingresos': total_ingresos,
         'total_egresos': total_egresos,
         'saldo_actual': saldo_actual,
+        'total_fisico_usd': total_fisico_usd,
+        'total_fisico_pen': total_fisico_pen,
         'apertura_actual': apertura_actual,
         'tiene_caja_abierta': bool(apertura_actual),
         'es_admin': es_admin,
@@ -150,6 +165,8 @@ def api_listar_movimientos(request):
             'descripcion': mov.descripcion,
             'usuario': mov.idusuario.nombrecompleto if mov.idusuario else '',
             'monto': float(mov.monto),
+            'moneda': mov.moneda,
+            'monto_base_soles': float(mov.monto_base_soles) if mov.monto_base_soles else float(mov.monto),
             'comprobante_url': comprobante_url,
             'comprobante_numero': comprobante_numero
         })
@@ -285,11 +302,11 @@ def registrar_egreso(request):
 
         total_ingresos = movimientos_apertura.filter(
             tipo_movimiento='ingreso'
-        ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+        ).aggregate(total=Sum(Coalesce('monto_base_soles', 'monto')))['total'] or Decimal('0.00')
 
         total_egresos = movimientos_apertura.filter(
             tipo_movimiento='egreso'
-        ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+        ).aggregate(total=Sum(Coalesce('monto_base_soles', 'monto')))['total'] or Decimal('0.00')
 
         saldo_disponible = (apertura_actual.saldo_inicial or Decimal('0.00')) + total_ingresos - total_egresos
 
@@ -382,11 +399,11 @@ def reporte_caja(request):
     # Calcular totales
     total_ingresos = movimientos.filter(
         tipo_movimiento='ingreso'
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    ).aggregate(total=Sum(Coalesce('monto_base_soles', 'monto')))['total'] or Decimal('0.00')
     
     total_egresos = movimientos.filter(
         tipo_movimiento='egreso'
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    ).aggregate(total=Sum(Coalesce('monto_base_soles', 'monto')))['total'] or Decimal('0.00')
     
     saldo = total_ingresos - total_egresos
     

@@ -174,6 +174,7 @@ def api_listar_historial(request):
             'hora_cierre': a.hora_cierre.strftime('%H:%M') if a.hora_cierre else '',
             'saldo_inicial': float(a.saldo_inicial) if a.saldo_inicial is not None else 0.0,
             'saldo_final': float(a.saldo_final) if a.saldo_final is not None else None,
+            'saldo_final_usd': float(a.saldo_final_usd) if a.saldo_final_usd is not None else None,
             'estado': a.estado,
             'puede_reabrirse': puede_reabrirse,
             'fue_reabierta': fue_reabierta,
@@ -552,6 +553,19 @@ def obtener_movimientos_caja(request, id_movimiento):
     total_egresos += movimientos.filter(tipo_movimiento='egreso', monto_base_soles__isnull=True).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
 
     saldo_calculado = (apertura.saldo_inicial or Decimal('0.00')) + total_ingresos - total_egresos
+
+    # Totales físicos
+    ingresos_usd = movimientos.filter(tipo_movimiento='ingreso', moneda='USD').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    egresos_usd = movimientos.filter(tipo_movimiento='egreso', moneda='USD').aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    total_fisico_usd = ingresos_usd - egresos_usd
+    
+    from django.db.models import Q
+    ingresos_pen = movimientos.filter(tipo_movimiento='ingreso').filter(Q(moneda='PEN') | Q(moneda__isnull=True)).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    egresos_pen = movimientos.filter(tipo_movimiento='egreso').filter(Q(moneda='PEN') | Q(moneda__isnull=True)).aggregate(total=Sum('monto'))['total'] or Decimal('0.00')
+    total_fisico_pen = ingresos_pen - egresos_pen
+    
+    if apertura.saldo_inicial:
+        total_fisico_pen += apertura.saldo_inicial
     
     import re
     # PRE-FETCH MANUAL para evitar N+1 en Pre-Créditos
@@ -715,6 +729,8 @@ def obtener_movimientos_caja(request, id_movimiento):
             'nro_operacion': nro_operacion,
             'descripcion': mov.descripcion or 'Sin descripción',
             'monto': float(mov.monto_base_soles if mov.monto_base_soles is not None else mov.monto),
+            'monto_pen': float(mov.monto) if mov.moneda == 'PEN' or mov.moneda is None else 0.0,
+            'monto_usd': float(mov.monto) if mov.moneda == 'USD' else 0.0,
             'monto_original': float(mov.monto),
             'moneda': mov.moneda or 'PEN',
             'tipo_cambio': float(mov.tipo_cambio_aplicado or 1),
@@ -722,6 +738,22 @@ def obtener_movimientos_caja(request, id_movimiento):
             'comprobante': comprobante
         })
         
+    # Agrupar movimientos para evitar filas duplicadas de una misma venta/compra fraccionada
+    agrupados_dict = {}
+    movimientos_agrupados = []
+    for item in movimientos_list:
+        key = (item['fecha'], item['tipo'], item['descripcion'])
+        if key not in agrupados_dict:
+            agrupados_dict[key] = item.copy()
+            movimientos_agrupados.append(agrupados_dict[key])
+        else:
+            agrupados_dict[key]['monto'] += item['monto']
+            agrupados_dict[key]['monto_pen'] += item['monto_pen']
+            agrupados_dict[key]['monto_usd'] += item['monto_usd']
+            agrupados_dict[key]['monto_original'] += item['monto_original']
+            
+    movimientos_list = movimientos_agrupados
+    
     # Combinar fecha y hora para la información de la caja
     f_ap = apertura.fecha_apertura.strftime('%d/%m/%Y') if apertura.fecha_apertura else '---'
     h_ap = apertura.hora_apertura.strftime('%H:%M') if apertura.hora_apertura else ''
@@ -746,6 +778,8 @@ def obtener_movimientos_caja(request, id_movimiento):
             'ingresos': float(total_ingresos),
             'egresos': float(total_egresos),
             'saldo_neto': float(total_ingresos - total_egresos),
+            'fisico_usd': float(total_fisico_usd),
+            'fisico_pen': float(total_fisico_pen)
         },
         'movimientos': movimientos_list
     })

@@ -207,11 +207,15 @@ $(document).ready(function() {
                 className: 'text-end fw-bold',
                 render: function(data, type, row) {
                     var val = parseFloat(data);
-                    if(row.tipo_movimiento === 'ingreso') {
-                        return '<span class="text-success">+ S/ ' + val.toFixed(2) + '</span>';
-                    } else {
-                        return '<span class="text-danger">- S/ ' + val.toFixed(2) + '</span>';
+                    var simbolo = (row.moneda === 'USD') ? '$' : 'S/';
+                    var spanClass = (row.tipo_movimiento === 'ingreso') ? 'text-success' : 'text-danger';
+                    var signo = (row.tipo_movimiento === 'ingreso') ? '+' : '-';
+                    var html = `<span class="${spanClass}">${signo} ${simbolo} ${val.toFixed(2)}`;
+                    if (row.moneda === 'USD' && row.monto_base_soles) {
+                        html += ` USD<br><small class="text-muted">(Equiv. S/ ${parseFloat(row.monto_base_soles).toFixed(2)})</small>`;
                     }
+                    html += `</span>`;
+                    return html;
                 }
             }
         ],

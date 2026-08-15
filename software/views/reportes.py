@@ -1428,12 +1428,25 @@ def _generar_filas_movimiento(m, detalles_por_precredito, export_fmt=None, metod
                 fracciones = match.group(1).split('|')
                 for frac in fracciones:
                     frac = frac.strip()
-                    # Formato: "Plin: S/ 10.00 (Op:123)" o "Efectivo: S/ 15.00"
-                    m_frac = re.match(r'^(.*?):\s*S/\s*([\d\.]+)(.*)$', frac)
+                    # Formato: "Plin: S/ 10.00 (Op:123)" o "Efectivo (USD): $ 15.00 (TC: 3.8) = S/ 57"
+                    m_frac = re.match(r'^(.*?):\s*(\$|S/)\s*([\d\.]+)(.*)$', frac)
                     if m_frac:
                         f_metodo = m_frac.group(1).strip()
-                        f_monto = float(m_frac.group(2))
-                        f_detalles = m_frac.group(3).strip()
+                        simbolo = m_frac.group(2)
+                        f_monto = float(m_frac.group(3))
+                        f_detalles = m_frac.group(4).strip()
+                        
+                        f_monto_base_soles = f_monto
+                        f_moneda = 'USD' if simbolo == '$' else 'PEN'
+                        
+                        if f_moneda == 'USD':
+                            # Tratar de extraer el monto en soles de los detalles "= S/ XXX"
+                            m_soles = re.search(r'=\s*S/\s*([\d\.]+)', f_detalles)
+                            if m_soles:
+                                f_monto_base_soles = float(m_soles.group(1))
+                            # Limpiar los detalles para no redundar
+                            f_detalles = re.sub(r'\(TC:.*?=\s*S/.*?\]?', '', f_detalles).strip()
+                            
                         if f_detalles.startswith('(') and f_detalles.endswith(')'):
                             f_detalles = f_detalles[1:-1]
                         
@@ -1467,7 +1480,9 @@ def _generar_filas_movimiento(m, detalles_por_precredito, export_fmt=None, metod
                             'metodo': f_metodo,
                             'detalles_metodo': f_detalles,
                             'texto_metodo_export': texto_metodo,
-                            'monto': f_monto
+                            'monto': f_monto,
+                            'moneda': f_moneda,
+                            'monto_base_soles': f_monto_base_soles
                         })
                 return # Detenemos aquí porque ya agregamos las fracciones
                 
@@ -1506,12 +1521,24 @@ def _generar_filas_movimiento(m, detalles_por_precredito, export_fmt=None, metod
             'metodo': metodo_bd,
             'detalles_metodo': detalles,
             'texto_metodo_export': texto_metodo,
-            'monto': float(monto_parcial)
+            'monto': float(monto_parcial),
+            'moneda': m.moneda or 'PEN',
+            'monto_base_soles': float(m.monto_base_soles) if m.monto_base_soles is not None else float(monto_parcial)
         })
 
     if len(pagos_cuota) > 0:
+        fraccionado_found = False
         for p in pagos_cuota:
-            agregar_fila_fraccionada(p.monto_pago, p.id_tipo_pago, p.numero_operacion, p.observaciones)
+            if p.observaciones and '[FRACCIONADO:' in p.observaciones:
+                # El string [FRACCIONADO:] contiene el detalle total del pago.
+                # Lo procesamos una sola vez con el monto del movimiento para no multiplicar.
+                agregar_fila_fraccionada(m.monto, p.id_tipo_pago, p.numero_operacion, p.observaciones)
+                fraccionado_found = True
+                break
+                
+        if not fraccionado_found:
+            for p in pagos_cuota:
+                agregar_fila_fraccionada(p.monto_pago, p.id_tipo_pago, p.numero_operacion, p.observaciones)
     elif es_precredito:
         for p in dp_list:
             agregar_fila_fraccionada(p.monto, p.id_tipo_pago, p.numero_operacion)
@@ -1535,6 +1562,7 @@ def _generar_filas_movimiento(m, detalles_por_precredito, export_fmt=None, metod
                 filas_agrupadas[key]['_detalles_list'] = []
         else:
             filas_agrupadas[key]['monto'] += f['monto']
+            filas_agrupadas[key]['monto_base_soles'] += f.get('monto_base_soles', f['monto'])
             if f['detalles_metodo'] and f['detalles_metodo'] not in filas_agrupadas[key]['_detalles_list']:
                 filas_agrupadas[key]['_detalles_list'].append(f['detalles_metodo'])
                 
@@ -1648,13 +1676,16 @@ def reporte_caja(request):
         
         detalles_precreditos = _obtener_detalles_precreditos(movimientos_list)
         
-        headers = ['Fecha', 'Caja', 'Usuario', 'Descripción', 'Tipo', 'Método', 'Monto (S/)']
+        headers = ['Fecha', 'Caja', 'Usuario', 'Descripción', 'Tipo', 'Método', 'Monto Equivalente (S/)']
         data = []
         total_monto = 0.0
         
         for m in movimientos_list:
             filas_desglosadas = _generar_filas_movimiento(m, detalles_precreditos, export_fmt, metodo_pago_id, is_efectivo, nombre_metodo if metodo_pago_id else '')
             for f in filas_desglosadas:
+                monto_base_soles = f.get('monto_base_soles', f['monto'])
+                simbolo = '$' if f.get('moneda') == 'USD' else 'S/'
+                
                 data.append([
                     f['fecha'],
                     f['caja'],
@@ -1662,12 +1693,12 @@ def reporte_caja(request):
                     f['descripcion'],
                     str(f['tipo_movimiento']).capitalize(),
                     f['texto_metodo_export'],
-                    f['monto']
+                    f"{simbolo} {f['monto']} (Equiv. S/ {monto_base_soles:.2f})" if f.get('moneda') == 'USD' else f['monto']
                 ])
                 if str(f['tipo_movimiento']).lower() == 'ingreso':
-                    total_monto += f['monto']
+                    total_monto += monto_base_soles
                 else:
-                    total_monto -= f['monto']
+                    total_monto -= monto_base_soles
             
         if export_fmt == 'excel':
             data.append(["", "", "", "", "", "TOTAL RECAUDADO:", f"S/ {total_monto:.2f}"])
@@ -1756,23 +1787,36 @@ def api_listar_reporte_caja(request):
     egresos = 0.0
     if not metodo_pago_id:
         # Sin filtro de método, los totales agregados de DB son 100% correctos y rápidos
-        ingresos = movimientos_qs.filter(tipo_movimiento='ingreso').aggregate(t=Sum('monto'))['t'] or 0.0
-        egresos = movimientos_qs.filter(tipo_movimiento='egreso').aggregate(t=Sum('monto'))['t'] or 0.0
+        ingresos = movimientos_qs.filter(tipo_movimiento='ingreso').aggregate(t=Sum(Coalesce('monto_base_soles', 'monto')))['t'] or 0.0
+        egresos = movimientos_qs.filter(tipo_movimiento='egreso').aggregate(t=Sum(Coalesce('monto_base_soles', 'monto')))['t'] or 0.0
     else:
         # Con filtro de método, debemos calcular exacto evitando sumar partes de otros métodos.
         # En la mayoría de reportes diarios/mensuales es muy rápido iterar en memoria
         todas_movs = list(movimientos_qs.select_related(
             'idventa__id_tipo_pago', 'idcompra__id_tipo_pago'
         ).prefetch_related('pagos_cuota__id_tipo_pago'))
+        
+        movs_unicos = []
+        vistos = set()
+        for m in todas_movs:
+            if m.idventa_id and m.idventa.observaciones and '[FRACCIONADO:' in m.idventa.observaciones:
+                if m.idventa_id in vistos: continue
+                vistos.add(m.idventa_id)
+            if m.idcompra_id and m.idcompra.observaciones and '[FRACCIONADO:' in m.idcompra.observaciones:
+                if m.idcompra_id in vistos: continue
+                vistos.add(m.idcompra_id)
+            movs_unicos.append(m)
+        todas_movs = movs_unicos
+        
         detalles_totales = _obtener_detalles_precreditos(todas_movs)
         
         for m in todas_movs:
             filas_m = _generar_filas_movimiento(m, detalles_totales, None, metodo_pago_id, is_efectivo, nombre_metodo if metodo_pago_id else '')
             for f in filas_m:
                 if str(f['tipo_movimiento']).lower() == 'ingreso':
-                    ingresos += f['monto']
+                    ingresos += f.get('monto_base_soles', f['monto'])
                 else:
-                    egresos += f['monto']
+                    egresos += f.get('monto_base_soles', f['monto'])
                     
     saldo_neto = float(ingresos) - float(egresos)
     
@@ -1788,6 +1832,18 @@ def api_listar_reporte_caja(request):
     ).prefetch_related(
         'pagos_cuota__id_tipo_pago'
     ).order_by('-fecha_movimiento', '-id_movimiento_caja'))
+    
+    movs_unicos = []
+    vistos = set()
+    for m in todas_movs:
+        if m.idventa_id and m.idventa.observaciones and '[FRACCIONADO:' in m.idventa.observaciones:
+            if m.idventa_id in vistos: continue
+            vistos.add(m.idventa_id)
+        if m.idcompra_id and m.idcompra.observaciones and '[FRACCIONADO:' in m.idcompra.observaciones:
+            if m.idcompra_id in vistos: continue
+            vistos.add(m.idcompra_id)
+        movs_unicos.append(m)
+    todas_movs = movs_unicos
     
     detalles_por_precredito = _obtener_detalles_precreditos(todas_movs)
 

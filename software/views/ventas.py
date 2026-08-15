@@ -960,8 +960,17 @@ def nueva_venta(request):
 
                 if tipos_pago_ids:
                     # Calcular total de los pagos recibidos
-                    total_recibido = sum(Decimal(m) for m in montos_pago if m)
-                    request.POST['importe_recibido'] = str(total_recibido)
+                    total_recibido = Decimal('0')
+                    for i, m in enumerate(montos_pago):
+                        if m:
+                            val = Decimal(m)
+                            moneda = request.POST.getlist('moneda_pago[]')[i] if i < len(request.POST.getlist('moneda_pago[]')) else 'PEN'
+                            if moneda == 'USD':
+                                tcs = request.POST.getlist('tc_pago[]')
+                                tc = Decimal(tcs[i]) if i < len(tcs) and tcs[i] else Decimal('1')
+                                val = val * tc
+                            total_recibido += round(val, 2)
+                    request.POST['importe_recibido'] = str(round(total_recibido, 2))
 
                     # Si hay múltiples pagos
                     if len(tipos_pago_ids) > 1:
@@ -974,6 +983,8 @@ def nueva_venta(request):
                         
                         # Generar string de consolidación
                         partes = []
+                        monedas_pago = request.POST.getlist('moneda_pago[]')
+                        tcs_pago = request.POST.getlist('tc_pago[]')
                         for i in range(len(tipos_pago_ids)):
                             tp_id = tipos_pago_ids[i]
                             monto = montos_pago[i]
@@ -981,7 +992,13 @@ def nueva_venta(request):
                             tp_obj = TipoPago.objects.filter(pk=int(tp_id)).first()
                             tp_nombre = tp_obj.nombre if tp_obj else f"Pago {tp_id}"
                             nro_str = f" (Op: {nro})" if nro else ""
-                            partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
+                            moneda = monedas_pago[i] if i < len(monedas_pago) else 'PEN'
+                            if moneda == 'USD':
+                                tc = Decimal(tcs_pago[i]) if i < len(tcs_pago) and tcs_pago[i] else Decimal('1')
+                                eqv = round(Decimal(monto) * tc, 2)
+                                partes.append(f"{tp_nombre} (USD): $ {monto} (TC: {tc}) = S/ {eqv}{nro_str}")
+                            else:
+                                partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
                         
                         consolidacion = " | ".join(partes)
                         observaciones_pago = f"[FRACCIONADO: {consolidacion}]"
@@ -995,10 +1012,25 @@ def nueva_venta(request):
                     else:
                         # Si solo hay un único pago
                         request.POST['tipo_pago'] = str(tipos_pago_ids[0])
-                        nro = nros_operacion[0] if nros_operacion else ''
-                        if nro:
+                        monedas_pago = request.POST.getlist('moneda_pago[]')
+                        tcs_pago = request.POST.getlist('tc_pago[]')
+                        moneda = monedas_pago[0] if len(monedas_pago) > 0 else 'PEN'
+                        
+                        if moneda == 'USD':
+                            monto = montos_pago[0]
+                            tc = Decimal(tcs_pago[0]) if len(tcs_pago) > 0 and tcs_pago[0] else Decimal('1')
+                            eqv = round(Decimal(monto) * tc, 2)
+                            tp_obj = TipoPago.objects.filter(pk=int(tipos_pago_ids[0])).first()
+                            tp_nombre = tp_obj.nombre if tp_obj else "Pago"
+                            nro = nros_operacion[0] if len(nros_operacion) > 0 else ""
+                            nro_str = f" (Op: {nro})" if nro else ""
+                            obs_pago = f"[{tp_nombre} (USD): $ {monto} (TC: {tc}) = S/ {eqv}{nro_str}]"
+                        else:
+                            nro = nros_operacion[0] if nros_operacion else ''
+                            obs_pago = f"[Op: {nro}]" if nro else ""
+                        
+                        if obs_pago:
                             user_obs = request.POST.get("observaciones", "")
-                            obs_pago = f"[Op: {nro}]"
                             if user_obs:
                                 request.POST['observaciones'] = f"{obs_pago} {user_obs}"
                             else:
@@ -1674,16 +1706,45 @@ def nueva_venta(request):
                     
                     descripcion_movimiento = f"Venta {numero_comprobante} - Cliente: {venta.idcliente.razonsocial}"
                     
-                    movimiento_caja = MovimientoCaja.objects.create(
-                        id_caja=caja,
-                        id_movimiento=apertura,  # ✅ Asociar a la apertura actual
-                        idusuario=usuario,
-                        tipo_movimiento='ingreso',
-                        monto=total,
-                        descripcion=descripcion_movimiento,
-                        idventa=venta,
-                        estado=1
-                    )
+                    m_pagos = request.POST.getlist('monto_pago[]')
+                    c_pagos = request.POST.getlist('moneda_pago[]')
+                    t_pagos = request.POST.getlist('tc_pago[]')
+                    if m_pagos:
+                        for idx_pago, m_val in enumerate(m_pagos):
+                            if m_val:
+                                val_dec = Decimal(m_val)
+                                moneda_str = c_pagos[idx_pago] if idx_pago < len(c_pagos) else 'PEN'
+                                tc_dec = Decimal('1')
+                                if moneda_str == 'USD':
+                                    tc_dec = Decimal(t_pagos[idx_pago]) if idx_pago < len(t_pagos) and t_pagos[idx_pago] else Decimal('1')
+                                monto_soles_dec = round(val_dec * tc_dec, 2)
+                                movimiento_caja = MovimientoCaja.objects.create(
+                                    id_caja=caja,
+                                    id_movimiento=apertura,
+                                    idusuario=usuario,
+                                    tipo_movimiento='ingreso',
+                                    monto=val_dec,
+                                    moneda=moneda_str,
+                                    tipo_cambio_aplicado=tc_dec,
+                                    monto_base_soles=monto_soles_dec,
+                                    descripcion=descripcion_movimiento,
+                                    idventa=venta,
+                                    estado=1
+                                )
+                    else:
+                        movimiento_caja = MovimientoCaja.objects.create(
+                            id_caja=caja,
+                            id_movimiento=apertura,
+                            idusuario=usuario,
+                            tipo_movimiento='ingreso',
+                            monto=total,
+                            moneda='PEN',
+                            tipo_cambio_aplicado=Decimal('1'),
+                            monto_base_soles=total,
+                            descripcion=descripcion_movimiento,
+                            idventa=venta,
+                            estado=1
+                        )
                     
                     print(f"✅ MOVIMIENTO DE CAJA CREADO - ID: {movimiento_caja.id_movimiento_caja}")
                     print(f"   Asociado a apertura: {apertura.id_movimiento}")
@@ -1767,7 +1828,16 @@ def cobrar_venta_pendiente(request):
             if not tipos_pago_ids:
                 return JsonResponse({'ok': False, 'error': 'No se especificaron métodos de pago.'}, status=400)
 
-            total_recibido = sum(Decimal(m) for m in montos_pago if m)
+            total_recibido = Decimal('0')
+            for i, m in enumerate(montos_pago):
+                if m:
+                    val = Decimal(m)
+                    moneda = request.POST.getlist('moneda_pago[]')[i] if i < len(request.POST.getlist('moneda_pago[]')) else 'PEN'
+                    if moneda == 'USD':
+                        tcs = request.POST.getlist('tc_pago[]')
+                        tc = Decimal(tcs[i]) if i < len(tcs) and tcs[i] else Decimal('1')
+                        val = val * tc
+                    total_recibido += round(val, 2)
 
             with transaction.atomic():
                 venta = Ventas.objects.select_for_update().get(idventa=idventa, estado=1)
@@ -1788,6 +1858,8 @@ def cobrar_venta_pendiente(request):
                     
                     # Generar string de consolidación
                     partes = []
+                    monedas_pago = request.POST.getlist('moneda_pago[]')
+                    tcs_pago = request.POST.getlist('tc_pago[]')
                     for i in range(len(tipos_pago_ids)):
                         tp_id = tipos_pago_ids[i]
                         monto = montos_pago[i]
@@ -1795,7 +1867,13 @@ def cobrar_venta_pendiente(request):
                         tp_obj = TipoPago.objects.filter(pk=int(tp_id)).first()
                         tp_nombre = tp_obj.nombre if tp_obj else f"Pago {tp_id}"
                         nro_str = f" (Op: {nro})" if nro else ""
-                        partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
+                        moneda = monedas_pago[i] if i < len(monedas_pago) else 'PEN'
+                        if moneda == 'USD':
+                            tc = Decimal(tcs_pago[i]) if i < len(tcs_pago) and tcs_pago[i] else Decimal('1')
+                            eqv = round(Decimal(monto) * tc, 2)
+                            partes.append(f"{tp_nombre} (USD): $ {monto} (TC: {tc}) = S/ {eqv}{nro_str}")
+                        else:
+                            partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
                     
                     consolidacion = " | ".join(partes)
                     observaciones_pago = f"[FRACCIONADO: {consolidacion}]"
@@ -1805,10 +1883,26 @@ def cobrar_venta_pendiente(request):
                 else:
                     # Si solo hay un único pago
                     venta.id_tipo_pago_id = int(tipos_pago_ids[0])
-                    nro = nros_operacion[0] if nros_operacion else ''
-                    if nro:
+                    monedas_pago = request.POST.getlist('moneda_pago[]')
+                    tcs_pago = request.POST.getlist('tc_pago[]')
+                    moneda = monedas_pago[0] if len(monedas_pago) > 0 else 'PEN'
+                    
+                    if moneda == 'USD':
+                        monto = montos_pago[0]
+                        tc = Decimal(tcs_pago[0]) if len(tcs_pago) > 0 and tcs_pago[0] else Decimal('1')
+                        eqv = round(Decimal(monto) * tc, 2)
+                        tp_obj = TipoPago.objects.filter(pk=int(tipos_pago_ids[0])).first()
+                        tp_nombre = tp_obj.nombre if tp_obj else "Pago"
+                        nro = nros_operacion[0] if len(nros_operacion) > 0 else ""
+                        nro_str = f" (Op: {nro})" if nro else ""
+                        obs_pago = f"[{tp_nombre} (USD): $ {monto} (TC: {tc}) = S/ {eqv}{nro_str}]"
+                    else:
+                        nro = nros_operacion[0] if nros_operacion else ''
+                        obs_pago = f"[Cobro Op: {nro}]" if nro else ""
+                    
+                    if obs_pago:
                         obs = venta.observaciones or ""
-                        venta.observaciones = f"{obs} [Cobro Op: {nro}]".strip()
+                        venta.observaciones = f"{obs} {obs_pago}".strip()
 
                 # Actualizar datos de pago
                 venta.importe_recibido = total_recibido
@@ -1820,16 +1914,45 @@ def cobrar_venta_pendiente(request):
                 caja = Caja.objects.get(id_caja=id_caja_session)
                 descripcion = f"Cobro de Venta Pendiente {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial if venta.idcliente else ''}"
                 
-                MovimientoCaja.objects.create(
-                    id_caja=caja,
-                    id_movimiento=apertura,
-                    idusuario=usuario,
-                    tipo_movimiento='ingreso',
-                    monto=venta.total_venta,
-                    descripcion=descripcion,
-                    idventa=venta,
-                    estado=1
-                )
+                m_pagos = request.POST.getlist('monto_pago[]')
+                c_pagos = request.POST.getlist('moneda_pago[]')
+                t_pagos = request.POST.getlist('tc_pago[]')
+                if m_pagos:
+                    for idx_pago, m_val in enumerate(m_pagos):
+                        if m_val:
+                            val_dec = Decimal(m_val)
+                            moneda_str = c_pagos[idx_pago] if idx_pago < len(c_pagos) else 'PEN'
+                            tc_dec = Decimal('1')
+                            if moneda_str == 'USD':
+                                tc_dec = Decimal(t_pagos[idx_pago]) if idx_pago < len(t_pagos) and t_pagos[idx_pago] else Decimal('1')
+                            monto_soles_dec = round(val_dec * tc_dec, 2)
+                            MovimientoCaja.objects.create(
+                                id_caja=caja,
+                                id_movimiento=apertura,
+                                idusuario=usuario,
+                                tipo_movimiento='ingreso',
+                                monto=val_dec,
+                                moneda=moneda_str,
+                                tipo_cambio_aplicado=tc_dec,
+                                monto_base_soles=monto_soles_dec,
+                                descripcion=descripcion,
+                                idventa=venta,
+                                estado=1
+                            )
+                else:
+                    MovimientoCaja.objects.create(
+                        id_caja=caja,
+                        id_movimiento=apertura,
+                        idusuario=usuario,
+                        tipo_movimiento='ingreso',
+                        monto=venta.total_venta,
+                        moneda='PEN',
+                        tipo_cambio_aplicado=Decimal('1'),
+                        monto_base_soles=venta.total_venta,
+                        descripcion=descripcion,
+                        idventa=venta,
+                        estado=1
+                    )
                 
             return JsonResponse({'ok': True, 'message': 'Cobro registrado correctamente.', 'idventa': venta.idventa})
             
@@ -2182,6 +2305,7 @@ def obtener_detalle_venta(request, id):
             "total_ganancia": float(venta.total_ganancia or 0),
             "idusuario": venta.idusuario.idusuario if venta.idusuario else None,
             "usuario_nombre": venta.idusuario.nombrecompleto if venta.idusuario else "Sistema",
+            "observaciones": venta.observaciones or "",
         }
 
         return JsonResponse({
@@ -2218,8 +2342,17 @@ def actualizar_venta(request, id):
 
                 if tipos_pago_ids:
                     # Calcular total de los pagos recibidos
-                    total_recibido = sum(Decimal(m) for m in montos_pago if m)
-                    request.POST['importe_recibido'] = str(total_recibido)
+                    total_recibido = Decimal('0')
+                    for i, m in enumerate(montos_pago):
+                        if m:
+                            val = Decimal(m)
+                            moneda = request.POST.getlist('moneda_pago[]')[i] if i < len(request.POST.getlist('moneda_pago[]')) else 'PEN'
+                            if moneda == 'USD':
+                                tcs = request.POST.getlist('tc_pago[]')
+                                tc = Decimal(tcs[i]) if i < len(tcs) and tcs[i] else Decimal('1')
+                                val = val * tc
+                            total_recibido += round(val, 2)
+                    request.POST['importe_recibido'] = str(round(total_recibido, 2))
 
                     # Si hay múltiples pagos
                     if len(tipos_pago_ids) > 1:
@@ -2232,6 +2365,8 @@ def actualizar_venta(request, id):
                         
                         # Generar string de consolidación
                         partes = []
+                        monedas_pago = request.POST.getlist('moneda_pago[]')
+                        tcs_pago = request.POST.getlist('tc_pago[]')
                         for i in range(len(tipos_pago_ids)):
                             tp_id = tipos_pago_ids[i]
                             monto = montos_pago[i]
@@ -2239,7 +2374,13 @@ def actualizar_venta(request, id):
                             tp_obj = TipoPago.objects.filter(pk=int(tp_id)).first()
                             tp_nombre = tp_obj.nombre if tp_obj else f"Pago {tp_id}"
                             nro_str = f" (Op: {nro})" if nro else ""
-                            partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
+                            moneda = monedas_pago[i] if i < len(monedas_pago) else 'PEN'
+                            if moneda == 'USD':
+                                tc = Decimal(tcs_pago[i]) if i < len(tcs_pago) and tcs_pago[i] else Decimal('1')
+                                eqv = round(Decimal(monto) * tc, 2)
+                                partes.append(f"{tp_nombre} (USD): $ {monto} (TC: {tc}) = S/ {eqv}{nro_str}")
+                            else:
+                                partes.append(f"{tp_nombre}: S/ {monto}{nro_str}")
                         
                         consolidacion = " | ".join(partes)
                         observaciones_pago = f"[FRACCIONADO: {consolidacion}]"
@@ -2253,10 +2394,25 @@ def actualizar_venta(request, id):
                     else:
                         # Si solo hay un único pago
                         request.POST['tipo_pago'] = str(tipos_pago_ids[0])
-                        nro = nros_operacion[0] if nros_operacion else ''
-                        if nro:
+                        monedas_pago = request.POST.getlist('moneda_pago[]')
+                        tcs_pago = request.POST.getlist('tc_pago[]')
+                        moneda = monedas_pago[0] if len(monedas_pago) > 0 else 'PEN'
+                        
+                        if moneda == 'USD':
+                            monto = montos_pago[0]
+                            tc = Decimal(tcs_pago[0]) if len(tcs_pago) > 0 and tcs_pago[0] else Decimal('1')
+                            eqv = round(Decimal(monto) * tc, 2)
+                            tp_obj = TipoPago.objects.filter(pk=int(tipos_pago_ids[0])).first()
+                            tp_nombre = tp_obj.nombre if tp_obj else "Pago"
+                            nro = nros_operacion[0] if len(nros_operacion) > 0 else ""
+                            nro_str = f" (Op: {nro})" if nro else ""
+                            obs_pago = f"[{tp_nombre} (USD): $ {monto} (TC: {tc}) = S/ {eqv}{nro_str}]"
+                        else:
+                            nro = nros_operacion[0] if nros_operacion else ''
+                            obs_pago = f"[Op: {nro}]" if nro else ""
+                        
+                        if obs_pago:
                             user_obs = request.POST.get("observaciones", "")
-                            obs_pago = f"[Op: {nro}]"
                             if user_obs:
                                 request.POST['observaciones'] = f"{obs_pago} {user_obs}"
                             else:
@@ -2597,16 +2753,45 @@ def actualizar_venta(request, id):
                     except Exception:
                         pass
 
-                    MovimientoCaja.objects.create(
-                        id_caja_id=id_caja_session,
-                        id_movimiento=apertura,
-                        idusuario_id=request.session.get('idusuario'),
-                        idventa=venta,
-                        tipo_movimiento='ingreso',
-                        monto=total_calculado,
-                        descripcion=f'Venta {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial}',
-                        estado=1
-                    )
+                    m_pagos = request.POST.getlist('monto_pago[]')
+                    c_pagos = request.POST.getlist('moneda_pago[]')
+                    t_pagos = request.POST.getlist('tc_pago[]')
+                    if m_pagos:
+                        for idx_pago, m_val in enumerate(m_pagos):
+                            if m_val:
+                                val_dec = Decimal(m_val)
+                                moneda_str = c_pagos[idx_pago] if idx_pago < len(c_pagos) else 'PEN'
+                                tc_dec = Decimal('1')
+                                if moneda_str == 'USD':
+                                    tc_dec = Decimal(t_pagos[idx_pago]) if idx_pago < len(t_pagos) and t_pagos[idx_pago] else Decimal('1')
+                                monto_soles_dec = round(val_dec * tc_dec, 2)
+                                MovimientoCaja.objects.create(
+                                    id_caja_id=id_caja_session,
+                                    id_movimiento=apertura,
+                                    idusuario_id=request.session.get('idusuario'),
+                                    idventa=venta,
+                                    tipo_movimiento='ingreso',
+                                    monto=val_dec,
+                                    moneda=moneda_str,
+                                    tipo_cambio_aplicado=tc_dec,
+                                    monto_base_soles=monto_soles_dec,
+                                    descripcion=f'Venta {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial}',
+                                    estado=1
+                                )
+                    else:
+                        MovimientoCaja.objects.create(
+                            id_caja_id=id_caja_session,
+                            id_movimiento=apertura,
+                            idusuario_id=request.session.get('idusuario'),
+                            idventa=venta,
+                            tipo_movimiento='ingreso',
+                            monto=total_calculado,
+                            moneda='PEN',
+                            tipo_cambio_aplicado=Decimal('1'),
+                            monto_base_soles=total_calculado,
+                            descripcion=f'Venta {venta.numero_comprobante} - Cliente: {venta.idcliente.razonsocial}',
+                            estado=1
+                        )
 
             # =============================================
             # ✅ ACTUALIZAR CRÉDITO Y CUOTAS (si es crédito)
@@ -3046,7 +3231,15 @@ def imprimir_comprobante(request, idventa):
             elements.append(Paragraph(f"Pagina: {empresa.pagina}", style_small))
         
         elements.append(Spacer(1, 1*mm))
-        elements.append(Paragraph("<b>MONEDA: SOLES (PEN)</b>", style_normal_center))
+        
+        texto_moneda = "SOLES (PEN)"
+        if venta.observaciones:
+            if 'USD' in venta.observaciones and 'PEN' in venta.observaciones:
+                texto_moneda = "MIXTA (PEN / USD)"
+            elif 'USD' in venta.observaciones:
+                texto_moneda = "DÓLARES (USD)"
+                
+        elements.append(Paragraph(f"<b>MONEDA: {texto_moneda}</b>", style_normal_center))
          
         elements.append(Spacer(1, 2*mm))
         elements.append(Paragraph("=" * 48, style_normal_center))
@@ -3320,6 +3513,20 @@ def imprimir_comprobante(request, idventa):
         elements.append(Spacer(1, 2*mm))
         
         # ==========================================
+        # DETALLE DEL PAGO MULTIMONEDA
+        # ==========================================
+        import re
+        if venta.observaciones:
+            match = re.search(r'\[(?:FRACCIONADO:\s*)?(.*?(?:USD|PEN|TC).*?)\]', venta.observaciones)
+            if match and ('USD' in match.group(1) or '|' in match.group(1)):
+                elements.append(Spacer(1, 2*mm))
+                elements.append(Paragraph("<b>*** DETALLE DEL PAGO ***</b>", style_bold))
+                desgloses = match.group(1).split(' | ')
+                for d in desgloses:
+                    elements.append(Paragraph(d, style_small))
+                elements.append(Spacer(1, 2*mm))
+
+        # ==========================================
         # FORMA DE PAGO Y TIPO
         # ==========================================
         forma_pago_nombre = venta.id_forma_pago.nombre
@@ -3368,11 +3575,18 @@ def imprimir_comprobante(request, idventa):
         # OBSERVACIONES
         # ==========================================
         if venta.observaciones:
-            elements.append(Spacer(1, 2*mm))
             import re
-            obs_text = venta.observaciones.replace('\n', '<br/>')
-            obs_text = re.sub(r'\[FRACCIONADO:\s*(.*?)\]', lambda m: '<b>Pagos:</b><br/>- ' + m.group(1).replace(' | ', '<br/>- '), obs_text)
-            elements.append(Paragraph(f"<b>Obs:</b> {obs_text}", style_small))
+            obs_text = venta.observaciones
+            obs_text = re.sub(r'\[FRACCIONADO:.*?\]', '', obs_text)
+            obs_text = re.sub(r'\[.*?\((USD|PEN)\):.*?\]', '', obs_text)
+            obs_text = re.sub(r'\[Cobro Op:.*?\]', '', obs_text)
+            obs_text = re.sub(r'\[Op:.*?\]', '', obs_text)
+            obs_text = obs_text.strip()
+            
+            if obs_text:
+                obs_text = obs_text.replace('\n', '<br/>')
+                elements.append(Spacer(1, 2*mm))
+                elements.append(Paragraph(f"<b>Obs:</b> {obs_text}", style_small))
         
         # ==========================================
         # CÓDIGO QR

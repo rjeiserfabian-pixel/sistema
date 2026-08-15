@@ -241,6 +241,20 @@
                   <div class="info-label">Ganancia:</div>
                   <div id="verDetalleVentaGanancia" class="info-value text-info fs-5">S/ 0.00</div>
                 </div>
+
+                <!-- Nueva fila de Detalle de Pago Multimoneda -->
+                <div class="col-12 mt-4" id="seccionDetallePagoMultimoneda" style="display: none;">
+                  <div class="p-3 bg-white border border-primary-subtle rounded-3 shadow-sm">
+                    <div class="d-flex align-items-center mb-2">
+                      <i class="bi bi-wallet2 text-primary me-2"></i>
+                      <h6 class="fw-bold mb-0 text-dark">Detalle del Pago Recibido</h6>
+                    </div>
+                    <div id="verDetalleVentaPagoDesglose" class="text-secondary small font-monospace" style="white-space: pre-line;">
+                      <!-- Se llenará dinámicamente con AJAX -->
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -504,7 +518,7 @@
                   </div>
 
                   <!-- Métodos de Pago Contado (Múltiple) -->
-                  <div class="col-md-9" id="seccion_pago_contado_container">
+                  <div class="col-md-12" id="seccion_pago_contado_container">
                     <div class="card border-0 bg-light p-3"
                       style="border-radius: 12px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);">
                       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -3920,6 +3934,22 @@
 
         $('#verDetalleVentaTipoPago').html(`<span class="badge ${tipoPagoBadgeClass} px-3 py-2 rounded-2">${tipoPagoNombre}</span>`);
 
+        // 📝 Parsear Observaciones Multimoneda
+        let obs = venta.observaciones || '';
+        let detallePagoHTML = '';
+        
+        let matchMultimoneda = obs.match(/\[(?:FRACCIONADO:\s*)?(.*?(?:USD|PEN|TC).*?)\]/);
+        
+        if (matchMultimoneda && (matchMultimoneda[1].includes('USD') || matchMultimoneda[1].includes('|'))) {
+          let desglose = matchMultimoneda[1];
+          detallePagoHTML = desglose.split(' | ').join('\n');
+          $('#verDetalleVentaPagoDesglose').text(detallePagoHTML);
+          $('#seccionDetallePagoMultimoneda').show();
+        } else {
+          $('#seccionDetallePagoMultimoneda').hide();
+          $('#verDetalleVentaPagoDesglose').text('');
+        }
+
         // 📦 Productos / Repuestos / Servicios
         let filas = '';
         detalles.forEach((d, i) => {
@@ -4266,6 +4296,11 @@
                 });
               }
             }
+
+            // Limpiar cualquier otra etiqueta autogenerada para que solo quede el texto del usuario
+            observacionesRaw = observacionesRaw.replace(/\[.*?\((USD|PEN)\):.*?\]/gi, '').trim();
+            observacionesRaw = observacionesRaw.replace(/\[Cobro Op:.*?\]/gi, '').trim();
+            observacionesRaw = observacionesRaw.replace(/\[Op:.*?\]/gi, '').trim();
 
             $('textarea[name="observaciones"]').val(observacionesRaw);
 
@@ -4723,22 +4758,49 @@
     div.className = 'pago-row-contado row g-2 mb-2 align-items-center';
     div.id = `pago-row-contado-${pagoContadoCount}`;
 
+    let tcDefecto = '1.0000';
+    const cacheKey = 'tipo_cambio_bcrp_venta_4d';
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            const data = JSON.parse(cached);
+            if (data && data.valor) {
+                tcDefecto = data.valor;
+            }
+        } catch(e) {}
+    }
+
     div.innerHTML = `
-    <div class="col-md-5 col-selector">
+    <div class="col-md-3 col-selector">
       <select name="tipo_pago_id[]" class="form-select form-select-sm select-tipo-pago-contado" required onchange="toggleOperacionContado(this)">
         <option value="">Método de Pago...</option>
         ${TIPOS_PAGO_TEMPLATE}
       </select>
     </div>
-    <div class="col-md-4 nro-operacion-contado-container d-none">
-      <input type="text" name="nro_operacion[]" class="form-control form-control-sm" placeholder="N° Operación" value="${operacion}">
+    <div class="col-md-2 col-moneda-v">
+      <select name="moneda_pago[]" class="form-select form-select-sm select-moneda-pago-contado" onchange="toggleMonedaPagoContado(this)">
+        <option value="PEN">Soles (PEN)</option>
+        <option value="USD">Dólares (USD)</option>
+      </select>
     </div>
-    <div class="col-md-3 flex-grow-1 col-monto">
+    <div class="col-md-2 col-tc-v d-none">
       <div class="input-group input-group-sm">
-        <span class="input-group-text bg-white">S/</span>
+        <span class="input-group-text bg-white" style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">TC</span>
+        <input type="number" name="tc_pago[]" class="form-control form-control-sm tc-pago-contado" step="0.0001" min="0.0001" value="${tcDefecto}" oninput="calcularTotalContado()">
+      </div>
+    </div>
+    <div class="col-md-2 nro-operacion-contado-container d-none">
+      <input type="text" name="nro_operacion[]" class="form-control form-control-sm nro-operacion-input" placeholder="N° Op." value="${operacion}">
+    </div>
+    <div class="col-md-3 flex-grow-1 col-monto-v">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-white moneda-symbol-pago">S/</span>
         <input type="number" name="monto_pago[]" class="form-control form-control-sm monto-pago-contado-input"
                step="0.01" min="0.01" placeholder="0.00" value="${monto}" required
                oninput="calcularTotalContado()">
+        <button type="button" class="btn btn-sm btn-outline-info" title="Calcular restante exacto" onclick="autocompletarRestanteContado(this)">
+          <i class="fa-solid fa-calculator"></i>
+        </button>
         <button type="button" class="btn btn-sm btn-outline-danger btn-remove-pago-contado no-auth" title="Quitar" onclick="eliminarFilaPagoContado(this)">
           <i class="fa-solid fa-minus"></i>
         </button>
@@ -4772,25 +4834,36 @@
   function toggleOperacionContado(select) {
     const row = select.closest('.pago-row-contado');
     const container = row.querySelector('.nro-operacion-contado-container');
-    const input = container.querySelector('input');
+    const input = container.querySelector('.nro-operacion-input');
     const selectedText = select.options[select.selectedIndex]?.text.toLowerCase() || '';
 
     // Si no es efectivo, mostrar campo de operación y hacerlo obligatorio
     if (selectedText && !selectedText.includes('efectivo') && select.value !== '') {
       container.classList.remove('d-none');
       input.required = true;
-      // Ajustar columnas
-      row.querySelector('.col-selector').className = 'col-md-4 col-selector';
-      container.className = 'col-md-4 nro-operacion-contado-container';
-      row.querySelector('.col-monto').className = 'col-md-4 flex-grow-1 col-monto';
     } else {
       container.classList.add('d-none');
       input.required = false;
       input.value = '';
-      // Reajustar columnas
-      row.querySelector('.col-selector').className = 'col-md-5 col-selector';
-      row.querySelector('.col-monto').className = 'col-md-3 flex-grow-1 col-monto';
     }
+  }
+
+  function toggleMonedaPagoContado(select) {
+    const row = select.closest('.pago-row-contado');
+    const tcContainer = row.querySelector('.col-tc-c, .col-tc-v');
+    const symbol = row.querySelector('.moneda-symbol-pago');
+    const tcInput = row.querySelector('.tc-pago-contado');
+    
+    if (select.value === 'USD') {
+        tcContainer.classList.remove('d-none');
+        symbol.textContent = '$';
+        if (tcInput) tcInput.required = true;
+    } else {
+        tcContainer.classList.add('d-none');
+        symbol.textContent = 'S/';
+        if (tcInput) tcInput.required = false;
+    }
+    calcularTotalContado();
   }
 
   function eliminarFilaPagoContado(btn) {
@@ -4806,8 +4879,16 @@
 
   function calcularTotalContado() {
     let totalRecibido = 0;
-    document.querySelectorAll('.monto-pago-contado-input').forEach(inp => {
-      totalRecibido += parseFloat(inp.value) || 0;
+    document.querySelectorAll('.pago-row-contado').forEach(row => {
+      const monto = parseFloat(row.querySelector('.monto-pago-contado-input').value) || 0;
+      const moneda = row.querySelector('.select-moneda-pago-contado') ? row.querySelector('.select-moneda-pago-contado').value : 'PEN';
+      
+      if (moneda === 'USD') {
+          const tc = parseFloat(row.querySelector('.tc-pago-contado').value) || 1;
+          totalRecibido += (monto * tc);
+      } else {
+          totalRecibido += monto;
+      }
     });
 
     const totalVenta = parseFloat($('#totalVenta').text().replace(/[^\d.]/g, '')) || 0;
@@ -4843,6 +4924,40 @@
       }
     }
   }
+
+  function autocompletarRestanteContado(btn) {
+    const row = btn.closest('.pago-row-contado');
+    let totalVenta = parseFloat($('#totalVenta').text().replace(/[^\d.]/g, '')) || 0;
+
+    let pagadoOtros = 0;
+    document.querySelectorAll('.pago-row-contado').forEach(r => {
+        if (r !== row) {
+            const m = parseFloat(r.querySelector('.monto-pago-contado-input').value) || 0;
+            const mon = r.querySelector('.select-moneda-pago-contado') ? r.querySelector('.select-moneda-pago-contado').value : 'PEN';
+            if (mon === 'USD') {
+                const t = parseFloat(r.querySelector('.tc-pago-contado').value) || 1;
+                pagadoOtros += (m * t);
+            } else {
+                pagadoOtros += m;
+            }
+        }
+    });
+
+    let faltanteSoles = totalVenta - pagadoOtros;
+    if (faltanteSoles < 0) faltanteSoles = 0;
+
+    const moneda = row.querySelector('.select-moneda-pago-contado') ? row.querySelector('.select-moneda-pago-contado').value : 'PEN';
+    const inpMonto = row.querySelector('.monto-pago-contado-input');
+    
+    if (moneda === 'USD') {
+        const tc = parseFloat(row.querySelector('.tc-pago-contado').value) || 1;
+        inpMonto.value = (faltanteSoles / tc).toFixed(2);
+    } else {
+        inpMonto.value = faltanteSoles.toFixed(2);
+    }
+    calcularTotalContado();
+  }
+
 
   // Constante del backend para identificar rol
   const TIPO_USUARIO_ACTUAL = parseInt("{{ idtipousuario|default:'0' }}");

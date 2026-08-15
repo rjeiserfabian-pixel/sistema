@@ -108,13 +108,14 @@
                                         <th>Fecha Apertura</th>
                                         <th>Fecha Cierre</th>
                                         <th>Saldo Inicial</th>
-                                        <th>Saldo Final</th>
+                                        <th>Saldo Final (Soles)</th>
+                                        <th>Saldo Final (Dólares)</th>
                                         <th>Estado</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyHistorial">
-                                    <tr><td colspan="9" class="text-center py-4 text-muted"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>
+                                    <tr><td colspan="10" class="text-center py-4 text-muted"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -315,28 +316,44 @@
 
                 <!-- Tarjetas de Resumen (Ingresos/Egresos/Saldos) -->
                 <div class="row mb-4">
-                    <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-                        <div class="card border-0 bg-light-success p-3 text-center" style="border-left: 4px solid #2eca6a !important; background: #e0f8e9;">
-                            <small class="text-muted d-block uppercase fw-bold">Saldo Inicial</small>
-                            <span class="fs-4 fw-bold text-success" id="resumenSaldoInicial">S/ 0.00</span>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-3 mb-lg-0">
+                        <div class="card border-0 bg-light-success p-3 text-center h-100" style="border-left: 4px solid #198754 !important; background: #e0ffe0;">
+                            <small class="text-muted d-block uppercase fw-bold mb-2">Saldo Inicial</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="fw-bold text-success" id="resumenSaldoInicial" style="font-size: 1.1rem; line-height: 1;">S/ 0.00</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-                        <div class="card border-0 bg-light-warning p-3 text-center" style="border-left: 4px solid #ff771d !important; background: #ffecdf;">
-                            <small class="text-muted d-block uppercase fw-bold">Total Ingresos</small>
-                            <span class="fs-4 fw-bold text-warning" id="resumenIngresos" style="color: #ff771d !important;">S/ 0.00</span>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-3 mb-lg-0">
+                        <div class="card border-0 bg-light-warning p-3 text-center h-100" style="border-left: 4px solid #ff771d !important; background: #ffecdf;">
+                            <small class="text-muted d-block uppercase fw-bold mb-2">Total Ingresos</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="fw-bold text-warning" id="resumenIngresos" style="font-size: 1.1rem; color: #ff771d !important; line-height: 1;">S/ 0.00</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-                        <div class="card border-0 bg-light-danger p-3 text-center" style="border-left: 4px solid #ff0000 !important; background: #ffe0e0;">
-                            <small class="text-muted d-block uppercase fw-bold">Total Egresos</small>
-                            <span class="fs-4 fw-bold text-danger" id="resumenEgresos">S/ 0.00</span>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-3 mb-lg-0">
+                        <div class="card border-0 bg-light-danger p-3 text-center h-100" style="border-left: 4px solid #ff0000 !important; background: #ffe0e0;">
+                            <small class="text-muted d-block uppercase fw-bold mb-2">Total Egresos</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="fw-bold text-danger" id="resumenEgresos" style="font-size: 1.1rem; line-height: 1;">S/ 0.00</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="card border-0 bg-light-primary p-3 text-center" style="border-left: 4px solid #0d6efd !important; background: #f0f5ff;">
-                            <small class="text-muted d-block uppercase fw-bold">Saldo Final / Actual</small>
-                            <span class="fs-4 fw-bold text-primary" id="resumenSaldoFinal">S/ 0.00</span>
+                    <div class="col-lg-3 col-md-6 col-sm-6 mb-3 mb-lg-0">
+                        <div class="card border-0 bg-light-primary p-3 text-center h-100" style="border-left: 4px solid #0d6efd !important; background: #f0f5ff;">
+                            <small class="text-muted d-block uppercase fw-bold mb-2">Saldo Actual (Soles)</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="fw-bold text-primary" id="resumenFisicoPen" style="font-size: 1.1rem; line-height: 1;">S/ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="card border-0 bg-light-success p-3 text-center h-100" style="border-left: 4px solid #198754 !important; background: #e0ffe0;">
+                            <small class="text-muted d-block uppercase fw-bold mb-2">Saldo Actual (Dólares)</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="fw-bold text-success" id="resumenFisicoUsd" style="font-size: 1.1rem; line-height: 1;">$ 0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -355,7 +372,8 @@
                                 <th style="width: 10%;">Método</th>
                                 <th style="width: 10%;">Nro Op.</th>
                                 <th style="width: 17%;">Descripción</th>
-                                <th style="width: 10%;" class="text-end">Monto</th>
+                                <th style="width: 10%;" class="text-end">Monto (S/)</th>
+                                <th style="width: 10%;" class="text-end">Monto ($)</th>
                                 <th style="width: 10%;">Comprobante</th>
                             </tr>
                         </thead>
@@ -440,6 +458,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? `<strong class="text-primary">S/ ${a.saldo_final.toFixed(2)}</strong>` 
                 : `<span class="text-muted">---</span>`;
                 
+            let saldoFinalUsdHtml = a.saldo_final_usd !== null 
+                ? `<strong class="text-success">$ ${a.saldo_final_usd.toFixed(2)}</strong>` 
+                : `<span class="text-muted">---</span>`;
+                
             let fechaApHtml = a.fecha_apertura !== '---' 
                 ? `<small>${a.fecha_apertura}<br><span class="text-muted">${a.hora_apertura}</span></small>`
                 : `<span class="text-muted">---</span>`;
@@ -463,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${fechaCiHtml}</td>
                 <td><strong class="text-success">S/ ${a.saldo_inicial.toFixed(2)}</strong></td>
                 <td>${saldoFinalHtml}</td>
+                <td>${saldoFinalUsdHtml}</td>
                 <td>${badge}</td>
                 <td>
                     ${btnReabrir}
@@ -818,7 +841,8 @@ function verMovimientos(id_movimiento) {
             document.getElementById('resumenSaldoInicial').innerText = `S/ ${data.info.saldo_inicial.toFixed(2)}`;
             document.getElementById('resumenIngresos').innerText = `S/ ${data.totales.ingresos.toFixed(2)}`;
             document.getElementById('resumenEgresos').innerText = `S/ ${data.totales.egresos.toFixed(2)}`;
-            document.getElementById('resumenSaldoFinal').innerText = `S/ ${data.info.saldo_final.toFixed(2)}`;
+            document.getElementById('resumenFisicoPen').innerText = `S/ ${data.totales.fisico_pen.toFixed(2)}`;
+            document.getElementById('resumenFisicoUsd').innerText = `$ ${data.totales.fisico_usd.toFixed(2)}`;
             
             // Rellenar tabla
             const tbody = document.getElementById('tbodyMovimientosCaja');
@@ -827,7 +851,7 @@ function verMovimientos(id_movimiento) {
             if (data.movimientos.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-5">
+                        <td colspan="11" class="text-center text-muted py-5">
                             <i class="bi bi-inbox" style="font-size: 2.5rem; opacity: 0.3;"></i>
                             <p class="mt-3 mb-0">No se encontraron transacciones registradas en esta apertura.</p>
                         </td>
@@ -871,6 +895,14 @@ function verMovimientos(id_movimiento) {
                                <i class="bi bi-receipt"></i> ${mov.comprobante.numero}
                            </a>`
                         : `<span class="text-muted">---</span>`;
+
+                    const montoPenHtml = mov.monto_pen > 0 
+                        ? `${montoPrefijo} S/ ${mov.monto_pen.toFixed(2)}` 
+                        : `<span class="text-muted">---</span>`;
+
+                    const montoUsdHtml = mov.monto_usd > 0 
+                        ? `${montoPrefijo} $ ${mov.monto_usd.toFixed(2)}` 
+                        : `<span class="text-muted">---</span>`;
                         
                     tbody.innerHTML += `
                         <tr>
@@ -881,9 +913,12 @@ function verMovimientos(id_movimiento) {
                             <td>${badgeForma}</td>
                             <td>${badgeMetodo}</td>
                             <td><code class="text-dark" style="font-size: 0.8rem;">${mov.nro_operacion}</code></td>
-                            <td><span style="font-size: 0.85rem; max-width: 180px; display: inline-block;" class="text-truncate" title="${mov.descripcion}">${mov.descripcion}</span></td>
-                            <td class="text-end fw-bold ${montoClase}" style="font-size: 0.9rem;">
-                                ${montoPrefijo} S/ ${mov.monto.toFixed(2)}
+                            <td><span style="font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;" title="${mov.descripcion}">${mov.descripcion}</span></td>
+                            <td class="text-end fw-bold ${mov.monto_pen > 0 ? montoClase : ''}" style="font-size: 0.9rem;">
+                                ${montoPenHtml}
+                            </td>
+                            <td class="text-end fw-bold ${mov.monto_usd > 0 ? montoClase : ''}" style="font-size: 0.9rem;">
+                                ${montoUsdHtml}
                             </td>
                             <td>${comprobanteHtml}</td>
                         </tr>
