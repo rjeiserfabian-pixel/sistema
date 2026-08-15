@@ -188,10 +188,36 @@ def emitir_factura(venta):
     serie_obj = venta.idseriecomprobante
     fecha = venta.fecha_venta
 
+    if not serie_obj.serie.upper().startswith('F'):
+        return False, f"La serie de la Factura debe iniciar con 'F'. (Serie actual: {serie_obj.serie})"
+
     # Determinar tipo de entidad del cliente
     codigo_tipo_entidad = "6"  # RUC por defecto para facturas
     if hasattr(cliente, 'id_tipo_entidad') and cliente.id_tipo_entidad:
         codigo_tipo_entidad = cliente.id_tipo_entidad.codigo or "6"
+
+    # Determinar forma de pago (1=Contado, 2=Crédito)
+    forma_pago_id = 1 if venta.id_forma_pago.id_forma_pago == 1 else 2
+    
+    # Manejo de fecha de vencimiento y cuotas para ventas a crédito
+    fecha_vencimiento_str = fecha.strftime("%Y-%m-%d")
+    lista_cuotas = []
+    
+    if forma_pago_id == 2:
+        from software.models.CuotasVentaModel import CuotasVenta
+        cuotas_db = CuotasVenta.objects.filter(idventa=venta, estado=1).order_by('numero_cuota')
+        if cuotas_db.exists():
+            # La fecha de vencimiento general suele ser la de la última cuota
+            ultima_cuota = cuotas_db.last()
+            fecha_vencimiento_str = ultima_cuota.fecha_vencimiento.strftime("%Y-%m-%d")
+            
+            # Llenar arreglo de cuotas para SUNAT
+            for c in cuotas_db:
+                lista_cuotas.append({
+                    "numero": c.numero_cuota,
+                    "monto": _float(c.total),
+                    "fecha": c.fecha_vencimiento.strftime("%Y-%m-%d")
+                })
 
     payload = {
         "empresa": _build_empresa_payload(empresa),
@@ -207,9 +233,9 @@ def emitir_factura(venta):
             "numero": venta.numero_comprobante,
             "fecha_emision": fecha.strftime("%Y-%m-%d"),
             "hora_emision": fecha.strftime("%H:%M:%S"),
-            "fecha_vencimiento": fecha.strftime("%Y-%m-%d"),
-            "moneda_id": 1,  # Soles
-            "forma_pago_id": 1 if venta.id_forma_pago.id_forma_pago == 1 else 2,
+            "fecha_vencimiento": fecha_vencimiento_str,
+            "moneda_id": 1,  # Soles (no se encontró campo moneda en Ventas)
+            "forma_pago_id": forma_pago_id,
             "total_gravada": _float(venta.subtotal),
             "total_igv": _float(venta.igv),
             "total_exonerada": None,
@@ -226,7 +252,7 @@ def emitir_factura(venta):
             "retencion_porcentaje": None,
         },
         "items": detalles,
-        "cuotas": [],
+        "cuotas": lista_cuotas,
         "guias_adjuntas": [],
         "anticipos": [],
     }
