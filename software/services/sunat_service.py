@@ -547,9 +547,10 @@ def _actualizar_venta_sunat(venta, exito, descripcion, extra):
     from software.models.VentasModel import Ventas
     venta.sunat_estado = 1 if exito else 2
     venta.sunat_xml = extra.get("sunat_xml", "")
+    venta.sunat_cdr = extra.get("sunat_cdr", "")
     venta.sunat_hash = extra.get("sunat_hash", "")
     venta.sunat_error = None if exito else descripcion
-    venta.save(update_fields=["sunat_estado", "sunat_xml", "sunat_hash", "sunat_error"])
+    venta.save(update_fields=["sunat_estado", "sunat_xml", "sunat_cdr", "sunat_hash", "sunat_error"])
     logger.info(
         "Venta %s actualizada: estado_sunat=%s, descripcion=%s",
         venta.idventa, venta.sunat_estado, descripcion

@@ -298,6 +298,17 @@ function initDataTable(tabId, apiUrl) {
           return badge;
         }
       },
+      { data: 'sunat_cdr', title: 'CDR', className: 'text-center', orderable: false,
+        render: function(d, t, row) {
+          if (d) {
+            return `<a href="${d}" target="_blank"
+                      class="btn btn-sm btn-success px-2 py-1" title="Descargar CDR SUNAT">
+                     <i class="bi bi-file-earmark-zip-fill me-1"></i>CDR
+                   </a>`;
+          }
+          return '<span class="text-muted small"><i class="bi bi-dash-circle"></i> Sin CDR</span>';
+        }
+      },
       { data: null, title: 'Acciones', className: 'text-center', orderable: false,
         render: function(d, t, row) { return botonesAccion(row); } },
     ],

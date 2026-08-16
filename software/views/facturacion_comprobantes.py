@@ -118,6 +118,7 @@ def _venta_to_dict(v):
         'sunat_estado':     v.sunat_estado,
         'sunat_estado_label': _estado_label(v.sunat_estado),
         'sunat_xml':        v.sunat_xml or '',
+        'sunat_cdr':        v.sunat_cdr or '',
         'sunat_error':      v.sunat_error or '',
     }
 

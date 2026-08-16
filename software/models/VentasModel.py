@@ -38,6 +38,7 @@ class Ventas(models.Model):
     sunat_estado = models.IntegerField(default=0, null=True, blank=True) # 0: Pendiente, 1: Aceptado, 2: Rechazado, 3: Error de conexión
     sunat_pdf = models.CharField(max_length=255, blank=True, null=True)
     sunat_xml = models.CharField(max_length=255, blank=True, null=True)
+    sunat_cdr = models.CharField(max_length=255, blank=True, null=True)
     sunat_hash = models.CharField(max_length=255, blank=True, null=True)
     sunat_error = models.TextField(blank=True, null=True)
     
