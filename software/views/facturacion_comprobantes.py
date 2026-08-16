@@ -86,6 +86,20 @@ def _aplicar_busqueda(qs, search_value):
     return qs
 
 
+def _aplicar_filtro_sunat(qs, request):
+    """
+    Filtra por estado SUNAT si el parámetro 'sunat_estado' viene en el GET.
+    Valores: 0=Pendiente, 1=Aceptado, 2=Rechazado, 3=Error
+    """
+    sunat_estado = request.GET.get('sunat_estado', '').strip()
+    if sunat_estado != '':
+        try:
+            qs = qs.filter(sunat_estado=int(sunat_estado))
+        except ValueError:
+            pass
+    return qs
+
+
 def _venta_to_dict(v):
     """Serializa una instancia de Ventas a dict para respuesta JSON."""
     return {
@@ -135,8 +149,9 @@ def _server_side_response(request, qs_base):
     # 1. Total sin ningún filtro adicional (solo activos + tipo de comprobante)
     records_total = qs_base.count()
 
-    # 2. Aplicar filtros de fecha + búsqueda
+    # 2. Aplicar filtros de fecha + estado SUNAT + búsqueda
     qs_filtrado = _aplicar_filtros_fecha(qs_base, request)
+    qs_filtrado = _aplicar_filtro_sunat(qs_filtrado, request)
     qs_filtrado = _aplicar_busqueda(qs_filtrado, search_value)
 
     # 3. Total filtrado

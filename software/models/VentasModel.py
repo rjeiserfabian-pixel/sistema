@@ -40,6 +40,9 @@ class Ventas(models.Model):
     sunat_xml = models.CharField(max_length=255, blank=True, null=True)
     sunat_hash = models.CharField(max_length=255, blank=True, null=True)
     sunat_error = models.TextField(blank=True, null=True)
+    
+    # Campo para control de moneda (Soles=PEN, Dolares=USD)
+    moneda = models.CharField(max_length=3, default='PEN', db_column='moneda', null=True, blank=True)
 
     class Meta:
         managed = True

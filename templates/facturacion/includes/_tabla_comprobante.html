@@ -7,7 +7,7 @@
     - icono        : clase Bootstrap Icons (ej: bi-file-earmark-text-fill)
 {% endcomment %}
 
-<!-- Filtros de fecha -->
+<!-- Filtros de fecha y estado SUNAT -->
 <div class="row g-2 mb-3 align-items-end">
   <div class="col-sm-auto">
     <label class="form-label text-muted small mb-1">Desde</label>
@@ -20,6 +20,19 @@
     <input type="date" class="form-control form-control-sm filtro-fecha-fin"
            id="fecha-fin-{{ tab_id }}"
            style="min-width:140px;">
+  </div>
+  <!-- Filtro Estado SUNAT -->
+  <div class="col-sm-auto">
+    <label class="form-label text-muted small mb-1">Estado SUNAT</label>
+    <select class="form-select form-select-sm filtro-sunat-estado"
+            id="sunat-estado-{{ tab_id }}"
+            style="min-width:150px;">
+      <option value="">Todos</option>
+      <option value="0">&#9899; Pendiente</option>
+      <option value="1">&#9989; Aceptado</option>
+      <option value="2">&#10060; Rechazado</option>
+      <option value="3">&#9888; Error</option>
+    </select>
   </div>
   <div class="col-sm-auto">
     <button class="btn btn-sm btn-outline-{{ color }} btn-filtrar-fechas"
@@ -115,10 +128,19 @@
       btn.addEventListener("click", function() {
         document.getElementById("fecha-inicio-" + tabId).value = "";
         document.getElementById("fecha-fin-"   + tabId).value = "";
+        document.getElementById("sunat-estado-" + tabId).value = "";
         var dt = $.fn.DataTable.isDataTable("#tabla-" + tabId)
                    ? $("#tabla-" + tabId).DataTable() : null;
         if (dt) dt.ajax.url(buildUrl(tabId)).load();
       });
+    });
+
+  // Also trigger reload when estado select changes
+  document.getElementById("sunat-estado-" + tabId)
+    .addEventListener("change", function() {
+      var dt = $.fn.DataTable.isDataTable("#tabla-" + tabId)
+                 ? $("#tabla-" + tabId).DataTable() : null;
+      if (dt) dt.ajax.url(buildUrl(tabId)).load();
     });
 
   function buildUrl(tab) {
@@ -127,11 +149,13 @@
       boletas:       "{% url 'api_listar_boletas_sunat' %}",
       liquidaciones: "{% url 'api_listar_liquidaciones_sunat' %}",
     }[tab];
-    var inicio = document.getElementById("fecha-inicio-" + tab).value;
-    var fin    = document.getElementById("fecha-fin-"    + tab).value;
+    var inicio  = document.getElementById("fecha-inicio-"  + tab).value;
+    var fin     = document.getElementById("fecha-fin-"     + tab).value;
+    var estado  = document.getElementById("sunat-estado-"  + tab).value;
     var params = new URLSearchParams();
-    if (inicio) params.set("fecha_inicio", inicio);
-    if (fin)    params.set("fecha_fin",    fin);
+    if (inicio) params.set("fecha_inicio",   inicio);
+    if (fin)    params.set("fecha_fin",      fin);
+    if (estado !== "") params.set("sunat_estado", estado);
     return params.toString() ? base + "?" + params.toString() : base;
   }
 })();

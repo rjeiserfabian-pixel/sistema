@@ -37,17 +37,35 @@ def _get_empresa():
     return Empresa.objects.filter(activo=True).first()
 
 
+def _get_ubicacion_empresa(empresa):
+    """Lee departamento, provincia y distrito desde los FK de ubicación de la empresa."""
+    try:
+        departamento = empresa.id_region_gerente.nombre_region.upper() if empresa.id_region_gerente else "SAN MARTIN"
+    except Exception:
+        departamento = "SAN MARTIN"
+    try:
+        provincia = empresa.id_provincia_gerente.nombre_provincia.upper() if empresa.id_provincia_gerente else departamento
+    except Exception:
+        provincia = departamento
+    try:
+        distrito = empresa.id_distrito_gerente.nombre_distrito.upper() if empresa.id_distrito_gerente else departamento
+    except Exception:
+        distrito = departamento
+    return departamento, provincia, distrito
+
+
 def _build_empresa_payload(empresa):
     """Construye el bloque 'empresa' que va en todos los JSON."""
+    departamento, provincia, distrito = _get_ubicacion_empresa(empresa)
     return {
         "ruc": empresa.ruc,
         "razon_social": empresa.razonsocial,
         "nombre_comercial": empresa.nombrecomercial or empresa.razonsocial,
         "domicilio_fiscal": empresa.direccion,
         "ubigeo": empresa.ubigueo or "150101",
-        "departamento": "LIMA",   # TODO: leer de la BD si se agrega campo
-        "provincia": "LIMA",
-        "distrito": "LIMA",
+        "departamento": departamento,
+        "provincia": provincia,
+        "distrito": distrito,
         "modo": empresa.mododev,           # 0=Beta, 1=Producción
         "usu_secundario_produccion_user": empresa.usersec or "",
         "usu_secundario_produccion_password": empresa.passwordsec or "",
@@ -57,15 +75,16 @@ def _build_empresa_payload(empresa):
 
 def _build_empresa_payload_simple(empresa):
     """Bloque empresa simplificado (para liquidación, tiene campos extra)."""
+    departamento, provincia, distrito = _get_ubicacion_empresa(empresa)
     return {
         "ruc": empresa.ruc,
         "razon_social": empresa.razonsocial,
         "nombre_comercial": empresa.nombrecomercial or empresa.razonsocial,
         "domicilio_fiscal": empresa.direccion,
         "ubigeo": empresa.ubigueo or "150101",
-        "departamento": "LIMA",
-        "provincia": "LIMA",
-        "distrito": "LIMA",
+        "departamento": departamento,
+        "provincia": provincia,
+        "distrito": distrito,
         "modo": empresa.mododev,
         "usu_secundario_produccion_user": empresa.usersec or "",
         "usu_secundario_produccion_password": empresa.passwordsec or "",
@@ -91,8 +110,15 @@ def _post_to_api(endpoint, payload):
             headers={"Content-Type": "application/json"},
             timeout=TIMEOUT_SEGUNDOS,
         )
+        import re
         response.raise_for_status()
-        data = response.json()
+        # Intentar extraer JSON si hay Warnings/Notices de PHP en la respuesta
+        match = re.search(r'(\{.*\})', response.text, re.DOTALL)
+        if match:
+            data = json.loads(match.group(1))
+        else:
+            data = response.json()
+            
         logger.info("Respuesta SUNAT API: %s", json.dumps(data, ensure_ascii=False)[:500])
         return True, data
     except requests.exceptions.Timeout:
@@ -103,12 +129,12 @@ def _post_to_api(endpoint, payload):
         msg = "No se pudo conectar con la API SUNAT. Verifique que el servidor esté activo."
         logger.error(msg)
         return False, {"error": msg}
-    except requests.exceptions.RequestException as exc:
-        msg = f"Error en la petición a la API SUNAT: {str(exc)}"
+    except ValueError as exc:
+        msg = f"La API SUNAT devolvió una respuesta no válida (no es JSON). Respuesta PHP: {response.text[:300]}"
         logger.error(msg)
         return False, {"error": msg}
-    except ValueError:
-        msg = "La API SUNAT devolvió una respuesta no válida (no es JSON)."
+    except requests.exceptions.RequestException as exc:
+        msg = f"Error en la petición a la API SUNAT: {str(exc)}"
         logger.error(msg)
         return False, {"error": msg}
 
@@ -192,9 +218,7 @@ def emitir_factura(venta):
         return False, f"La serie de la Factura debe iniciar con 'F'. (Serie actual: {serie_obj.serie})"
 
     # Determinar tipo de entidad del cliente
-    codigo_tipo_entidad = "6"  # RUC por defecto para facturas
-    if hasattr(cliente, 'id_tipo_entidad') and cliente.id_tipo_entidad:
-        codigo_tipo_entidad = cliente.id_tipo_entidad.codigo or "6"
+    codigo_tipo_entidad = "6" if len(cliente.numdoc) == 11 else ("1" if len(cliente.numdoc) == 8 else "0")
 
     # Determinar forma de pago (1=Contado, 2=Crédito)
     forma_pago_id = 1 if venta.id_forma_pago.id_forma_pago == 1 else 2
@@ -219,6 +243,20 @@ def emitir_factura(venta):
                     "fecha": c.fecha_vencimiento.strftime("%Y-%m-%d")
                 })
 
+    # Extraer solo el número (por si viene como F001-0000001)
+    numero_str = venta.numero_comprobante
+    if "-" in numero_str:
+        numero_str = numero_str.split("-")[-1]
+
+    # Determinar categoría de impuestos basado en el tipo de IGV
+    tipo_igv = "10"
+    if hasattr(venta, 'id_tipo_igv') and venta.id_tipo_igv:
+        tipo_igv = str(getattr(venta.id_tipo_igv, 'codigo', '10')).strip() or "10"
+
+    total_gravada = _float(venta.subtotal) if tipo_igv.startswith('1') else None
+    total_exonerada = _float(venta.subtotal) if tipo_igv.startswith('2') else None
+    total_inafecta = _float(venta.subtotal) if tipo_igv.startswith('3') else None
+
     payload = {
         "empresa": _build_empresa_payload(empresa),
         "cliente": {
@@ -230,16 +268,16 @@ def emitir_factura(venta):
         "venta": {
             "tipo_documento_codigo": "01",
             "serie": serie_obj.serie,
-            "numero": venta.numero_comprobante,
+            "numero": numero_str,
             "fecha_emision": fecha.strftime("%Y-%m-%d"),
             "hora_emision": fecha.strftime("%H:%M:%S"),
             "fecha_vencimiento": fecha_vencimiento_str,
-            "moneda_id": 1,  # Soles (no se encontró campo moneda en Ventas)
+            "moneda_id": 2 if venta.moneda == 'USD' else (3 if venta.moneda == 'EUR' else 1),
             "forma_pago_id": forma_pago_id,
-            "total_gravada": _float(venta.subtotal),
+            "total_gravada": total_gravada,
             "total_igv": _float(venta.igv),
-            "total_exonerada": None,
-            "total_inafecta": None,
+            "total_exonerada": total_exonerada,
+            "total_inafecta": total_inafecta,
             "total_gratuita": None,
             "total_gratuita_igv": None,
             "total_bolsa": None,
@@ -290,9 +328,21 @@ def emitir_boleta(venta):
     fecha = venta.fecha_venta
 
     # Para boletas, el tipo de entidad puede ser DNI (1) o RUC (6)
-    codigo_tipo_entidad = "1"  # DNI por defecto para boletas
-    if hasattr(cliente, 'id_tipo_entidad') and cliente.id_tipo_entidad:
-        codigo_tipo_entidad = cliente.id_tipo_entidad.codigo or "1"
+    codigo_tipo_entidad = "6" if len(cliente.numdoc) == 11 else ("1" if len(cliente.numdoc) == 8 else "0")
+
+    # Extraer solo el número (por si viene como B001-0000001)
+    numero_str = venta.numero_comprobante
+    if "-" in numero_str:
+        numero_str = numero_str.split("-")[-1]
+
+    # Determinar categoría de impuestos basado en el tipo de IGV
+    tipo_igv = "10"
+    if hasattr(venta, 'id_tipo_igv') and venta.id_tipo_igv:
+        tipo_igv = str(getattr(venta.id_tipo_igv, 'codigo', '10')).strip() or "10"
+
+    total_gravada = _float(venta.subtotal) if tipo_igv.startswith('1') else None
+    total_exonerada = _float(venta.subtotal) if tipo_igv.startswith('2') else None
+    total_inafecta = _float(venta.subtotal) if tipo_igv.startswith('3') else None
 
     payload = {
         "empresa": _build_empresa_payload(empresa),
@@ -305,15 +355,15 @@ def emitir_boleta(venta):
         "venta": {
             "tipo_documento_codigo": "03",
             "serie": serie_obj.serie,
-            "numero": venta.numero_comprobante,
+            "numero": numero_str,
             "fecha_emision": fecha.strftime("%Y-%m-%d"),
             "hora_emision": fecha.strftime("%H:%M:%S"),
             "moneda_id": 1,
             "forma_pago_id": 1 if venta.id_forma_pago.id_forma_pago == 1 else 2,
-            "total_gravada": _float(venta.subtotal),
+            "total_gravada": total_gravada,
             "total_igv": _float(venta.igv),
-            "total_exonerada": None,
-            "total_inafecta": None,
+            "total_exonerada": total_exonerada,
+            "total_inafecta": total_inafecta,
         },
         "items": detalles,
         "cuotas": [],
@@ -354,6 +404,20 @@ def emitir_liquidacion(venta):
     serie_obj = venta.idseriecomprobante
     fecha = venta.fecha_venta
 
+    # Extraer solo el número
+    numero_str = venta.numero_comprobante
+    if "-" in numero_str:
+        numero_str = numero_str.split("-")[-1]
+
+    # Determinar categoría de impuestos basado en el tipo de IGV
+    tipo_igv = "10"
+    if hasattr(venta, 'id_tipo_igv') and venta.id_tipo_igv:
+        tipo_igv = str(getattr(venta.id_tipo_igv, 'codigo', '10')).strip() or "10"
+
+    total_gravada = _float(venta.subtotal) if tipo_igv.startswith('1') else None
+    total_exonerada = _float(venta.subtotal) if tipo_igv.startswith('2') else None
+    total_inafecta = _float(venta.subtotal) if tipo_igv.startswith('3') else None
+
     payload = {
         "empresa": _build_empresa_payload_simple(empresa),
         "proveedor": {
@@ -375,14 +439,14 @@ def emitir_liquidacion(venta):
         "venta": {
             "tipo_documento_codigo": "04",
             "serie": serie_obj.serie,
-            "numero": venta.numero_comprobante,
+            "numero": numero_str,
             "fecha_emision": fecha.strftime("%Y-%m-%d"),
             "hora_emision": fecha.strftime("%H:%M:%S"),
             "forma_pago_id": 1 if venta.id_forma_pago.id_forma_pago == 1 else 2,
-            "total_gravada": _float(venta.subtotal),
+            "total_gravada": total_gravada,
             "total_igv": _float(venta.igv),
-            "total_exonerada": None,
-            "total_inafecta": None,
+            "total_exonerada": total_exonerada,
+            "total_inafecta": total_inafecta,
             "nota": venta.observaciones or "",
         },
         "items": detalles,
@@ -444,15 +508,30 @@ def _obtener_items(venta):
             tipo_igv_codigo = str(getattr(venta.id_tipo_igv, 'codigo', '10')).strip()
             tipo_igv = tipo_igv_codigo if tipo_igv_codigo else "10"
 
-        precio_base = _float(det.precio_venta_contado)
-        if precio_base is None or precio_base <= 0:
-            precio_base = _float(det.subtotal) or 0
+        # Calcular precio_base desde el subtotal del detalle para garantizar
+        # que la suma de líneas cuadre con el total del comprobante ante SUNAT.
+        # SUNAT verifica: sum(precio_base * cantidad) == total_gravada|exonerada|inafecta
+        cantidad = int(det.cantidad) or 1
+        subtotal_det = _float(det.subtotal) or 0
+        
+        # precio_base es el precio unitario SIN IGV
+        tipo_igv_cat = tipo_igv[0] if tipo_igv else "1"
+        
+        if tipo_igv_cat == "1":
+            # Gravado: precio_base = subtotal sin IGV / cantidad
+            precio_base = round(subtotal_det / cantidad, 10)
+        else:
+            # Exonerado/Inafecto: el subtotal ya es el valor de venta (sin IGV)
+            precio_base = round(subtotal_det / cantidad, 10)
+
+        if precio_base <= 0:
+            precio_base = _float(det.precio_venta_contado) or 0
 
         items.append({
             "codigo_producto": str(codigo_prod)[:50],
             "producto": str(nombre).upper()[:250],
             "codigo_sunat": codigo_sunat,
-            "cantidad": int(det.cantidad),
+            "cantidad": cantidad,
             "codigo_unidad": "NIU",  # Unidad de medida estándar
             "precio_base": precio_base,
             "tipo_igv_codigo": tipo_igv,
