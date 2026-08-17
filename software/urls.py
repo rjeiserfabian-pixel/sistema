@@ -60,6 +60,7 @@ from .views import trazabilidad
 from .views import cuentas_por_cobrar
 from .views.sunat import api_tipo_cambio
 from .views import facturacion_comprobantes
+from .views import auditorias
 
 urlpatterns = [
 
@@ -568,5 +569,19 @@ urlpatterns = [
     path('trazabilidad/buscar-repuesto/', trazabilidad.buscar_repuesto, name='trazabilidad_buscar_repuesto'),
     path('trazabilidad/vehiculo/<str:serie>/pdf/', trazabilidad.pdf_trazabilidad_vehiculo, name='pdf_trazabilidad_vehiculo'),
     path('trazabilidad/repuesto/<str:codigo>/pdf/', trazabilidad.pdf_trazabilidad_repuesto, name='pdf_trazabilidad_repuesto'),
+
+    # AUDITORÍAS
+    path('auditorias/ventas/', auditorias.auditorias_ventas, name='auditorias_ventas'),
+    path('auditorias/ventas/json/', auditorias.AuditoriaVentasJsonView.as_view(), name='auditorias_ventas_json'),
+    path('auditorias/compras/', auditorias.auditorias_compras, name='auditorias_compras'),
+    path('auditorias/compras/json/', auditorias.AuditoriaComprasJsonView.as_view(), name='auditorias_compras_json'),
+    path('auditorias/productos/', auditorias.auditorias_productos, name='auditorias_productos'),
+    path('auditorias/productos/json/', auditorias.AuditoriaProductosJsonView.as_view(), name='auditorias_productos_json'),
+    path('auditorias/cajas/', auditorias.auditorias_cajas, name='auditorias_cajas'),
+    path('auditorias/cajas/json/', auditorias.AuditoriaCajasJsonView.as_view(), name='auditorias_cajas_json'),
+    path('auditorias/usuarios/', auditorias.auditorias_usuarios, name='auditorias_usuarios'),
+    path('auditorias/usuarios/json/', auditorias.AuditoriaUsuariosJsonView.as_view(), name='auditorias_usuarios_json'),
+    path('auditorias/creditos/', auditorias.auditorias_creditos, name='auditorias_creditos'),
+    path('auditorias/creditos/json/', auditorias.AuditoriaCreditosJsonView.as_view(), name='auditorias_creditos_json'),
 
 ]

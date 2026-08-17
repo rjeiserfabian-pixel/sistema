@@ -1,0 +1,119 @@
+{% extends 'plantilla/base.html' %}
+{% block main %}
+<main id="main" class="main">
+
+  <div class="pagetitle">
+    <h1><i class="bi bi-shield-lock me-2"></i>Auditoría de Ventas</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'cpanel' %}">Home</a></li>
+        <li class="breadcrumb-item">Auditorías</li>
+        <li class="breadcrumb-item active">Ventas</li>
+      </ol>
+    </nav>
+  </div>
+
+  <section class="section">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+
+        <h5 class="card-title d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+          <span>Historial de Auditoría — Ventas</span>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="date" id="filtro-fecha-inicio" class="form-control form-control-sm" style="width:auto;" title="Desde">
+            <input type="date" id="filtro-fecha-fin" class="form-control form-control-sm" style="width:auto;" title="Hasta">
+            <input type="text" id="filtro-usuario" class="form-control form-control-sm" placeholder="Usuario..." style="width:160px;">
+            <button class="btn btn-primary btn-sm rounded-pill" onclick="reloadTable()">
+              <i class="bi bi-funnel me-1"></i>Filtrar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="limpiarFiltros()">
+              <i class="bi bi-x-circle me-1"></i>Limpiar
+            </button>
+          </div>
+        </h5>
+
+        <div class="table-responsive">
+          <table id="tablaAuditoria" class="table table-hover align-middle" style="width:100%">
+            <thead class="table-dark">
+              <tr>
+                <th>#ID</th>
+                <th>ID Venta</th>
+                <th>Acción</th>
+                <th>Motivo</th>
+                <th>Usuario</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+var tabla;
+
+function badgeAccion(accion) {
+  var a = (accion || '').toUpperCase();
+  if (a.includes('EDIC')) return '<span class="badge bg-primary">' + accion + '</span>';
+  if (a.includes('ELIM')) return '<span class="badge bg-danger">' + accion + '</span>';
+  if (a.includes('ANUL')) return '<span class="badge bg-warning text-dark">' + accion + '</span>';
+  return '<span class="badge bg-secondary">' + accion + '</span>';
+}
+
+$(document).ready(function () {
+  const hoy = new Date();
+  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const formatDate = (d) => {
+    let mes = '' + (d.getMonth() + 1), dia = '' + d.getDate(), anio = d.getFullYear();
+    if (mes.length < 2) mes = '0' + mes;
+    if (dia.length < 2) dia = '0' + dia;
+    return [anio, mes, dia].join('-');
+  };
+  $('#filtro-fecha-inicio').val(formatDate(primerDiaMes));
+  $('#filtro-fecha-fin').val(formatDate(hoy));
+
+  tabla = $('#tablaAuditoria').DataTable({
+    serverSide: true,
+    processing: true,
+    pageLength: 10,
+    lengthMenu: [10],
+    language: { url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json' },
+    ajax: {
+      url: "{% url 'auditorias_ventas_json' %}",
+      data: function (d) {
+        d.fecha_inicio = $('#filtro-fecha-inicio').val();
+        d.fecha_fin    = $('#filtro-fecha-fin').val();
+        d.usuario      = $('#filtro-usuario').val();
+      }
+    },
+    columns: [
+      { data: 'id', width: '60px' },
+      { data: 'idventa', width: '80px' },
+      { data: 'accion', render: function(d) { return badgeAccion(d); } },
+      { data: 'motivo' },
+      { data: 'usuario' },
+      { data: 'fecha' },
+    ],
+    order: [[5, 'desc']],
+  });
+});
+
+function reloadTable() { tabla.ajax.reload(); }
+function limpiarFiltros() {
+  $('#filtro-fecha-inicio, #filtro-fecha-fin, #filtro-usuario').val('');
+  tabla.ajax.reload();
+}
+</script>
+{% endblock %}
