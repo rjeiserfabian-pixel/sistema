@@ -80,11 +80,10 @@ class BaseAuditoriaDatatableView(View):
         if fecha_fin:
             qs = qs.filter(**{f'{fecha_field}__date__lte': fecha_fin})
 
-        # Filtro por usuario (nombre o apellido)
+        # Filtro por usuario (nombrecompleto)
         if usuario_filter:
             qs = qs.filter(
-                Q(idusuario__nombre__icontains=usuario_filter) |
-                Q(idusuario__apellido__icontains=usuario_filter)
+                Q(idusuario__nombrecompleto__icontains=usuario_filter)
             )
 
         records_total = self._get_base_queryset().count()
@@ -124,7 +123,7 @@ def _format_fecha(dt):
 def _format_usuario(instance):
     try:
         u = instance.idusuario
-        return f"{u.nombre} {u.apellido}"
+        return u.nombrecompleto or '-'
     except Exception:
         return '-'
 
@@ -191,7 +190,7 @@ def auditorias_creditos(request):
 
 class AuditoriaVentasJsonView(BaseAuditoriaDatatableView):
     model = AuditoriaVentas
-    search_fields = ['accion', 'motivo', 'idusuario__nombre', 'idusuario__apellido']
+    search_fields = ['accion', 'motivo', 'idusuario__nombrecompleto']
 
     def serialize_row(self, instance):
         return {
@@ -206,7 +205,7 @@ class AuditoriaVentasJsonView(BaseAuditoriaDatatableView):
 
 class AuditoriaComprasJsonView(BaseAuditoriaDatatableView):
     model = AuditoriaCompras
-    search_fields = ['accion', 'motivo', 'idusuario__nombre', 'idusuario__apellido']
+    search_fields = ['accion', 'motivo', 'idusuario__nombrecompleto']
 
     def _get_fecha_field(self):
         return 'fecha'
@@ -227,7 +226,7 @@ class AuditoriaComprasJsonView(BaseAuditoriaDatatableView):
 
 class AuditoriaProductosJsonView(BaseAuditoriaDatatableView):
     model = AuditoriaProductos
-    search_fields = ['accion', 'motivo', 'idusuario__nombre', 'idusuario__apellido', 'idproducto__nomproducto']
+    search_fields = ['accion', 'motivo', 'idusuario__nombrecompleto', 'idproducto__nomproducto']
 
     def apply_select_related(self, qs):
         return qs.select_related('idusuario', 'idproducto')
@@ -249,7 +248,7 @@ class AuditoriaProductosJsonView(BaseAuditoriaDatatableView):
 
 class AuditoriaCajasJsonView(BaseAuditoriaDatatableView):
     model = AuditoriaCajas
-    search_fields = ['accion', 'motivo', 'detalles', 'idusuario__nombre', 'idusuario__apellido']
+    search_fields = ['accion', 'motivo', 'detalles', 'idusuario__nombrecompleto']
 
     def apply_select_related(self, qs):
         return qs.select_related('idusuario', 'id_caja')
@@ -272,7 +271,7 @@ class AuditoriaCajasJsonView(BaseAuditoriaDatatableView):
 
 class AuditoriaUsuariosJsonView(BaseAuditoriaDatatableView):
     model = AuditoriaUsuarios
-    search_fields = ['accion', 'motivo', 'detalles', 'usuario_afectado__nombre', 'usuario_afectado__apellido']
+    search_fields = ['accion', 'motivo', 'detalles', 'usuario_afectado__nombrecompleto']
 
     def apply_select_related(self, qs):
         return qs.select_related('usuario_afectado', 'usuario_responsable')
@@ -283,12 +282,12 @@ class AuditoriaUsuariosJsonView(BaseAuditoriaDatatableView):
     def serialize_row(self, instance):
         try:
             ua = instance.usuario_afectado
-            afectado_str = f"{ua.nombre} {ua.apellido}"
+            afectado_str = ua.nombrecompleto or '-'
         except Exception:
             afectado_str = '-'
         try:
             ur = instance.usuario_responsable
-            responsable_str = f"{ur.nombre} {ur.apellido}" if ur else 'Sistema'
+            responsable_str = ur.nombrecompleto if ur else 'Sistema'
         except Exception:
             responsable_str = '-'
         return {
@@ -318,8 +317,7 @@ class AuditoriaUsuariosJsonView(BaseAuditoriaDatatableView):
                 Q(accion__icontains=search_value) |
                 Q(motivo__icontains=search_value) |
                 Q(detalles__icontains=search_value) |
-                Q(usuario_afectado__nombre__icontains=search_value) |
-                Q(usuario_afectado__apellido__icontains=search_value)
+                Q(usuario_afectado__nombrecompleto__icontains=search_value)
             )
 
         if fecha_inicio:
@@ -328,8 +326,7 @@ class AuditoriaUsuariosJsonView(BaseAuditoriaDatatableView):
             qs = qs.filter(fecha_auditoria__date__lte=fecha_fin)
         if usuario_filter:
             qs = qs.filter(
-                Q(usuario_afectado__nombre__icontains=usuario_filter) |
-                Q(usuario_afectado__apellido__icontains=usuario_filter)
+                Q(usuario_afectado__nombrecompleto__icontains=usuario_filter)
             )
 
         records_total = self._get_base_queryset().count()
@@ -347,7 +344,7 @@ class AuditoriaUsuariosJsonView(BaseAuditoriaDatatableView):
 
 class AuditoriaCreditosJsonView(BaseAuditoriaDatatableView):
     model = AuditoriaCreditos
-    search_fields = ['accion', 'motivo', 'detalles', 'idusuario__nombre', 'idusuario__apellido']
+    search_fields = ['accion', 'motivo', 'detalles', 'idusuario__nombrecompleto']
 
     def serialize_row(self, instance):
         return {

@@ -32,6 +32,11 @@
           </div>
         </h5>
 
+        <div id="alerta-error-ajax" class="alert alert-danger d-none" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>Error al cargar datos:</strong> <span id="mensaje-error-ajax"></span>
+        </div>
+
         <div class="table-responsive">
           <table id="tablaAuditoria" class="table table-hover align-middle" style="width:100%">
             <thead class="table-dark">
@@ -53,8 +58,9 @@
   </section>
 
 </main>
+{% endblock %}
 
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+{% block extra_scripts %}
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
@@ -81,7 +87,7 @@ $(document).ready(function () {
   $('#filtro-fecha-fin').val(formatDate(hoy));
 
   tabla = $('#tablaAuditoria').DataTable({
-    serverSide: true, processing: true, pageLength: 10, lengthMenu: [10],
+    serverSide: true, processing: true, pageLength: 10, lengthMenu: [10, 25, 50],
     language: { url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json' },
     ajax: {
       url: "{% url 'auditorias_productos_json' %}",
@@ -89,6 +95,11 @@ $(document).ready(function () {
         d.fecha_inicio = $('#filtro-fecha-inicio').val();
         d.fecha_fin    = $('#filtro-fecha-fin').val();
         d.usuario      = $('#filtro-usuario').val();
+      },
+      error: function (xhr, error, thrown) {
+        $('#alerta-error-ajax').removeClass('d-none');
+        $('#mensaje-error-ajax').text('HTTP ' + xhr.status + ' — ' + (thrown || error));
+        console.error('DataTables AJAX error:', xhr.status, xhr.responseText);
       }
     },
     columns: [
@@ -100,7 +111,7 @@ $(document).ready(function () {
     order: [[5, 'desc']],
   });
 });
-function reloadTable() { tabla.ajax.reload(); }
-function limpiarFiltros() { $('#filtro-fecha-inicio,#filtro-fecha-fin,#filtro-usuario').val(''); tabla.ajax.reload(); }
+function reloadTable() { $('#alerta-error-ajax').addClass('d-none'); tabla.ajax.reload(); }
+function limpiarFiltros() { $('#filtro-fecha-inicio,#filtro-fecha-fin,#filtro-usuario').val(''); $('#alerta-error-ajax').addClass('d-none'); tabla.ajax.reload(); }
 </script>
 {% endblock %}
