@@ -420,7 +420,20 @@ def verificar_codigo_reapertura(request):
         print(f"   Caja: {apertura.id_caja.nombre_caja}")
         print(f"   Usuario: {apertura.idusuario.nombrecompleto}")
         print(f"   Motivo: {motivo}")
-        
+
+        # ✅ Registrar REAPERTURA en auditoría de cajas
+        try:
+            from software.models.AuditoriaCajasModel import AuditoriaCajas
+            AuditoriaCajas.objects.create(
+                id_caja=apertura.id_caja,
+                accion='REAPERTURA',
+                motivo=motivo,
+                idusuario=apertura.idusuario,
+                detalles=f"Reapertura autorizada por 2FA | ID movimiento: {apertura.id_movimiento}"
+            )
+        except Exception as e_aud:
+            print(f'⚠️ Auditoría REAPERTURA caja falló silenciosamente: {e_aud}')
+
         return JsonResponse({
             'ok': True,
             'success': True,
@@ -486,7 +499,23 @@ def cerrar_caja_reabierta(request, id_movimiento):
         
         print(f"✅ CAJA REABIERTA CERRADA NUEVAMENTE")
         print(f"   ID Movimiento: {apertura.id_movimiento}")
-        
+
+        # ✅ Registrar CIERRE_REABIERTA en auditoría de cajas
+        try:
+            from software.models.AuditoriaCajasModel import AuditoriaCajas
+            AuditoriaCajas.objects.create(
+                id_caja=apertura.id_caja,
+                accion='CIERRE_REABIERTA',
+                motivo='Caja reabierta cerrada nuevamente',
+                idusuario=apertura.idusuario,
+                detalles=(
+                    f"Saldo final: S/ {apertura.saldo_final or 0} | "
+                    f"ID movimiento: {apertura.id_movimiento}"
+                )
+            )
+        except Exception as e_aud:
+            print(f'⚠️ Auditoría CIERRE_REABIERTA falló silenciosamente: {e_aud}')
+
         return JsonResponse({
             'ok': True,
             'success': True,

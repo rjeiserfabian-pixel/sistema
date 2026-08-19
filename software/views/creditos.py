@@ -899,7 +899,21 @@ def anular_pago(request, idpagocuota):
                 
                 # Actualizar el crédito
                 credito.actualizar_estado()
-                
+
+                # ✅ Registrar en auditoría de créditos
+                try:
+                    from software.models.AuditoriaCreditosModel import AuditoriaCreditos
+                    idusuario_sesion = request.session.get('idusuario')
+                    AuditoriaCreditos.objects.create(
+                        idcredito=credito.idcredito,
+                        accion='ANULACION_PAGO',
+                        motivo=f'Pago #{idpagocuota} anulado',
+                        idusuario_id=idusuario_sesion,
+                        detalles=f"Crédito: {credito.codigo_credito} | Monto anulado: {pago.monto_pago}"
+                    )
+                except Exception as e_aud:
+                    print(f'⚠️ Auditoría ANULACION_PAGO falló silenciosamente: {e_aud}')
+
                 return JsonResponse({
                     'ok': True,
                     'message': 'Pago anulado correctamente'
@@ -1009,7 +1023,21 @@ def editar_pago(request, idpagocuota):
             
             # 5. Actualizar estado del crédito
             credito.actualizar_estado()
-            
+
+            # ✅ Registrar en auditoría de créditos
+            try:
+                from software.models.AuditoriaCreditosModel import AuditoriaCreditos
+                idusuario_sesion = request.session.get('idusuario')
+                AuditoriaCreditos.objects.create(
+                    idcredito=credito.idcredito,
+                    accion='EDICION_PAGO',
+                    motivo=f'Pago #{idpagocuota} editado',
+                    idusuario_id=idusuario_sesion,
+                    detalles=f"Crédito: {credito.codigo_credito}"
+                )
+            except Exception as e_aud:
+                print(f'⚠️ Auditoría EDICION_PAGO falló silenciosamente: {e_aud}')
+
             return JsonResponse({
                 'ok': True,
                 'message': 'Pago actualizado correctamente'

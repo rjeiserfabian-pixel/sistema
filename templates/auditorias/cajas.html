@@ -23,9 +23,6 @@
             <input type="date" id="filtro-fecha-inicio" class="form-control form-control-sm" style="width:auto;" title="Desde">
             <input type="date" id="filtro-fecha-fin" class="form-control form-control-sm" style="width:auto;" title="Hasta">
             <input type="text" id="filtro-usuario" class="form-control form-control-sm" placeholder="Usuario..." style="width:160px;">
-            <button class="btn btn-primary btn-sm rounded-pill" onclick="reloadTable()">
-              <i class="bi bi-funnel me-1"></i>Filtrar
-            </button>
             <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="limpiarFiltros()">
               <i class="bi bi-x-circle me-1"></i>Limpiar
             </button>
@@ -113,6 +110,14 @@ $(document).ready(function () {
       { data: 'fecha' }
     ],
     order: [[6, 'desc']],
+  });
+
+  // Autofiltrado al cambiar fechas o escribir usuario
+  $('#filtro-fecha-inicio, #filtro-fecha-fin').on('change', reloadTable);
+  $('#filtro-usuario').on('keyup', function() {
+    clearTimeout($.data(this, 'timer'));
+    var wait = setTimeout(reloadTable, 500);
+    $(this).data('timer', wait);
   });
 });
 function reloadTable() { $('#alerta-error-ajax').addClass('d-none'); tabla.ajax.reload(); }

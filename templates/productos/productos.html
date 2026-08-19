@@ -1078,6 +1078,32 @@
       $('#nombreEdit' + id).val(parts.join(' '));
     }
 
+    // Lógica para el modal de edición dinámico
+    function actualizarNombreEditarDinamico() {
+      var parts = [];
+      var selectors = ['#edit_v_categoria', '#edit_v_marca', '#edit_v_modelo', '#edit_v_configuracion', '#edit_v_color'];
+      
+      selectors.forEach(function(sel) {
+          var el = $(sel);
+          var txt = el.find('option:selected').text().trim();
+          if (txt && txt.indexOf('Seleccione') === -1 && txt !== 'Modelo' && txt !== 'Configuración Vehicular') {
+              parts.push(txt);
+          }
+      });
+      
+      // Detalle de color va siempre AL FINAL (opcional)
+      var detalleColor = $('#edit_v_detalle_color option:selected').text().trim();
+      if (detalleColor && detalleColor.indexOf('Seleccione') === -1) {
+          parts.push(detalleColor);
+      }
+      
+      $('#edit_v_nombreProducto').val(parts.join(' '));
+    }
+
+    $('#edit_v_categoria, #edit_v_marca, #edit_v_modelo, #edit_v_configuracion, #edit_v_color, #edit_v_detalle_color').on('change', function () {
+      actualizarNombreEditarDinamico();
+    });
+
     // Trigger update when autocomplete hidden inputs change
     $('.select-add').on('change', function () {
       actualizarNombreAgregar();

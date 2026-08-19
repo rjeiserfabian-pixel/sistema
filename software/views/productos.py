@@ -15,6 +15,7 @@ from software.models.CategoriaRepuestoModel import CategoriaRepuesto
 from software.models.MarcaRepuestoModel import MarcaRepuesto
 from software.models.GarantiaRepuestoModel import GarantiaRepuesto
 from software.models.ServicioModel import Servicio
+from software.models.AuditoriaProductosModel import AuditoriaProductos
 
 
 
@@ -148,6 +149,21 @@ def editado(request):
         config_obj = ConfiguracionVehicular.objects.filter(id_configuracion=configuracion_id).first() if configuracion_id else None
         detalle_color_obj = DetalleColor.objects.filter(iddetalle_color=detalle_color_id).first() if detalle_color_id else None
 
+        # Capturar datos anteriores ANTES de actualizar (para auditoría)
+        producto_anterior = Producto.objects.filter(idproducto=idproducto).select_related(
+            'idmarca', 'idmodelo', 'idcilindrada', 'idcolor'
+        ).first()
+        datos_anteriores = None
+        if producto_anterior:
+            datos_anteriores = {
+                'nomproducto': producto_anterior.nomproducto,
+                'codigo_interno': producto_anterior.codigo_interno or '',
+                'marca': producto_anterior.idmarca.nombremarca if producto_anterior.idmarca else '',
+                'modelo': producto_anterior.idmodelo.nombremodelo if producto_anterior.idmodelo else '',
+                'cilindrada': str(producto_anterior.idcilindrada.cilindrada_cc) if producto_anterior.idcilindrada else '',
+                'color': producto_anterior.idcolor.nombrecolor if producto_anterior.idcolor else '',
+            }
+
         Producto.objects.filter(idproducto=idproducto).update(
             idcategoria=categoria,
             idunidad=unidad,
@@ -163,6 +179,28 @@ def editado(request):
             estado=1,
         )
 
+        # Registrar en auditoría (sin interrumpir si falla)
+        try:
+            idusuario = request.session.get('idusuario')
+            if idusuario and producto_anterior:
+                AuditoriaProductos.objects.create(
+                    idproducto=producto_anterior,
+                    accion='EDICION',
+                    motivo='Producto/Vehículo actualizado',
+                    idusuario_id=idusuario,
+                    datos_anteriores=datos_anteriores,
+                    datos_nuevos={
+                        'nomproducto': nombre,
+                        'codigo_interno': codigo_interno,
+                        'marca': marca.nombremarca if marca else '',
+                        'modelo': modelo_obj.nombremodelo if modelo_obj else '',
+                        'cilindrada': str(cilindrada.cilindrada_cc) if cilindrada else '',
+                        'color': color.nombrecolor if color else '',
+                    }
+                )
+        except Exception as e_aud:
+            print(f'⚠️ Auditoría productos (editado) falló silenciosamente: {e_aud}')
+
         return JsonResponse({'ok': True})
     except Exception as e:
         return JsonResponse({'ok': False, 'error': f'Error al actualizar el vehículo: {str(e)}'})
@@ -171,8 +209,33 @@ def editado(request):
 def eliminar(request, idproducto):
     try:
         producto = get_object_or_404(Producto, idproducto=idproducto)
+
+        # Guardar datos antes de eliminar (para auditoría)
+        datos_producto = {
+            'nomproducto': producto.nomproducto,
+            'codigo_interno': producto.codigo_interno or '',
+            'marca': producto.idmarca.nombremarca if producto.idmarca else '',
+            'modelo': producto.idmodelo.nombremodelo if producto.idmodelo else '',
+            'color': producto.idcolor.nombrecolor if producto.idcolor else '',
+        }
+
         producto.estado = 0
         producto.save()
+
+        # Registrar en auditoría (sin interrumpir si falla)
+        try:
+            idusuario = request.session.get('idusuario')
+            if idusuario:
+                AuditoriaProductos.objects.create(
+                    idproducto=producto,
+                    accion='ELIMINACION',
+                    motivo='Producto/Vehículo eliminado del catálogo',
+                    idusuario_id=idusuario,
+                    datos_anteriores=datos_producto,
+                )
+        except Exception as e_aud:
+            print(f'⚠️ Auditoría productos (eliminar) falló silenciosamente: {e_aud}')
+
         return JsonResponse({'ok': True})
     except Exception as e:
         return JsonResponse({'ok': False, 'error': str(e)})

@@ -129,7 +129,24 @@ def login(request):
             print(f"✅ Login exitoso: {usuario_encontrado.nombrecompleto} ({'Admin' if es_admin else 'Usuario'})")
             print(f"   Sucursal: {request.session.get('id_sucursal')}")
             print(f"   Caja: {request.session.get('id_caja', 'Sin caja')}")
-            
+
+            # ✅ Registrar LOGIN en auditoría de usuarios
+            try:
+                from software.models.AuditoriaUsuariosModel import AuditoriaUsuarios
+                ip_cliente = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+                if ip_cliente and ',' in ip_cliente:
+                    ip_cliente = ip_cliente.split(',')[0].strip()
+                AuditoriaUsuarios.objects.create(
+                    usuario_afectado=usuario_encontrado,
+                    usuario_responsable=usuario_encontrado,
+                    accion='LOGIN',
+                    motivo='Inicio de sesión exitoso',
+                    ip_address=ip_cliente or None,
+                    detalles=f"Tipo usuario: {usuario_encontrado.idtipousuario.idtipousuario if usuario_encontrado.idtipousuario else 'N/A'}"
+                )
+            except Exception as e_aud:
+                print(f'⚠️ Auditoría LOGIN falló silenciosamente: {e_aud}')
+
             # Redirigir al dashboard o página principal
             return redirect('cpanel')  # Cambia esto por tu vista
         else:
@@ -144,6 +161,27 @@ def login(request):
 
 
 def logout(request):
+    # ✅ Registrar LOGOUT en auditoría de usuarios
+    try:
+        from software.models.AuditoriaUsuariosModel import AuditoriaUsuarios
+        idusuario = request.session.get('idusuario')
+        if idusuario:
+            from software.models.UsuarioModel import Usuario as UsuarioModel
+            usuario_obj = UsuarioModel.objects.filter(idusuario=idusuario).first()
+            if usuario_obj:
+                ip_cliente = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+                if ip_cliente and ',' in ip_cliente:
+                    ip_cliente = ip_cliente.split(',')[0].strip()
+                AuditoriaUsuarios.objects.create(
+                    usuario_afectado=usuario_obj,
+                    usuario_responsable=usuario_obj,
+                    accion='LOGOUT',
+                    motivo='Cierre de sesión',
+                    ip_address=ip_cliente or None,
+                )
+    except Exception as e_aud:
+        print(f'⚠️ Auditoría LOGOUT falló silenciosamente: {e_aud}')
+
     request.session.flush()
     return redirect('index')
 
@@ -509,7 +547,20 @@ def abrir_caja(request):
         print(f"✅ Caja aperturada: {caja.nombre_caja}")
         print(f"   Usuario: {usuario.nombrecompleto}")
         print(f"   Saldo inicial: S/ {monto}")
-        
+
+        # ✅ Registrar APERTURA en auditoría de cajas
+        try:
+            from software.models.AuditoriaCajasModel import AuditoriaCajas
+            AuditoriaCajas.objects.create(
+                id_caja=caja,
+                accion='APERTURA',
+                motivo='Caja aperturada por el usuario',
+                idusuario=usuario,
+                detalles=f"Saldo inicial: S/ {monto} | Apertura ID: {apertura.id_movimiento}"
+            )
+        except Exception as e_aud:
+            print(f'⚠️ Auditoría APERTURA caja falló silenciosamente: {e_aud}')
+
         return JsonResponse({
             'ok': True,
             'success': True,
@@ -584,7 +635,27 @@ def cerrar_caja(request):
         print(f"✅ Caja cerrada: {apertura_abierta.id_caja.nombre_caja}")
         print(f"   Saldo inicial: {apertura_abierta.saldo_inicial}")
         print(f"   Saldo final: {apertura_abierta.saldo_final}")
-        
+
+        # ✅ Registrar CIERRE en auditoría de cajas
+        try:
+            from software.models.AuditoriaCajasModel import AuditoriaCajas
+            from software.models.UsuarioModel import Usuario as UsuarioModel
+            usuario_cierre = UsuarioModel.objects.filter(idusuario=idusuario).first()
+            if usuario_cierre:
+                AuditoriaCajas.objects.create(
+                    id_caja=apertura_abierta.id_caja,
+                    accion='CIERRE',
+                    motivo='Caja cerrada por el usuario',
+                    idusuario=usuario_cierre,
+                    detalles=(
+                        f"Saldo inicial: S/ {apertura_abierta.saldo_inicial} | "
+                        f"Saldo final: S/ {apertura_abierta.saldo_final} | "
+                        f"Apertura ID: {apertura_abierta.id_movimiento}"
+                    )
+                )
+        except Exception as e_aud:
+            print(f'⚠️ Auditoría CIERRE caja falló silenciosamente: {e_aud}')
+
         return JsonResponse({
             'ok': True,
             'success': True,

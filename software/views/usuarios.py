@@ -10,6 +10,7 @@ from software.models.ProveedoresModel import Proveedor
 from software.models.ModulosModel import Modulos
 from software.models.empresaModel import Empresa
 from software.models.empleadoModel import Empleado
+from software.models.AuditoriaUsuariosModel import AuditoriaUsuarios
 
 from software.models.detalletipousuarioxmodulosModel import Detalletipousuarioxmodulos
 
@@ -211,7 +212,22 @@ def editar(request):
                 usuario.contrasena = contrasena_hasheada
             
             usuario.save()
-            
+
+            # Registrar en auditoría (sin interrumpir si falla)
+            try:
+                idusuario_responsable = request.session.get('idusuario')
+                responsable = Usuario.objects.filter(idusuario=idusuario_responsable).first()
+                cambio_rol = (str(usuario.idtipousuario_id) != tipoUsuario)
+                AuditoriaUsuarios.objects.create(
+                    usuario_afectado=usuario,
+                    usuario_responsable=responsable,
+                    accion='CAMBIO_PERMISO' if cambio_rol else 'EDICION',
+                    motivo='Datos del usuario actualizados',
+                    detalles=f"Nombre: {nombreUsuario} | Tipo: {tipoUsuario}"
+                )
+            except Exception as e_aud:
+                print(f'⚠️ Auditoría usuarios (editar) falló silenciosamente: {e_aud}')
+
             return JsonResponse({
                 "message": "Usuario editado exitosamente",
                 "id": usuario.idusuario
@@ -231,6 +247,21 @@ def eliminar(request, id):
             usuario = get_object_or_404(Usuario, idusuario=id)
             usuario.estado = 0
             usuario.save()
+
+            # Registrar en auditoría (sin interrumpir si falla)
+            try:
+                idusuario_responsable = request.session.get('idusuario')
+                responsable = Usuario.objects.filter(idusuario=idusuario_responsable).first()
+                AuditoriaUsuarios.objects.create(
+                    usuario_afectado=usuario,
+                    usuario_responsable=responsable,
+                    accion='ELIMINACION',
+                    motivo='Usuario desactivado del sistema',
+                    detalles=f"Nombre: {usuario.nombrecompleto}"
+                )
+            except Exception as e_aud:
+                print(f'⚠️ Auditoría usuarios (eliminar) falló silenciosamente: {e_aud}')
+
             return JsonResponse({"message": "Usuario eliminado exitosamente"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
@@ -340,7 +371,18 @@ def cambiar_contrasena(request):
             # Hashear y guardar nueva contraseña
             usuario.contrasena = PasswordManager.hash_password(nueva)
             usuario.save()
-            
+
+            # Registrar en auditoría (sin interrumpir si falla)
+            try:
+                AuditoriaUsuarios.objects.create(
+                    usuario_afectado=usuario,
+                    usuario_responsable=usuario,
+                    accion='CAMBIO_CONTRASENA',
+                    motivo='El usuario cambió su propia contraseña',
+                )
+            except Exception as e_aud:
+                print(f'⚠️ Auditoría usuarios (cambiar_contrasena) falló silenciosamente: {e_aud}')
+
             return JsonResponse({"message": "Contraseña actualizada correctamente"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
