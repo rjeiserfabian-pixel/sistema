@@ -1064,7 +1064,10 @@ def reporte_inventario(request):
     idusuario = request.session.get('idusuario')
     if not idusuario:
         return redirect('iniciar_sesion')
-        
+
+    idtipousuario = request.session.get('idtipousuario')
+    es_admin = (idtipousuario == 1)
+
     sucursal_filtro = request.GET.get('sucursal', '').strip()
     almacen_filtro = request.GET.get('almacen', '').strip()
 
@@ -1131,38 +1134,44 @@ def reporte_inventario(request):
     # Exportación a Excel y PDF
     export_fmt = request.GET.get('export')
     if export_fmt in ['excel', 'pdf']:
-        headers = ['Producto/Repuesto', 'Identificador', 'Stock', 'Costo Unit.', 'Venta Unit. (P. Máx)', 'Inversión', 'Ganancia Est.']
+        headers = ['Producto/Repuesto', 'Identificador', 'Stock', 'Costo Unit.', 'Venta Unit. (P. Máx)', 'Inversión']
+        if es_admin:
+            headers.append('Ganancia Est.')
         data = []
         for v in vehiculos_qs:
             prod_name = v.id_vehiculo.idproducto.nomproducto if v.id_vehiculo and getattr(v.id_vehiculo, 'idproducto', None) else 'Vehículo'
             chasis = v.id_vehiculo.serie_chasis if v.id_vehiculo else '-'
             motor = v.id_vehiculo.serie_motor if v.id_vehiculo else '-'
             identificador = f"CH: {chasis} | MOT: {motor}"
-            data.append([
+            fila = [
                 prod_name,
                 identificador,
                 v.cantidad_disponible,
                 v.pc if v.pc is not None else 0.00,
                 v.pv if v.pv is not None else 0.00,
                 v.total_inversion if v.total_inversion is not None else 0.00,
-                v.total_ganancia if v.total_ganancia is not None else 0.00
-            ])
-            
+            ]
+            if es_admin:
+                fila.append(v.total_ganancia if v.total_ganancia is not None else 0.00)
+            data.append(fila)
+
         for r in repuestos_qs:
             rc = r.id_repuesto_comprado
             rep = rc.id_repuesto if rc else None
             rep_name = rep.nombre if rep else 'Repuesto'
             codigo = rc.id_repuesto.codigo_barras if rc and rc.id_repuesto else '-'
-            data.append([
+            fila = [
                 rep_name,
                 f"Cód: {codigo}",
                 r.cantidad_disponible,
                 r.pc if r.pc is not None else 0.00,
                 r.pv if r.pv is not None else 0.00,
                 r.total_inversion if r.total_inversion is not None else 0.00,
-                r.total_ganancia if r.total_ganancia is not None else 0.00
-            ])
-            
+            ]
+            if es_admin:
+                fila.append(r.total_ganancia if r.total_ganancia is not None else 0.00)
+            data.append(fila)
+
         if export_fmt == 'excel':
             return export_to_excel(headers, data, 'Reporte_Inventario_Economico')
         elif export_fmt == 'pdf':
@@ -1190,17 +1199,19 @@ def reporte_inventario(request):
         'total_unidades': stock_qs.aggregate(t=Sum('cantidad_disponible'))['t'] or 0,
         'sucursales': Sucursales.objects.all(),
         'sucursal_filtro': sucursal_filtro,
-        'frecuencia_filtro': frecuencia_filtro,
-        'total_deuda': "{:.2f}".format(total_deuda),
         'almacenes': Almacenes.objects.filter(estado=1),
         'almacen_filtro': almacen_filtro,
+        'es_admin': es_admin,
+        'idtipousuario': idtipousuario,
     })
 
 def api_listar_inventario_vehiculos(request):
     idusuario = request.session.get('idusuario')
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
-        
+
+    es_admin = (request.session.get('idtipousuario') == 1)
+
     sucursal_filtro = request.GET.get('sucursal', '').strip()
     almacen_filtro = request.GET.get('almacen', '').strip()
 
@@ -1261,9 +1272,10 @@ def api_listar_inventario_vehiculos(request):
     
     totales_dict = {
         'inversion': float(resumen_veh['inversion'] or 0),
-        'ganancia': float(resumen_veh['proyectada'] or 0),
         'cantidad': resumen_veh['cantidad'] or 0
     }
+    if es_admin:
+        totales_dict['ganancia'] = float(resumen_veh['proyectada'] or 0)
 
     if length > -1:
         vehiculos_page = vehiculos_qs[start:start + length]
@@ -1275,8 +1287,8 @@ def api_listar_inventario_vehiculos(request):
         prod_name = v.id_vehiculo.idproducto.nomproducto if v.id_vehiculo and getattr(v.id_vehiculo, 'idproducto', None) else 'Vehículo'
         chasis = v.id_vehiculo.serie_chasis if v.id_vehiculo else '-'
         motor = v.id_vehiculo.serie_motor if v.id_vehiculo else '-'
-        
-        data.append({
+
+        fila = {
             'DT_RowId': f'row_v_{v.id_stock}',
             'producto': prod_name,
             'chasis': chasis,
@@ -1285,8 +1297,10 @@ def api_listar_inventario_vehiculos(request):
             'costo_unit': v.pc if v.pc is not None else 0.00,
             'venta_unit': v.pv if v.pv is not None else 0.00,
             'total_inversion': v.total_inversion if v.total_inversion is not None else 0.00,
-            'ganancia_est': v.total_ganancia if v.total_ganancia is not None else 0.00
-        })
+        }
+        if es_admin:
+            fila['ganancia_est'] = v.total_ganancia if v.total_ganancia is not None else 0.00
+        data.append(fila)
 
     return JsonResponse({
         'draw': draw,
@@ -1300,7 +1314,9 @@ def api_listar_inventario_repuestos(request):
     idusuario = request.session.get('idusuario')
     if not idusuario:
         return JsonResponse({'error': 'No autenticado'}, status=401)
-        
+
+    es_admin = (request.session.get('idtipousuario') == 1)
+
     sucursal_filtro = request.GET.get('sucursal', '').strip()
     almacen_filtro = request.GET.get('almacen', '').strip()
 
@@ -1359,9 +1375,10 @@ def api_listar_inventario_repuestos(request):
     
     totales_dict = {
         'inversion': float(resumen_rep['inversion'] or 0),
-        'ganancia': float(resumen_rep['proyectada'] or 0),
         'cantidad': resumen_rep['cantidad'] or 0
     }
+    if es_admin:
+        totales_dict['ganancia'] = float(resumen_rep['proyectada'] or 0)
 
     if length > -1:
         repuestos_page = repuestos_qs[start:start + length]
@@ -1374,8 +1391,8 @@ def api_listar_inventario_repuestos(request):
         rep = rc.id_repuesto if rc else None
         rep_name = rep.nombre if rep else 'Repuesto'
         codigo = rc.id_repuesto.codigo_barras if rc and rc.id_repuesto else '-'
-        
-        data.append({
+
+        fila = {
             'DT_RowId': f'row_r_{r.id_stock}',
             'producto': rep_name,
             'codigo': codigo,
@@ -1383,8 +1400,10 @@ def api_listar_inventario_repuestos(request):
             'costo_unit': r.pc if r.pc is not None else 0.00,
             'venta_unit': r.pv if r.pv is not None else 0.00,
             'total_inversion': r.total_inversion if r.total_inversion is not None else 0.00,
-            'ganancia_est': r.total_ganancia if r.total_ganancia is not None else 0.00
-        })
+        }
+        if es_admin:
+            fila['ganancia_est'] = r.total_ganancia if r.total_ganancia is not None else 0.00
+        data.append(fila)
 
     return JsonResponse({
         'draw': draw,

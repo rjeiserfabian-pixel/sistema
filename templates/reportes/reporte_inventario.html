@@ -24,6 +24,7 @@
           </div>
         </div>
       </div>
+      {% if es_admin %}
       <div class="col-md-4">
         <div class="card bg-success-light mb-0 shadow-sm border-0 border-start border-success border-4">
           <div class="card-body p-3 text-center">
@@ -32,6 +33,7 @@
           </div>
         </div>
       </div>
+      {% endif %}
       <div class="col-md-4">
         <div class="card bg-info-light mb-0 shadow-sm border-0 border-start border-info border-4">
           <div class="card-body p-3 text-center">
@@ -98,7 +100,7 @@
                     <th class="text-end">Costo Unit.</th>
                     <th class="text-end">Venta Unit.</th>
                     <th class="text-end bg-primary-light">Total Inversión</th>
-                    <th class="text-end bg-success-light">Ganancia Estimada</th>
+                    {% if es_admin %}<th class="text-end bg-success-light">Ganancia Estimada</th>{% endif %}
                   </tr>
                 </thead>
                 <tbody>
@@ -118,7 +120,7 @@
                     <th class="text-end">Costo Unit.</th>
                     <th class="text-end">Venta Unit.</th>
                     <th class="text-end bg-primary-light">Total Inversión</th>
-                    <th class="text-end bg-success-light">Ganancia Estimada</th>
+                    {% if es_admin %}<th class="text-end bg-success-light">Ganancia Estimada</th>{% endif %}
                   </tr>
                 </thead>
                 <tbody>
@@ -180,8 +182,8 @@ $(document).ready(function() {
             },
             { data: 'costo_unit', className: 'text-end', render: formatCurrency },
             { data: 'venta_unit', className: 'text-end', render: formatCurrency },
-            { data: 'total_inversion', className: 'text-end fw-bold', render: formatCurrency },
-            { data: 'ganancia_est', className: 'text-end text-success fw-bold', render: formatCurrency }
+            { data: 'total_inversion', className: 'text-end fw-bold', render: formatCurrency }{% if es_admin %},
+            { data: 'ganancia_est', className: 'text-end text-success fw-bold', render: formatCurrency }{% endif %}
         ],
         pagingType: 'simple_numbers',
         language: {
@@ -220,8 +222,8 @@ $(document).ready(function() {
             },
             { data: 'costo_unit', className: 'text-end', render: formatCurrency },
             { data: 'venta_unit', className: 'text-end', render: formatCurrency },
-            { data: 'total_inversion', className: 'text-end fw-bold', render: formatCurrency },
-            { data: 'ganancia_est', className: 'text-end text-success fw-bold', render: formatCurrency }
+            { data: 'total_inversion', className: 'text-end fw-bold', render: formatCurrency }{% if es_admin %},
+            { data: 'ganancia_est', className: 'text-end text-success fw-bold', render: formatCurrency }{% endif %}
         ],
         pagingType: 'simple_numbers',
         language: {
@@ -242,7 +244,7 @@ $(document).ready(function() {
 
     function updateGlobalTotals() {
         let inversion_total = totales_vehiculos.inversion + totales_repuestos.inversion;
-        let ganancia_total = totales_vehiculos.ganancia + totales_repuestos.ganancia;
+        let ganancia_total = (totales_vehiculos.ganancia || 0) + (totales_repuestos.ganancia || 0);
         let cantidad_total = totales_vehiculos.cantidad + totales_repuestos.cantidad;
         
         $('#tot_inversion').text('S/ ' + inversion_total.toFixed(2));

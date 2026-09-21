@@ -133,7 +133,7 @@
                 <th scope="col">Fecha</th>
                 <th scope="col">Forma Pago</th>
                 <th scope="col" class="text-end">Total</th>
-                <th scope="col" class="text-end">Ganancia</th>
+                {% if es_admin %}<th scope="col" class="text-end">Ganancia</th>{% endif %}
                 <th scope="col">Vendedor</th>
                 <th scope="col" class="text-center">Estado</th>
                 <th scope="col" class="text-center">Cobro</th>
@@ -143,7 +143,7 @@
             <tbody id="tbodyVentas">
               <!-- Se llena con AJAX -->
               <tr>
-                <td colspan="11" class="text-center py-5">
+                <td colspan="{% if es_admin %}11{% else %}10{% endif %}" class="text-center py-5">
                   <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Cargando...</span>
                   </div>
@@ -237,10 +237,12 @@
                   <div class="info-label">Total Venta:</div>
                   <div id="verDetalleVentaTotal" class="info-value text-success fs-5">S/ 0.00</div>
                 </div>
+                {% if es_admin %}
                 <div class="col-md-3 mt-4">
                   <div class="info-label">Ganancia:</div>
                   <div id="verDetalleVentaGanancia" class="info-value text-info fs-5">S/ 0.00</div>
                 </div>
+                {% endif %}
 
                 <!-- Nueva fila de Detalle de Pago Multimoneda -->
                 <div class="col-12 mt-4" id="seccionDetallePagoMultimoneda" style="display: none;">
@@ -271,7 +273,7 @@
                   <th class="text-center">Tipo</th>
                   <th>Detalle</th>
                   <th class="text-center">Cantidad</th>
-                  <th class="text-end">Precio Compra</th>
+                  {% if es_admin %}<th class="text-end">Precio Compra</th>{% endif %}
                   <th class="text-end">Precio Venta</th>
                   <th class="text-end">Subtotal</th>
                 </tr>
@@ -281,7 +283,7 @@
               </tbody>
               <tfoot>
                 <tr class="table-footer-total">
-                  <td colspan="6" class="text-end border-0 py-3">TOTAL VENTA:</td>
+                  <td colspan="{% if es_admin %}6{% else %}5{% endif %}" class="text-end border-0 py-3">TOTAL VENTA:</td>
                   <td id="verDetalleVentaTotalFooter" class="text-end border-0 py-3 text-dark">S/ 0.00</td>
                 </tr>
               </tfoot>
@@ -661,7 +663,7 @@
                             title="Ingrese el precio a crédito (incluye interés). Debe ser mayor que el precio normal."></i>
                         </th>
                         <th style="width: 6%;">Subtotal</th>
-                        <th style="width: 8%;">Ganancia</th>
+                        {% if es_admin %}<th style="width: 8%;">Ganancia</th>{% endif %}
                         <th style="width: 4%;">Acción</th>
                       </tr>
                     </thead>
@@ -672,19 +674,19 @@
                       <tr>
                         <td colspan="8" class="text-end fw-bold fs-6 colspan-dinamico border-bottom-0">Subtotal:</td>
                         <td class="fw-bold text-dark fs-6 border-bottom-0" id="subtotalVenta">S/ 0.00</td>
-                        <td class="border-bottom-0"></td>
+                        {% if es_admin %}<td class="border-bottom-0"></td>{% endif %}
                         <td class="border-bottom-0"></td>
                       </tr>
                       <tr>
                         <td colspan="8" class="text-end fw-bold fs-6 colspan-dinamico border-bottom-0">IGV:</td>
                         <td class="fw-bold text-warning fs-6 border-bottom-0" id="igvVenta">S/ 0.00</td>
-                        <td class="border-bottom-0"></td>
+                        {% if es_admin %}<td class="border-bottom-0"></td>{% endif %}
                         <td class="border-bottom-0"></td>
                       </tr>
                       <tr>
                         <td colspan="8" class="text-end fw-bold fs-5 colspan-dinamico">TOTAL VENTA:</td>
                         <td class="fw-bold text-success fs-5" id="totalVenta">S/ 0.00</td>
-                        <td class="fw-bold text-info fs-5" id="totalGanancia">S/ 0.00</td>
+                        {% if es_admin %}<td class="fw-bold text-info fs-5" id="totalGanancia">S/ 0.00</td>{% endif %}
                         <td></td>
                       </tr>
                     </tfoot>
@@ -1902,7 +1904,7 @@
       <!-- 9. Subtotal -->
       <td class="text-end fw-bold" id="subtotal_${itemCounter}">S/ ${parseFloat(precio).toFixed(2)}</td>
       <!-- 10. Ganancia -->
-      <td class="text-info text-end fw-bold" id="ganancia_${itemCounter}">S/ ${parseFloat(precio).toFixed(2)}</td>
+      ${TIPO_USUARIO_ACTUAL === 1 ? `<td class="text-info text-end fw-bold" id="ganancia_${itemCounter}">S/ ${parseFloat(precio).toFixed(2)}</td>` : ''}
       <!-- 11. Acción -->
       <td class="text-center">
         <button type="button" class="btn btn-sm btn-outline-danger no-auth" title="Quitar" onclick="eliminarItem(${itemCounter})">
@@ -2038,7 +2040,7 @@
         <input type="number" name="precio_credito_${itemCounter}" id="precio_credito_${itemCounter}" class="form-control form-control-sm precio-credito-input" data-item="${itemCounter}" step="0.01" placeholder="Requerido" ${esCredito ? 'required' : ''}>
       </td>
       <td id="subtotal_${itemCounter}" class="fw-bold text-success text-end">S/ 0.00</td>
-      <td id="ganancia_${itemCounter}" class="fw-bold text-info text-end">S/ 0.00</td>
+      ${TIPO_USUARIO_ACTUAL === 1 ? `<td id="ganancia_${itemCounter}" class="fw-bold text-info text-end">S/ 0.00</td>` : ''}
       <td class="text-center">
         <button type="button" class="btn btn-sm btn-danger no-auth" title="Quitar" onclick="eliminarItem(${itemCounter})">
           <i class="fa-solid fa-trash"></i>
@@ -2508,9 +2510,9 @@
 
         //BADGE DE GANANCIA
         let badgeGanancia = '';
-        if (ganancia > 0) {
+        if (TIPO_USUARIO_ACTUAL === 1 && ganancia > 0) {
           badgeGanancia = `<span class="badge bg-success ms-1" title="Ganancia estimada"><i class="fa-solid fa-chart-line"></i> +S/ ${ganancia.toFixed(2)} (${porcentajeGanancia.toFixed(1)}%)</span>`;
-        } else if (ganancia < 0) {
+        } else if (TIPO_USUARIO_ACTUAL === 1 && ganancia < 0) {
           badgeGanancia = `<span class="badge bg-danger ms-1" title="Pérdida"><i class="fa-solid fa-chart-line-down"></i> S/ ${ganancia.toFixed(2)}</span>`;
         }
 
@@ -2669,9 +2671,9 @@
 
       // ⭐ BADGE DE GANANCIA
       let badgeGanancia = '';
-      if (ganancia > 0) {
+      if (TIPO_USUARIO_ACTUAL === 1 && ganancia > 0) {
         badgeGanancia = `<span class="badge bg-success ms-1" title="Ganancia estimada"><i class="fa-solid fa-chart-line"></i> +S/ ${ganancia.toFixed(2)} (${porcentajeGanancia.toFixed(1)}%)</span>`;
-      } else if (ganancia < 0) {
+      } else if (TIPO_USUARIO_ACTUAL === 1 && ganancia < 0) {
         badgeGanancia = `<span class="badge bg-danger ms-1" title="Pérdida"><i class="fa-solid fa-chart-line-down"></i> S/ ${ganancia.toFixed(2)}</span>`;
       }
 
@@ -2929,9 +2931,9 @@
       const porcentajeGanancia = precioCompra > 0 ? ((ganancia / precioCompra) * 100) : 0;
 
       let badgeGanancia = '';
-      if (ganancia > 0) {
+      if (TIPO_USUARIO_ACTUAL === 1 && ganancia > 0) {
         badgeGanancia = `<span class="badge bg-success ms-1" title="Ganancia estimada"><i class="fa-solid fa-chart-line"></i> +S/ ${ganancia.toFixed(2)} (${porcentajeGanancia.toFixed(1)}%)</span>`;
-      } else if (ganancia < 0) {
+      } else if (TIPO_USUARIO_ACTUAL === 1 && ganancia < 0) {
         badgeGanancia = `<span class="badge bg-danger ms-1" title="Pérdida"><i class="fa-solid fa-chart-line-down"></i> S/ ${ganancia.toFixed(2)}</span>`;
       }
 
@@ -3862,7 +3864,8 @@
 
   function verDetalleVenta(idVenta) {
     // Limpiar modal y mostrar placeholders de carga
-    $('#verDetalleVentaDetallesTbody').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-teal" role="status"></div><br><small class="text-muted">Cargando productos...</small></td></tr>');
+    const colspanDetalle = TIPO_USUARIO_ACTUAL === 1 ? 7 : 6;
+    $('#verDetalleVentaDetallesTbody').html(`<tr><td colspan="${colspanDetalle}" class="text-center py-4"><div class="spinner-border text-teal" role="status"></div><br><small class="text-muted">Cargando productos...</small></td></tr>`);
     $('#verDetalleVentaInicialTbody').html('');
     $('#verDetalleVentaCuotasTbody').html('');
     $('#contenedorCreditoDetalle').addClass('d-none');
@@ -3888,7 +3891,7 @@
       method: 'GET',
       success: function (data) {
         if (!data.success) {
-          $('#verDetalleVentaDetallesTbody').html(`<tr><td colspan="7" class="text-center text-danger">${data.error || 'Error al cargar'}</td></tr>`);
+          $('#verDetalleVentaDetallesTbody').html(`<tr><td colspan="${colspanDetalle}" class="text-center text-danger">${data.error || 'Error al cargar'}</td></tr>`);
           return;
         }
 
@@ -4017,13 +4020,13 @@
             <td class="text-center">
                 <div class="badge-cantidad-premium">${_escapeHtml(d.cantidad ?? 0)}</div>
             </td>
-            <td class="text-end text-muted">S/ ${_formatearMoneda(d.precio_compra)}</td>
+            ${TIPO_USUARIO_ACTUAL === 1 ? `<td class="text-end text-muted">S/ ${_formatearMoneda(d.precio_compra)}</td>` : ''}
             <td class="text-end text-dark fw-bold">${precioVentaInfo}</td>
             <td class="text-end fw-bold text-dark fs-6">S/ ${_formatearMoneda(d.subtotal)}</td>
           </tr>
         `;
         });
-        $('#verDetalleVentaDetallesTbody').html(filas || '<tr><td colspan="7" class="text-center">Sin productos</td></tr>');
+        $('#verDetalleVentaDetallesTbody').html(filas || `<tr><td colspan="${colspanDetalle}" class="text-center">Sin productos</td></tr>`);
         $('#verDetalleVentaTotalFooter').text(`S/ ${_formatearMoneda(venta.total_venta)}`);
 
         // 🏦 Plan de Cuotas
@@ -4062,7 +4065,7 @@
         }
       },
       error: function (xhr) {
-        $('#verDetalleVentaDetallesTbody').html('<tr><td colspan="7" class="text-center text-danger">Error al cargar datos</td></tr>');
+        $('#verDetalleVentaDetallesTbody').html(`<tr><td colspan="${colspanDetalle}" class="text-center text-danger">Error al cargar datos</td></tr>`);
       }
     });
   }
@@ -4402,7 +4405,7 @@
                   <input type="number" name="precio_credito_${itemCounter}" id="precio_credito_${itemCounter}" class="form-control form-control-sm precio-credito-input" data-item="${itemCounter}" value="${d.precio_venta_credito || ''}" step="0.01" placeholder="Requerido" ${esCredito ? 'required' : ''}>
                 </td>
                 <td id="subtotal_${itemCounter}" class="fw-bold text-success text-end">S/ ${subtotal}</td>
-                <td id="ganancia_${itemCounter}" class="fw-bold text-info text-end">S/ ${ganancia}</td>
+                ${TIPO_USUARIO_ACTUAL === 1 ? `<td id="ganancia_${itemCounter}" class="fw-bold text-info text-end">S/ ${ganancia}</td>` : ''}
                 <td class="text-center">
                   <button type="button" class="btn btn-sm btn-danger no-auth" title="Quitar" onclick="eliminarItem(${itemCounter})">
                     <i class="fa-solid fa-trash"></i>
@@ -7552,9 +7555,11 @@
     const tbody = document.getElementById('tbodyVentas');
     if(!tbody) return;
 
+    const colspanVentas = TIPO_USUARIO_ACTUAL === 1 ? 11 : 10;
+
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" class="text-center py-5">
+        <td colspan="${colspanVentas}" class="text-center py-5">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando...</span>
           </div>
@@ -7567,13 +7572,13 @@
       .then(res => res.json())
       .then(data => {
         if (!data.ok) {
-          tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger">${data.error || 'Error al cargar ventas'}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="${colspanVentas}" class="text-center text-danger">${data.error || 'Error al cargar ventas'}</td></tr>`;
           return;
         }
 
         tbody.innerHTML = '';
         if (data.ventas.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No se encontraron ventas.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="${colspanVentas}" class="text-center text-muted py-4">No se encontraron ventas.</td></tr>`;
         } else {
           let contador = (data.current_page - 1) * 10 + 1;
           data.ventas.forEach(venta => {
@@ -7585,7 +7590,7 @@
       })
       .catch(err => {
         console.error('Error cargando ventas:', err);
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger">Error de conexión al cargar ventas.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colspanVentas}" class="text-center text-danger">Error de conexión al cargar ventas.</td></tr>`;
       });
   }
 
@@ -7703,7 +7708,7 @@
       <td>${venta.fecha_venta}</td>
       <td>${formaPagoBadge}</td>
       <td class="text-end fw-bold text-success">S/ ${venta.total_venta.toFixed(2)}</td>
-      <td class="text-end fw-bold text-info">S/ ${venta.total_ganancia.toFixed(2)}</td>
+      ${TIPO_USUARIO_ACTUAL === 1 ? `<td class="text-end fw-bold text-info">S/ ${venta.total_ganancia.toFixed(2)}</td>` : ''}
       <td>${venta.vendedor_nombre}</td>
       <td class="text-center">${estadoBadge}</td>
       <td class="text-center">${estadoCobroBadge}</td>

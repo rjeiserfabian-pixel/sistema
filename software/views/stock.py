@@ -128,38 +128,49 @@ def stock(request):
                 'precio_maximo': p_maximo,
             })
 
-        vehiculos_headers = ['Producto/Repuesto', 'Identificador', 'Stock', 'Costo Unit.', 'Venta Unit. (P. Máx)', 'Inversión', 'Ganancia Est.']
+        vehiculos_headers = ['Producto/Repuesto', 'Identificador', 'Stock', 'Costo Unit.', 'Venta Unit. (P. Máx)', 'Inversión']
+        if es_admin:
+            vehiculos_headers.append('Ganancia Est.')
         vehiculos_data = []
         for nom, detalles in vehiculos_stock_pdf.items():
             for det in detalles:
                 cant = int(det['cantidad'])
                 costo = float(det['precio_compra']) if det['precio_compra'] else 0.0
                 venta = float(det['precio_maximo']) if det['precio_maximo'] else 0.0
-                vehiculos_data.append([
+                fila = [
                     nom,
                     f"CH: {det.get('serie_chasis', '')}\nMOT: {det.get('serie_motor', '')}",
                     str(cant), f"{costo:.2f}", f"{venta:.2f}",
-                    f"{cant * costo:.2f}", f"{(cant * venta) - (cant * costo):.2f}"
-                ])
+                    f"{cant * costo:.2f}"
+                ]
+                if es_admin:
+                    fila.append(f"{(cant * venta) - (cant * costo):.2f}")
+                vehiculos_data.append(fila)
 
-        repuestos_headers = ['Producto/Repuesto', 'Identificador', 'Ubicación', 'Stock', 'Costo Unit.', 'Venta Unit. (P. Máx)', 'Inversión', 'Ganancia Est.']
+        repuestos_headers = ['Producto/Repuesto', 'Identificador', 'Ubicación', 'Stock', 'Costo Unit.', 'Venta Unit. (P. Máx)', 'Inversión']
+        if es_admin:
+            repuestos_headers.append('Ganancia Est.')
         repuestos_data = []
         for nom, detalles in repuestos_stock_pdf.items():
             for det in detalles:
                 cant = int(det['cantidad'])
                 costo = float(det['precio_compra']) if det['precio_compra'] else 0.0
                 venta = float(det['precio_maximo']) if det['precio_maximo'] else 0.0
-                repuestos_data.append([
+                fila = [
                     nom, f"COD: {det.get('codigo_barras', '')}",
                     det.get('ubicacion', 'Sin ubicación'),
                     str(cant), f"{costo:.2f}", f"{venta:.2f}",
-                    f"{cant * costo:.2f}", f"{(cant * venta) - (cant * costo):.2f}"
-                ])
+                    f"{cant * costo:.2f}"
+                ]
+                if es_admin:
+                    fila.append(f"{(cant * venta) - (cant * costo):.2f}")
+                repuestos_data.append(fila)
 
+        titulo_pdf = 'REPORTE DE INVERSIÓN Y GANANCIAS - STOCK' if es_admin else 'REPORTE DE INVERSIÓN - STOCK'
         return export_to_pdf_stock(
             vehiculos_headers, vehiculos_data,
             repuestos_headers, repuestos_data,
-            'REPORTE DE INVERSIÓN Y GANANCIAS - STOCK', 'Reporte_Stock'
+            titulo_pdf, 'Reporte_Stock'
         )
 
     # ── Carga normal de la página (liviana, sin consultar el inventario) ──
