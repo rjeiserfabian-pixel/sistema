@@ -494,13 +494,13 @@
                                         {% else %}
                                             S/ {{ cuota.interes_mora_dinamico|floatformat:2 }}
                                             {% if cuota.interes_mora_dinamico > 0 %}
-                                                <br><small class="badge bg-danger" style="font-size: 0.65rem;">
+                                                <br><small class="badge bg-danger" style="font-size: 0.65rem;"
+                                                       title="Mora: S/ {{ cuota.interes_mora_dinamico|floatformat:2 }} sobre saldo S/ {{ cuota.saldo_cuota|floatformat:2 }}{% if cuota.interes_mora_manual is None %} ({{ cuota.tasa_mora_dinamica|floatformat:2 }}% diario × {{ cuota.dias_retraso }} días){% endif %}">
                                                     {% if cuota.interes_mora_manual is not None %}
-                                                        Manual
+                                                        Manual ({{ cuota.dias_retraso }} d)
                                                     {% else %}
-                                                        {{ cuota.tasa_mora_dinamica }}%
+                                                        {{ cuota.dias_retraso }} d × {{ cuota.tasa_mora_dinamica|floatformat:2 }}%
                                                     {% endif %}
-                                                    ({{ cuota.dias_retraso }} d)
                                                 </small>
                                             {% endif %}
                                         {% endif %}

@@ -109,6 +109,26 @@
             flex-direction: column;
         }
 
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .brand-header-logo {
+            flex-shrink: 0;
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 22px rgba(0, 150, 255, 0.55);
+        }
+
+        .brand-header .brand-subtitle {
+            margin-bottom: 0;
+        }
+
         .brand-title {
             font-size: 2.2rem;
             font-weight: 700;
@@ -387,6 +407,36 @@
             margin-top: 2rem;
         }
 
+        .powered-by {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.9rem;
+            margin-top: 1.5rem;
+            padding-top: 1.4rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--accent-teal);
+        }
+
+        .powered-by img {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 2px 14px rgba(0, 150, 255, 0.45);
+        }
+
+        .powered-by strong {
+            color: #fff;
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+        }
+
         /* Error Alert */
         .alert-error {
             background: rgba(239, 68, 68, 0.1);
@@ -457,8 +507,13 @@
             <div class="left-bg-image"></div>
             
             <div class="login-left-content">
-                <h1 class="brand-title">MotorNova 360</h1>
-                <h2 class="brand-subtitle">Gestión Total Vehicular</h2>
+                <div class="brand-header">
+                    <img class="brand-header-logo" src="{% static 'img/logo-nexo360.jpg' %}" alt="Nexo360">
+                    <div>
+                        <h1 class="brand-title">MotorNova 360</h1>
+                        <h2 class="brand-subtitle">Gestión Total Vehicular</h2>
+                    </div>
+                </div>
                 <p class="brand-desc">
                     Gestiona ventas, compras, créditos, repuestos, inventario y reportes en una sola plataforma moderna, segura y eficiente para todo tipo de vehículos.
                 </p>
@@ -557,8 +612,14 @@
                 </div>
             </div>
 
+            <div class="powered-by">
+                <span>Desarrollado por</span>
+                <img src="{% static 'img/logo-nexo360.jpg' %}" alt="Nexo360">
+                <strong>Nexo360</strong>
+            </div>
+
             <div class="copyright">
-                © 2026 MotorNova 360 - Todos los derechos reservados.
+                © 2026 Nexo360 - Todos los derechos reservados.
             </div>
         </div>
     </div>

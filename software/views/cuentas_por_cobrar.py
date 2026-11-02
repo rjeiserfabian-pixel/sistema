@@ -34,11 +34,8 @@ def _calcular_mora_dict(cuota_dict, empresa, hoy):
     if dias_retraso < dias_inicio:
         return Decimal('0')
     
-    tasa_adicional = dias_retraso - dias_inicio
-    tasa_final = tasa_base + tasa_adicional
-    
     saldo_cuota = cuota_dict.get('saldo_cuota', Decimal('0'))
-    return (saldo_cuota * tasa_final / 100).quantize(Decimal('0.01'))
+    return (saldo_cuota * tasa_base / 100 * dias_retraso).quantize(Decimal('0.01'))
 
 def index(request):
     """

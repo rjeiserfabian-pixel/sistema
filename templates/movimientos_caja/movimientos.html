@@ -8,9 +8,14 @@
       <i class="bi bi-cash-coin me-2"></i>Movimientos de Caja
     </h1>
     {% if tiene_caja_abierta %}
-    <button type="button" class="btn btn-danger rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRegistrarEgreso">
-      <i class="bi bi-dash-circle me-2"></i>Registrar Egreso
-    </button>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-success rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRegistrarIngreso">
+        <i class="bi bi-plus-circle me-2"></i>Registrar Ingreso
+      </button>
+      <button type="button" class="btn btn-danger rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRegistrarEgreso">
+        <i class="bi bi-dash-circle me-2"></i>Registrar Egreso
+      </button>
+    </div>
     {% endif %}
   </div>
 
@@ -270,6 +275,59 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Registrar Ingreso -->
+  <div class="modal fade" id="modalRegistrarIngreso" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-plus-circle me-2"></i>Registrar Ingreso
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formRegistrarIngreso" action="{% url 'registrar_ingreso' %}" method="post">
+            {% csrf_token %}
+
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Caja actual:</strong> {{ apertura_actual.id_caja.nombre_caja }}<br>
+              <strong>Saldo actual:</strong> S/ {{ saldo_actual|floatformat:2 }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Monto del Ingreso <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">S/</span>
+                <input type="number" name="monto" id="monto_ingreso" class="form-control"
+                       step="0.01" min="0.01" placeholder="0.00">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Descripción <span class="text-danger">*</span></label>
+              <textarea name="descripcion" id="descripcion_ingreso" class="form-control" rows="3"
+                        placeholder="Ej: Aporte de capital, devolución de préstamo, etc."></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Referencia / Nro. de comprobante <span class="text-muted fw-normal">(opcional)</span></label>
+              <input type="text" name="referencia" id="referencia_ingreso" class="form-control"
+                     maxlength="60" placeholder="Ej: Recibo 0012, Operación 458796" autocomplete="off">
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-save me-2"></i>Registrar Ingreso
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endif %}
 
 </main>
@@ -491,6 +549,84 @@ $('#formRegistrarEgreso').submit(function(e) {
       let errorMsg = 'Error al registrar el egreso';
       try { const response = JSON.parse(xhr.responseText); errorMsg = response.error || errorMsg; } catch(e) {}
       Swal.fire('Error', errorMsg, 'error');
+    }
+  });
+});
+
+// ── SUBMIT del formulario de ingreso ─────────────────────────────────────────
+$('#modalRegistrarIngreso').on('hidden.bs.modal', function() {
+  $('#formRegistrarIngreso')[0].reset();
+});
+
+$('#formRegistrarIngreso').submit(function(e) {
+  e.preventDefault();
+
+  const montoStr = $('#monto_ingreso').val();
+  const descripcion = $('#descripcion_ingreso').val().trim();
+  const monto = parseFloat(montoStr);
+
+  if (!montoStr || montoStr.trim() === '') {
+    Swal.fire({ icon: 'warning', title: 'Monto requerido', text: 'Debe ingresar el monto del ingreso.', confirmButtonColor: '#198754' });
+    return;
+  }
+
+  if (isNaN(monto) || monto <= 0) {
+    Swal.fire({ icon: 'warning', title: 'Monto inválido', text: 'El monto del ingreso debe ser un número mayor a cero.', confirmButtonColor: '#198754' });
+    return;
+  }
+
+  if (!descripcion) {
+    Swal.fire({ icon: 'warning', title: 'Descripción requerida', text: 'Debe ingresar una descripción del ingreso.', confirmButtonColor: '#198754' });
+    return;
+  }
+
+  Swal.fire({ title: 'Registrando ingreso...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+  $.ajax({
+    url: $(this).attr('action'),
+    method: 'POST',
+    data: new FormData(this),
+    processData: false,
+    contentType: false,
+    success: function(res) {
+      if (res.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Ingreso registrado',
+          text: res.message,
+          confirmButtonColor: '#198754'
+        }).then(() => {
+          window.location.reload();
+        });
+      } else if (res.necesita_aperturar) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Caja Requerida',
+          text: res.error,
+          showCancelButton: true,
+          confirmButtonText: '<i class="bi bi-box-arrow-in-right"></i> Aperturar Caja',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#0d9488',
+          cancelButtonColor: '#6c757d'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            const modalIngreso = bootstrap.Modal.getInstance(document.getElementById('modalRegistrarIngreso'));
+            if (modalIngreso) modalIngreso.hide();
+            setTimeout(() => {
+              const modalCaja = new bootstrap.Modal(document.getElementById('modalGestionCaja'));
+              modalCaja.show();
+            }, 300);
+          }
+        });
+      } else {
+        Swal.fire('Error', res.error, 'error');
+      }
+    },
+    error: function(xhr) {
+      console.error(xhr);
+      let errorMsg = 'Error al registrar el ingreso';
+      try { const response = JSON.parse(xhr.responseText); errorMsg = response.error || errorMsg; } catch(e) {}
+      Swal.fire({ icon: 'error', title: 'Error', text: errorMsg });
     }
   });
 });

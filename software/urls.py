@@ -290,6 +290,7 @@ urlpatterns = [
     path('movimientos-caja/', movimientosCaja.movimientos_caja, name='movimientos_caja'),
     path('movimientos-caja/api/listar/', movimientosCaja.api_listar_movimientos, name='api_listar_movimientos_caja'),
     path('movimientos-caja/registrar-egreso/', movimientosCaja.registrar_egreso, name='registrar_egreso'),
+    path('movimientos-caja/registrar-ingreso/', movimientosCaja.registrar_ingreso, name='registrar_ingreso'),
     path('movimientos-caja/reporte/', movimientosCaja.reporte_caja, name='reporte_caja'),
     path('movimientos-caja/buscar-compra/', movimientosCaja.buscar_compra_por_numero, name='buscar_compra_egreso'),
 

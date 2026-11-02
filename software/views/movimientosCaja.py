@@ -365,6 +365,82 @@ def registrar_egreso(request):
         }, status=500)
 
 
+def registrar_ingreso(request):
+    """
+    Registra un ingreso manual en la caja abierta del usuario (solo en soles).
+    La referencia/comprobante es opcional y se agrega al final de la descripción.
+    """
+    if request.method != 'POST':
+        return redirect('movimientos_caja')
+
+    try:
+        idusuario = request.session.get('idusuario')
+        if not idusuario:
+            return JsonResponse({'ok': False, 'error': 'Sesión no válida. Inicie sesión nuevamente.'}, status=403)
+
+        # Verificar caja abierta
+        apertura_actual = AperturaCierreCaja.objects.filter(
+            idusuario_id=idusuario,
+            estado__in=['abierta', 'reabierta']
+        ).first()
+
+        if not apertura_actual:
+            return JsonResponse({
+                'ok': False,
+                'error': 'No tiene una caja abierta. Debe aperturar una caja primero.',
+                'necesita_aperturar': True
+            }, status=400)
+
+        monto_str = (request.POST.get('monto') or '').strip()
+        descripcion = (request.POST.get('descripcion') or '').strip()
+        referencia = (request.POST.get('referencia') or '').strip()
+
+        if not monto_str:
+            return JsonResponse({'ok': False, 'error': 'El monto es obligatorio'}, status=400)
+        try:
+            monto = Decimal(monto_str)
+        except Exception:
+            return JsonResponse({'ok': False, 'error': 'El monto debe ser un número válido'}, status=400)
+
+        if not monto.is_finite() or monto <= 0:
+            return JsonResponse({'ok': False, 'error': 'El monto debe ser mayor a cero'}, status=400)
+
+        monto = monto.quantize(Decimal('0.01'))
+        # El campo monto admite hasta 10 dígitos (8 enteros + 2 decimales)
+        if monto >= Decimal('100000000'):
+            return JsonResponse({'ok': False, 'error': 'El monto es demasiado grande'}, status=400)
+
+        if not descripcion:
+            return JsonResponse({'ok': False, 'error': 'Debe ingresar una descripción del ingreso'}, status=400)
+
+        if referencia:
+            descripcion = f"{descripcion} | Ref: {referencia}"
+
+        movimiento = MovimientoCaja.objects.create(
+            id_caja=apertura_actual.id_caja,
+            id_movimiento=apertura_actual,
+            idusuario_id=idusuario,
+            tipo_movimiento='ingreso',
+            monto=monto,
+            descripcion=descripcion,
+            estado=1
+        )
+
+        return JsonResponse({
+            'ok': True,
+            'message': 'Ingreso registrado correctamente',
+            'id_movimiento': movimiento.id_movimiento_caja
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'ok': False,
+            'error': f'Error al registrar ingreso: {str(e)}'
+        }, status=500)
+
+
 def reporte_caja(request):
     """
     Generar reporte de caja (filtrado por fechas)

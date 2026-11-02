@@ -77,7 +77,7 @@
                                 <div class="alert alert-danger border-0 mb-0 py-2 d-flex justify-content-between align-items-center">
                                     <span>
                                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                        Interés por Mora ({{ dias_mora }} días - {{ tasa_mora }}%):
+                                        Interés por Mora ({{ dias_mora }} d × {% if tasa_mora == "Manual" %}Manual{% else %}{{ tasa_mora|floatformat:2 }}%{% endif %}):
                                     </span>
                                     <span class="fw-bold h5 mb-0">+ S/ {{ interes_mora|floatformat:2 }}</span>
                                 </div>

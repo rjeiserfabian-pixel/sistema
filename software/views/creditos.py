@@ -1399,10 +1399,9 @@ def reportes_creditos(request):
 def calcular_interes_mora(cuota, fecha_referencia=None):
     """
     Calcula el interés moratorio para una cuota según la lógica:
-    - 3 días de gracia: 0%
-    - Día 4: Interés Base % (ej. 5%)
-    - Día 5+: Base + (Días - 4)%
-    Retorna (monto_interes, tasa_aplicada, dias_retraso)
+    - Antes de 'dias_mora_inicio' días de atraso: 0
+    - Desde ahí: (saldo * Interés Base % diario) * días de atraso
+    Retorna (monto_interes, tasa_diaria_aplicada, dias_retraso)
     """
     # Si tiene interés manual, devolvemos ese valor
     if cuota.interes_mora_manual is not None:
@@ -1441,13 +1440,12 @@ def calcular_interes_mora(cuota, fecha_referencia=None):
     if dias_retraso < dias_inicio:
         return Decimal('0'), 0, dias_retraso
     
-    # tasa = base + (dias - dias_inicio)
-    tasa_adicional = dias_retraso - dias_inicio
-    tasa_final = tasa_base + tasa_adicional
-    
-    monto_interes = (cuota.saldo_cuota * tasa_final / 100).quantize(Decimal('0.01'))
-    
-    return monto_interes, tasa_final, dias_retraso
+    # Tasa fija diaria: mora = saldo * tasa% * días de atraso
+    mora_diaria = cuota.saldo_cuota * tasa_base / 100
+    monto_interes = (mora_diaria * dias_retraso).quantize(Decimal('0.01'))
+
+    # Se retorna la tasa diaria (no la acumulada) para mostrarla como "N d × tasa %"
+    return monto_interes, tasa_base, dias_retraso
 
 def _generar_pdf_cronograma(request, credito):
     """
