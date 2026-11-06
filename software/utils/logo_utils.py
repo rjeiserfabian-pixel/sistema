@@ -72,6 +72,28 @@ def get_logo_buffer(empresa, use_ticket_logo=False):
     return None
 
 
+def _recortar_margenes(img, umbral_blanco=245):
+    """Quita bordes transparentes o casi blancos de una imagen RGBA."""
+    from PIL import ImageChops
+
+    try:
+        alpha = img.getchannel('A')
+        rgb = img.convert('RGB')
+        # Un píxel cuenta si tiene alpha > 10 y algún canal por debajo del umbral
+        r, g, b = rgb.split()
+        oscuro = ImageChops.lighter(ImageChops.lighter(
+            r.point(lambda p: 255 if p < umbral_blanco else 0),
+            g.point(lambda p: 255 if p < umbral_blanco else 0)),
+            b.point(lambda p: 255 if p < umbral_blanco else 0))
+        visible = ImageChops.multiply(oscuro, alpha.point(lambda p: 255 if p > 10 else 0))
+        bbox = visible.getbbox()
+        if bbox:
+            return img.crop(bbox)
+    except Exception as e:
+        print(f"[logo_utils] No se pudo recortar márgenes: {e}")
+    return img
+
+
 def get_logo_image_for_pdf(empresa, width_mm=40, height_mm=40, circular=True, use_ticket_logo=False):
     """
     Devuelve un objeto Image de ReportLab listo para insertar en un PDF,
@@ -99,12 +121,19 @@ def get_logo_image_for_pdf(empresa, width_mm=40, height_mm=40, circular=True, us
 
         img = PILImage.open(logo_buf).convert("RGBA")
 
-        if circular:
+        # Recortar automáticamente los márgenes vacíos (transparentes o blancos)
+        # para que el logo quede pegado a su contenido sin importar la imagen subida.
+        img = _recortar_margenes(img)
+
+        # Máscara circular solo si el logo es casi cuadrado; en logos anchos
+        # recortaría las esquinas, así que se deja rectangular.
+        w0, h0 = img.size
+        if circular and 0.8 <= (w0 / h0) <= 1.25:
             img.thumbnail((200, 200), PILImage.Resampling.LANCZOS if hasattr(PILImage, 'Resampling') else PILImage.ANTIALIAS)
             w, h = img.size
             bg = PILImage.new('RGBA', (200, 200), (255, 255, 255, 0))
             bg.paste(img, ((200 - w) // 2, (200 - h) // 2))
-            
+
             mask = PILImage.new('L', (200, 200), 0)
             ImageDraw.Draw(mask).ellipse((0, 0, 200, 200), fill=255)
             output = PILImage.new('RGBA', (200, 200), (255, 255, 255, 0))
@@ -115,7 +144,13 @@ def get_logo_image_for_pdf(empresa, width_mm=40, height_mm=40, circular=True, us
         img.save(out_buf, format='PNG')
         out_buf.seek(0)
 
-        rl_img = RLImage(out_buf, width=width_mm * mm, height=height_mm * mm)
+        # Ajustar al cuadro (width_mm x height_mm) manteniendo la proporción real,
+        # sin dejar espacio sobrante arriba/abajo.
+        iw, ih = img.size
+        escala = min(width_mm / iw, height_mm / ih)
+        final_w_mm, final_h_mm = iw * escala, ih * escala
+
+        rl_img = RLImage(out_buf, width=final_w_mm * mm, height=final_h_mm * mm)
         rl_img.hAlign = 'CENTER'
         rl_img.preserveAspectRatio = True
         return rl_img

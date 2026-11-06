@@ -858,10 +858,16 @@ def anular_pago(request, idpagocuota):
                 else:
                     credito = cuota.idcredito
                 
-                # Revertir el monto en la cuota
-                cuota.monto_pagado -= pago.monto_pago
-                cuota.saldo_cuota += pago.monto_pago
-                
+                # Revertir el monto en la cuota.
+                # Al pagar, primero se cobra la mora (cuota.interes_mora) y el resto va a capital.
+                # Por eso al anular solo se devuelve a capital la parte que realmente fue a capital.
+                mora_revertir = min(pago.monto_pago, cuota.interes_mora or Decimal('0'))
+                capital_revertir = pago.monto_pago - mora_revertir
+
+                cuota.interes_mora -= mora_revertir
+                cuota.monto_pagado = max(cuota.monto_pagado - capital_revertir, Decimal('0'))
+                cuota.saldo_cuota = min(cuota.saldo_cuota + capital_revertir, cuota.total)
+
                 if cuota.monto_pagado == 0:
                     cuota.estado_pago = 'Pendiente'
                     cuota.fecha_pago = None
@@ -974,13 +980,20 @@ def editar_pago(request, idpagocuota):
                     'error': f'El monto no puede superar el saldo total de la cuota (Máx: S/ {monto_maximo})'
                 }, status=400)
                 
-            # 1. Revertir impacto del pago original en la cuota
-            cuota.monto_pagado -= pago.monto_pago
-            cuota.saldo_cuota += pago.monto_pago
-            
-            # 2. Aplicar el nuevo impacto
-            cuota.monto_pagado += nuevo_monto
-            cuota.saldo_cuota -= nuevo_monto
+            # 1. Revertir impacto del pago original (mora primero, resto capital)
+            mora_revertir = min(pago.monto_pago, cuota.interes_mora or Decimal('0'))
+            capital_revertir = pago.monto_pago - mora_revertir
+            cuota.interes_mora -= mora_revertir
+            cuota.monto_pagado = max(cuota.monto_pagado - capital_revertir, Decimal('0'))
+            cuota.saldo_cuota = min(cuota.saldo_cuota + capital_revertir, cuota.total)
+
+            # 2. Aplicar el nuevo impacto (mora vigente primero, resto capital)
+            mora_vigente, _, _ = calcular_interes_mora(cuota)
+            mora_nueva = min(nuevo_monto, mora_vigente)
+            capital_nuevo = nuevo_monto - mora_nueva
+            cuota.interes_mora += mora_nueva
+            cuota.monto_pagado += capital_nuevo
+            cuota.saldo_cuota -= capital_nuevo
             
             # Actualizar estados de la cuota
             if cuota.saldo_cuota == 0:
@@ -2173,7 +2186,7 @@ def imprimir_recibo_pago(request, idpagocuota):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            # elements.append(Spacer(1, 0.5*mm))
+            elements.append(Spacer(1, 3*mm))
         
         # ==========================================
         # DATOS DE LA EMPRESA
@@ -3067,7 +3080,7 @@ def imprimir_recibo_pago_multiple(request, pago_ids):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            # elements.append(Spacer(1, 0.5*mm))
+            elements.append(Spacer(1, 3*mm))
 
 
         # Cabecera empresa
@@ -3711,7 +3724,7 @@ def imprimir_recibo_pago_total(request, idmovimiento):
         logo_rl = get_logo_image_for_pdf(empresa, width_mm=30, height_mm=30, circular=True, use_ticket_logo=True)
         if logo_rl:
             elements.append(logo_rl)
-            # elements.append(Spacer(1, 0.5*mm))
+            elements.append(Spacer(1, 3*mm))
 
         # Cabecera empresa
         nombre_empresa = empresa.razonsocial if empresa.razonsocial else empresa.nombrecomercial
